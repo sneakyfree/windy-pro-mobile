@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Windy Pro",
+    "slug": "windy-pro-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icon.png",
+    "scheme": "windypro",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./src/assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1a2e"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "uk.thewindstorm.windypro",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Windy Pro needs microphone access for real-time speech translation",
+        "NSSpeechRecognitionUsageDescription": "Windy Pro uses speech recognition for translation",
+        "NSCameraUsageDescription": "Windy Pro uses the camera for OCR translation of text in images"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/adaptive-icon.png",
+        "backgroundColor": "#1a1a2e"
+      },
+      "package": "uk.thewindstorm.windypro",
+      "permissions": [
+        "RECORD_AUDIO",
+        "CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
