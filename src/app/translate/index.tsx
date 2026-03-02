@@ -127,17 +127,26 @@ export default function TranslateScreen() {
                     <Text style={styles.backText}>← Back</Text>
                 </Pressable>
                 <Text style={styles.title}>Windy Translate</Text>
-                {bubbles.length > 0 && (
+                <View style={{ flexDirection: 'row', gap: 8 }}>
                     <Pressable
                         style={styles.clearBtn}
-                        onPress={() => Alert.alert('Clear Conversation', 'Remove all messages?', [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Clear', style: 'destructive', onPress: () => setBubbles([]) },
-                        ])}
+                        onPress={() => router.push('/ocr')}
+                        accessibilityLabel="OCR Camera Translate"
                     >
-                        <Text style={styles.clearBtnText}>🗑</Text>
+                        <Text style={styles.clearBtnText}>📷</Text>
                     </Pressable>
-                )}
+                    {bubbles.length > 0 && (
+                        <Pressable
+                            style={styles.clearBtn}
+                            onPress={() => Alert.alert('Clear Conversation', 'Remove all messages?', [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Clear', style: 'destructive', onPress: () => setBubbles([]) },
+                            ])}
+                        >
+                            <Text style={styles.clearBtnText}>🗑</Text>
+                        </Pressable>
+                    )}
+                </View>
             </View>
 
             {/* Language Selector Row */}
