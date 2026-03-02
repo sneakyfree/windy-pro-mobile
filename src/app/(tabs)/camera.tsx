@@ -40,6 +40,7 @@ export default function CameraTab() {
     const [detectedLang, setDetectedLang] = useState<string | null>(null);
     const liveScanRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const scanningRef = useRef(false);
+    const isMountedRef = useRef(true);
 
     const overlayOpacity = useRef(new Animated.Value(0)).current;
 
@@ -58,7 +59,9 @@ export default function CameraTab() {
 
     // Clean up live scan on unmount
     useEffect(() => {
+        isMountedRef.current = true;
         return () => {
+            isMountedRef.current = false;
             if (liveScanRef.current) clearInterval(liveScanRef.current);
         };
     }, []);
@@ -128,9 +131,9 @@ export default function CameraTab() {
                     quality: 0.4,
                     skipProcessing: true,
                 });
-                if (photo?.base64) {
+                if (photo?.base64 && isMountedRef.current) {
                     const ocrResult = await ocrService.translateFromCamera(photo.base64, targetLang);
-                    if (ocrResult.original.text.trim()) {
+                    if (ocrResult.original.text.trim() && isMountedRef.current) {
                         setLiveResult(ocrResult);
                         setDetectedLang(ocrResult.fromLang);
                     }

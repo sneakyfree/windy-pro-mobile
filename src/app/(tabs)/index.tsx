@@ -466,6 +466,8 @@ export default function RecordScreen() {
                 <Pressable
                     style={[styles.toggle, mediaCapture.audio && styles.toggleActive]}
                     onPress={async () => { await feedbackService.tap(); toggleMedia('audio'); }}
+                    accessibilityLabel={`Audio capture ${mediaCapture.audio ? 'on' : 'off'}`}
+                    accessibilityRole="switch"
                 >
                     <Text style={styles.toggleEmoji}>🎤</Text>
                     <Text style={[styles.toggleLabel, mediaCapture.audio && styles.toggleLabelActive]}>
@@ -478,6 +480,8 @@ export default function RecordScreen() {
                         if (!requireFeature('video-capture', 'Video Capture')) return;
                         await feedbackService.tap(); toggleMedia('video');
                     }}
+                    accessibilityLabel={`Video capture ${mediaCapture.video ? 'on' : 'off'}`}
+                    accessibilityRole="switch"
                 >
                     <Text style={styles.toggleEmoji}>📹</Text>
                     <Text style={[styles.toggleLabel, mediaCapture.video && styles.toggleLabelActive]}>
@@ -487,6 +491,8 @@ export default function RecordScreen() {
                 <Pressable
                     style={[styles.toggle, mediaCapture.text && styles.toggleActive]}
                     onPress={async () => { await feedbackService.tap(); toggleMedia('text'); }}
+                    accessibilityLabel={`Text transcription ${mediaCapture.text ? 'on' : 'off'}`}
+                    accessibilityRole="switch"
                 >
                     <Text style={styles.toggleEmoji}>📝</Text>
                     <Text style={[styles.toggleLabel, mediaCapture.text && styles.toggleLabelActive]}>

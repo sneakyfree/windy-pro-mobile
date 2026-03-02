@@ -18,11 +18,19 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "uk.thewindstorm.windypro",
+      "buildNumber": "1",
+      "deploymentTarget": "16.0",
+      "associatedDomains": [
+        "applinks:windypro.thewindstorm.uk",
+        "appclips:windypro.thewindstorm.uk"
+      ],
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Windy Pro uses your microphone to convert speech to text. Audio is processed on your device and never sent to our servers.",
         "NSSpeechRecognitionUsageDescription": "Windy Pro uses speech recognition to convert your voice to text.",
         "NSCameraUsageDescription": "Windy Pro uses your camera for OCR translation and optional video recording.",
         "NSLocationWhenInUseUsageDescription": "Windy Pro tags recordings with location for easy searching. Location data stays on your device.",
+        "NSPhotoLibraryUsageDescription": "Windy Pro saves exported recordings and translations to your photo library.",
+        "NSPhotoLibraryAddUsageDescription": "Windy Pro saves exported recordings to your photo library.",
         "UIBackgroundModes": [
           "audio",
           "fetch"

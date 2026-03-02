@@ -6,7 +6,7 @@
  */
 import {
     View, Text, StyleSheet, Pressable, ScrollView, Platform,
-    Alert, Modal, FlatList, Dimensions, Animated, KeyboardAvoidingView,
+    Alert, Modal, FlatList, Dimensions, Animated, KeyboardAvoidingView, Share,
 } from 'react-native';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
@@ -22,6 +22,7 @@ import {
 import { feedbackService } from '@/services/feedback';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { useHaptic } from '@/hooks/useHaptic';
+import { useAccessibility } from '@/hooks/useAccessibility';
 import { SpeechWaveform } from '@/components/SpeechWaveform';
 import { SpeechTranslationError, SPEECH_ERROR_MESSAGES } from '@/services/speech-translation';
 import { networkMonitor, type NetworkStatus } from '@/services/network-monitor';
@@ -35,6 +36,7 @@ export default function TranslateScreen() {
     const router = useRouter();
     const { requireFeature } = useFeatureGate();
     const haptic = useHaptic();
+    const { announce } = useAccessibility();
 
     // State
     const [sourceLang, setSourceLang] = useState('en');
@@ -108,6 +110,18 @@ export default function TranslateScreen() {
         ]).start(() => setCopyToast(false));
     };
 
+    // iOS share sheet for translations
+    const handleShareTurn = async (turn: ConversationTurn) => {
+        try {
+            const shareText = `"${turn.original}"\n→ "${turn.translated}"\n\nTranslated with Windy Pro 🌪️`;
+            await Share.share({
+                message: shareText,
+                title: 'Windy Pro Translation',
+            });
+            feedbackService.tap();
+        } catch { /* user cancelled */ }
+    };
+
     // Toggle favorite/pin on a turn
     const handleToggleFavorite = (turnId: string) => {
         setTurns(prev => prev.map(t =>
@@ -158,6 +172,7 @@ export default function TranslateScreen() {
             setAudioLevel(0);
             haptic.medium();
             feedbackService.recordStart();
+            announce('Recording started. Speak now.');
         } catch (err) {
             console.error('[Translate] Start recording failed:', err);
             haptic.error();
@@ -240,6 +255,7 @@ export default function TranslateScreen() {
             setTurns((prev) => [...prev, turn]);
             saveToHistory(turn);
             haptic.success();
+            announce(`Translation complete. ${result.translated}`);
 
             // TTS: speak the translation aloud
             if (ttsEnabled) {
@@ -482,11 +498,14 @@ export default function TranslateScreen() {
                                             <Text style={styles.confidenceText}>{Math.round(turn.confidence * 100)}%</Text>
                                         </View>
                                     )}
-                                    <Pressable onPress={() => handleToggleFavorite(turn.id)} hitSlop={8}>
+                                    <Pressable onPress={() => handleToggleFavorite(turn.id)} hitSlop={8} accessibilityLabel={turn.favorite ? 'Remove from favorites' : 'Add to favorites'} accessibilityRole="button">
                                         <Text style={styles.favoriteBtn}>{turn.favorite ? '⭐' : '☆'}</Text>
                                     </Pressable>
-                                    <Pressable onPress={() => handleCopyTurn(turn)} hitSlop={8}>
+                                    <Pressable onPress={() => handleCopyTurn(turn)} hitSlop={8} accessibilityLabel="Copy translation" accessibilityRole="button">
                                         <Text style={styles.copyBtn}>📋</Text>
+                                    </Pressable>
+                                    <Pressable onPress={() => handleShareTurn(turn)} hitSlop={8} accessibilityLabel="Share translation" accessibilityRole="button">
+                                        <Text style={styles.copyBtn}>📤</Text>
                                     </Pressable>
                                 </View>
                             </View>
