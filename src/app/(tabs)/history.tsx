@@ -1,8 +1,9 @@
 /**
  * 🧬 M1 + M7 — History Screen (Enhanced)
  * Storage usage indicator, sort controls, bulk delete, export to Files
+ * Backend sync, favorites, swipe-to-delete, language filter, CSV export
  */
-import { View, Text, StyleSheet, FlatList, Pressable, Platform, TextInput, Alert, Animated } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Platform, TextInput, Alert, Animated, PanResponder } from 'react-native';
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,7 +12,11 @@ import * as FileSystem from 'expo-file-system';
 import { colors, spacing, borderRadius } from '@/theme';
 import { localStorageService } from '@/services/storage-local';
 import { feedbackService } from '@/services/feedback';
+import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import type { SessionSummary, StorageUsage } from '@/types';
+
+const HISTORY_API = 'https://windypro.thewindstorm.uk/user/history';
+const FAVORITES_API = 'https://windypro.thewindstorm.uk/user/favorites';
 
 type SortBy = 'date' | 'duration' | 'quality';
 type SortDir = 'desc' | 'asc';
@@ -29,6 +34,12 @@ export default function HistoryScreen() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [storage, setStorage] = useState<StorageUsage | null>(null);
   const storageBarAnim = useRef(new Animated.Value(0)).current;
+
+  // Favorites
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  // Language pair filter
+  const [langFilter, setLangFilter] = useState<string | null>(null); // e.g. 'en-es'
 
   // Reload sessions every time screen gains focus
   useFocusEffect(
@@ -54,6 +65,25 @@ export default function HistoryScreen() {
   const loadSessions = async (query?: string) => {
     setLoading(true);
     try {
+      // Try backend first
+      try {
+        const res = await fetch(HISTORY_API, { headers: { 'Accept': 'application/json' } });
+        if (res.ok) {
+          const backendData = await res.json();
+          if (Array.isArray(backendData.sessions)) {
+            setSessions(backendData.sessions);
+            // Extract favorites
+            const favIds = new Set<string>(backendData.favorites || []);
+            setFavorites(favIds);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {
+        // Backend unavailable, fall back to local
+      }
+
+      // Fallback to local storage
       const data = await localStorageService.getSessions(
         query ? { searchQuery: query, dateRange: null, source: null, minQuality: null, synced: null } : undefined
       );
@@ -81,6 +111,70 @@ export default function HistoryScreen() {
     });
     return sortDir === 'asc' ? sorted.reverse() : sorted;
   }, [sessions, sortBy, sortDir]);
+
+  // Apply language filter
+  const filteredSessions = useMemo(() => {
+    if (!langFilter) return sortedSessions;
+    return sortedSessions.filter(s => {
+      const pair = `${s.source || 'en'}`;
+      return pair === langFilter || langFilter === 'all';
+    });
+  }, [sortedSessions, langFilter]);
+
+  // Unique language pairs for filter
+  const langPairs = useMemo(() => {
+    const pairs = new Set<string>();
+    sessions.forEach(s => pairs.add(s.source || 'en'));
+    return Array.from(pairs);
+  }, [sessions]);
+
+  // Toggle favorite
+  const toggleFavorite = async (id: string) => {
+    const isFav = favorites.has(id);
+    try {
+      await fetch(FAVORITES_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: id, action: isFav ? 'remove' : 'add' }),
+      });
+    } catch {
+      // Optimistic update even if backend fails
+    }
+    setFavorites(prev => {
+      const next = new Set(prev);
+      isFav ? next.delete(id) : next.add(id);
+      return next;
+    });
+    await feedbackService.tap();
+  };
+
+  // CSV export
+  const handleExportCsv = async () => {
+    try {
+      const header = 'ID,Date,Duration,Quality,Source,Preview\n';
+      const rows = filteredSessions.map(s =>
+        `"${s.id}","${s.createdAt}",${s.duration},${s.quality.score},"${s.source || ''}","${(s.previewText || '').replace(/"/g, '""')}"`
+      ).join('\n');
+      const csv = header + rows;
+
+      const csvPath = `${FileSystem.cacheDirectory}windy-history-export.csv`;
+      await FileSystem.writeAsStringAsync(csvPath, csv);
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(csvPath, {
+          mimeType: 'text/csv',
+          dialogTitle: 'Export Translation History',
+        });
+        await feedbackService.success();
+      } else {
+        Alert.alert('Export Unavailable', 'Sharing not supported on this device.');
+      }
+    } catch (err) {
+      console.error('[History] CSV export failed:', err);
+      Alert.alert('Export Failed', 'Could not export history.');
+    }
+  };
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
@@ -217,35 +311,40 @@ export default function HistoryScreen() {
   };
 
   const renderSession = ({ item }: { item: SessionSummary }) => (
-    <Pressable
-      style={styles.card}
-      onPress={() => selectMode ? toggleSelect(item.id) : router.push(`/session/${item.id}`)}
-      onLongPress={() => { if (!selectMode) handleDelete(item.id); }}
-    >
-      {selectMode && (
-        <Text style={styles.checkbox}>{selected.has(item.id) ? '☑️' : '⬜'}</Text>
-      )}
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
-        <View style={styles.cardMeta}>
-          <Text style={styles.cardDuration}>{formatDuration(item.duration)}</Text>
-          {item.synced && <Text style={styles.syncBadge}>☁️</Text>}
-        </View>
-      </View>
-      <Text style={styles.cardPreview} numberOfLines={2}>
-        {item.previewText || 'No transcript'}
-      </Text>
-      <View style={styles.cardFooter}>
-        <View style={[styles.qualityDot, { backgroundColor: getQualityColor(item.quality.score) }]} />
-        <Text style={styles.qualityText}>{item.quality.score}</Text>
-        <Text style={styles.cardSource}>{item.source}</Text>
-        {!selectMode && (
-          <Pressable style={styles.exportBtn} onPress={() => handleExportSession(item)}>
-            <Text style={styles.exportBtnText}>📤</Text>
-          </Pressable>
+    <SwipeableRow onDelete={() => handleDelete(item.id)}>
+      <Pressable
+        style={styles.card}
+        onPress={() => selectMode ? toggleSelect(item.id) : router.push(`/session/${item.id}`)}
+        onLongPress={() => { if (!selectMode) handleDelete(item.id); }}
+      >
+        {selectMode && (
+          <Text style={styles.checkbox}>{selected.has(item.id) ? '☑️' : '⬜'}</Text>
         )}
-      </View>
-    </Pressable>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
+          <View style={styles.cardMeta}>
+            <Pressable onPress={() => toggleFavorite(item.id)}>
+              <Text style={styles.favStar}>{favorites.has(item.id) ? '⭐' : '☆'}</Text>
+            </Pressable>
+            <Text style={styles.cardDuration}>{formatDuration(item.duration)}</Text>
+            {item.synced && <Text style={styles.syncBadge}>☁️</Text>}
+          </View>
+        </View>
+        <Text style={styles.cardPreview} numberOfLines={2}>
+          {item.previewText || 'No transcript'}
+        </Text>
+        <View style={styles.cardFooter}>
+          <View style={[styles.qualityDot, { backgroundColor: getQualityColor(item.quality.score) }]} />
+          <Text style={styles.qualityText}>{item.quality.score}</Text>
+          <Text style={styles.cardSource}>{item.source}</Text>
+          {!selectMode && (
+            <Pressable style={styles.exportBtn} onPress={() => handleExportSession(item)}>
+              <Text style={styles.exportBtnText}>📤</Text>
+            </Pressable>
+          )}
+        </View>
+      </Pressable>
+    </SwipeableRow>
   );
 
   const storagePct = storage
@@ -313,6 +412,33 @@ export default function HistoryScreen() {
         ))}
       </View>
 
+      {/* Language Pair Filter */}
+      {langPairs.length > 1 && (
+        <View style={styles.filterRow}>
+          <Pressable
+            style={[styles.filterChip, !langFilter && styles.filterChipActive]}
+            onPress={() => setLangFilter(null)}
+          >
+            <Text style={[styles.filterChipText, !langFilter && styles.filterChipTextActive]}>All</Text>
+          </Pressable>
+          {langPairs.map(pair => (
+            <Pressable
+              key={pair}
+              style={[styles.filterChip, langFilter === pair && styles.filterChipActive]}
+              onPress={() => setLangFilter(langFilter === pair ? null : pair)}
+            >
+              <Text style={[styles.filterChipText, langFilter === pair && styles.filterChipTextActive]}>
+                {translationService.getFlag(pair)} {pair.toUpperCase()}
+              </Text>
+            </Pressable>
+          ))}
+          {/* CSV export button */}
+          <Pressable style={styles.csvExportBtn} onPress={handleExportCsv}>
+            <Text style={styles.csvExportText}>💾 CSV</Text>
+          </Pressable>
+        </View>
+      )}
+
       {/* Select / Batch Delete Header */}
       <View style={styles.selectHeader}>
         <Pressable onPress={() => { setSelectMode(!selectMode); setSelected(new Set()); }}>
@@ -350,7 +476,7 @@ export default function HistoryScreen() {
         </View>
       ) : (
         <FlatList
-          data={sortedSessions}
+          data={filteredSessions}
           renderItem={renderSession}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
@@ -363,6 +489,60 @@ export default function HistoryScreen() {
     </SafeAreaView>
   );
 }
+
+// ─── Swipeable Row Component ────────────────────────────────────
+
+function SwipeableRow({ children, onDelete }: { children: React.ReactNode; onDelete: () => void }) {
+  const translateX = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 15 && Math.abs(gs.dy) < 15,
+      onPanResponderMove: (_, gs) => {
+        if (gs.dx < 0) translateX.setValue(gs.dx);
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dx < -100) {
+          // Trigger delete
+          Animated.timing(translateX, {
+            toValue: -300,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => onDelete());
+        } else {
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  return (
+    <View style={swipeStyles.container}>
+      <View style={swipeStyles.deleteBackground}>
+        <Text style={swipeStyles.deleteText}>🗑️ Delete</Text>
+      </View>
+      <Animated.View
+        style={{ transform: [{ translateX }] }}
+        {...panResponder.panHandlers}
+      >
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
+
+const swipeStyles = StyleSheet.create({
+  container: { position: 'relative' },
+  deleteBackground: {
+    position: 'absolute', right: 0, top: 0, bottom: 0,
+    backgroundColor: '#ef4444', justifyContent: 'center',
+    paddingHorizontal: 20, borderRadius: borderRadius.lg,
+  },
+  deleteText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+});
 
 function getQualityColor(score: number): string {
   if (score >= 80) return colors.qualityExcellent;
@@ -572,4 +752,38 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginBottom: spacing.xs,
   },
+  favStar: {
+    fontSize: 16,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.screenPadding,
+    paddingBottom: spacing.xs,
+    flexWrap: 'wrap',
+  },
+  filterChip: {
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.surface,
+  },
+  filterChipActive: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(163, 230, 53, 0.1)',
+  },
+  filterChipText: { fontSize: 11, color: colors.textTertiary },
+  filterChipTextActive: { color: colors.accent, fontWeight: '600' },
+  csvExportBtn: {
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(99,102,241,0.1)',
+    borderWidth: 1,
+    borderColor: '#6366f1',
+    marginLeft: 'auto',
+  },
+  csvExportText: { fontSize: 11, fontWeight: '600', color: '#6366f1' },
 });
