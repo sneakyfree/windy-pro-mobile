@@ -109,6 +109,10 @@ export default function SettingsScreen() {
           <Text style={styles.navRowLabel}>🧬 Voice Clone</Text>
           <Text style={styles.chevron}>›</Text>
         </Pressable>
+        <Pressable style={styles.navRow} onPress={() => router.push('/video')}>
+          <Text style={styles.navRowLabel}>📹 Video Recorder</Text>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
       </SettingsSection>
 
       {/* UI */}
