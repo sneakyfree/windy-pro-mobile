@@ -11,6 +11,7 @@ import * as Clipboard from 'expo-clipboard';
 import { colors, spacing, borderRadius } from '@/theme';
 import { localStorageService } from '@/services/storage-local';
 import { feedbackService } from '@/services/feedback';
+import TranscriptionViewer from '@/components/TranscriptionViewer';
 import type { Session } from '@/types';
 
 export default function SessionDetailScreen() {
@@ -205,30 +206,25 @@ export default function SessionDetailScreen() {
                 </Pressable>
             )}
 
-            {/* Transcript */}
+            {/* Transcript — Enhanced TranscriptionViewer */}
             <View style={styles.transcriptSection}>
                 <Text style={styles.sectionTitle}>Transcript</Text>
-                <View style={styles.transcriptBox}>
-                    <Text style={styles.transcriptText} selectable>
-                        {session.transcript || 'No transcript available'}
-                    </Text>
-                </View>
+                <TranscriptionViewer
+                    segments={session.segments.length > 0 ? session.segments : [{
+                        id: 'full',
+                        text: session.transcript || 'No transcript available',
+                        startTime: 0,
+                        endTime: session.duration,
+                        confidence: 1,
+                        isPartial: false,
+                        speakerId: null,
+                        language: session.languages?.[0] || 'en',
+                    }]}
+                    showProgress={isPlaying}
+                    currentTime={playbackPosition}
+                    totalDuration={session.duration}
+                />
             </View>
-
-            {/* Segments (if available) */}
-            {session.segments.length > 0 && (
-                <View style={styles.segmentsSection}>
-                    <Text style={styles.sectionTitle}>Segments</Text>
-                    {session.segments.map((seg, idx) => (
-                        <View key={seg.id || idx} style={styles.segmentRow}>
-                            <Text style={styles.segmentTime}>
-                                {formatDuration(seg.startTime)}
-                            </Text>
-                            <Text style={styles.segmentText}>{seg.text}</Text>
-                        </View>
-                    ))}
-                </View>
-            )}
 
             {/* Action Buttons */}
             <View style={styles.actionRow}>
