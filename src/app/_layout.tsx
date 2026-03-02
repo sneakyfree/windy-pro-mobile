@@ -17,6 +17,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { localStorageService } from '@/services/storage-local';
 import { licenseService } from '@/services/license';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { NetworkBanner } from '@/components/NetworkBanner';
 
 // Keep splash screen visible until we're ready
 SplashScreen.preventAutoHideAsync();
@@ -47,11 +48,14 @@ export default function RootLayout() {
     prepare();
   }, []);
 
-  // RP-5.2: Deep link license handler
+  // RP-5.2: Deep link handler (windypro:// scheme)
   useEffect(() => {
     const handleDeepLink = async ({ url }: { url: string }) => {
       try {
         const parsed = Linking.parse(url);
+        console.log('[DeepLink] Received:', parsed.path, parsed.queryParams);
+
+        // License activation: windypro://license?key=XXX
         if (parsed.path === 'license' && parsed.queryParams?.key) {
           const key = parsed.queryParams.key as string;
           const validation = await licenseService.validateLicense(key, 'device-todo');
@@ -60,9 +64,44 @@ export default function RootLayout() {
             '🎉 License Activated',
             `Welcome to Windy Pro ${formatTier(validation.tier)}!`
           );
+          return;
+        }
+
+        // Session deep link: windypro://session/SESSION_ID
+        if (parsed.path?.startsWith('session/')) {
+          const sessionId = parsed.path.replace('session/', '');
+          if (sessionId) {
+            // Navigation happens after layout is ready
+            setTimeout(() => {
+              try {
+                const { router } = require('expo-router');
+                router.push(`/session/${sessionId}`);
+              } catch { /* layout not ready */ }
+            }, 500);
+          }
+          return;
+        }
+
+        // Route deep links: windypro://translate, windypro://clone, etc.
+        const routeMap: Record<string, string> = {
+          'translate': '/translate',
+          'clone': '/clone',
+          'subscribe': '/subscription',
+          'subscription': '/subscription',
+          'video': '/video',
+          'settings': '/(tabs)/settings',
+        };
+        const route = routeMap[parsed.path || ''];
+        if (route) {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push(route);
+            } catch { /* layout not ready */ }
+          }, 500);
         }
       } catch (err) {
-        console.warn('[DeepLink] License validation failed:', err);
+        console.warn('[DeepLink] Handler failed:', err);
       }
     };
 
@@ -94,6 +133,7 @@ export default function RootLayout() {
     <View style={styles.container} onLayout={onLayoutReady}>
       <StatusBar style="light" />
       <ErrorBoundary>
+        <NetworkBanner />
         <Stack
           screenOptions={{
             headerShown: false,
