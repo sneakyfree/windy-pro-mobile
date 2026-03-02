@@ -13,6 +13,7 @@ import { colors, spacing, borderRadius } from '@/theme';
 import { ocrService, type OcrTranslation } from '@/services/ocr';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { feedbackService } from '@/services/feedback';
+import { useFeatureGate } from '@/hooks/useFeatureGate';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -32,6 +33,14 @@ export default function CameraTab() {
     const [showHistory, setShowHistory] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Live scan mode
+    const [liveMode, setLiveMode] = useState(false);
+    const [liveResult, setLiveResult] = useState<OcrTranslation | null>(null);
+    const [frozen, setFrozen] = useState(false);
+    const [detectedLang, setDetectedLang] = useState<string | null>(null);
+    const liveScanRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const scanningRef = useRef(false);
+
     const overlayOpacity = useRef(new Animated.Value(0)).current;
 
     // Show overlay animation
@@ -46,6 +55,13 @@ export default function CameraTab() {
             overlayOpacity.setValue(0);
         }
     }, [result]);
+
+    // Clean up live scan on unmount
+    useEffect(() => {
+        return () => {
+            if (liveScanRef.current) clearInterval(liveScanRef.current);
+        };
+    }, []);
 
     const getFlag = (code: string) => translationService.getFlag(code);
     const getName = (code: string) => translationService.getLangName(code);
@@ -94,9 +110,69 @@ export default function CameraTab() {
         }
     }, [capturing, targetLang]);
 
+    // ─── Live Scan Mode ────────────────────────────────────────
+
+    const startLiveScan = useCallback(() => {
+        setLiveMode(true);
+        setFrozen(false);
+        setResult(null);
+        setLiveResult(null);
+
+        liveScanRef.current = setInterval(async () => {
+            if (!cameraRef.current || scanningRef.current || frozen) return;
+            scanningRef.current = true;
+
+            try {
+                const photo = await cameraRef.current.takePictureAsync({
+                    base64: true,
+                    quality: 0.4,
+                    skipProcessing: true,
+                });
+                if (photo?.base64) {
+                    const ocrResult = await ocrService.translateFromCamera(photo.base64, targetLang);
+                    if (ocrResult.original.text.trim()) {
+                        setLiveResult(ocrResult);
+                        setDetectedLang(ocrResult.fromLang);
+                    }
+                }
+            } catch {
+                // Ignore transient errors in live mode
+            } finally {
+                scanningRef.current = false;
+            }
+        }, 2000);
+    }, [targetLang, frozen]);
+
+    const stopLiveScan = useCallback(() => {
+        if (liveScanRef.current) {
+            clearInterval(liveScanRef.current);
+            liveScanRef.current = null;
+        }
+        setLiveMode(false);
+        setLiveResult(null);
+        setDetectedLang(null);
+    }, []);
+
+    const freezeFrame = useCallback(() => {
+        if (liveScanRef.current) {
+            clearInterval(liveScanRef.current);
+            liveScanRef.current = null;
+        }
+        setFrozen(true);
+        // Promote liveResult to full result
+        if (liveResult) {
+            setResult(liveResult);
+            setHistory(prev => [liveResult, ...prev.slice(0, 19)]);
+            feedbackService.success();
+            translationService.speak(liveResult.translated, targetLang);
+        }
+    }, [liveResult, targetLang]);
+
     const dismissResult = () => {
         translationService.stopSpeaking();
         setResult(null);
+        setFrozen(false);
+        if (liveMode) startLiveScan();
     };
 
     // ─── Permission Screen ─────────────────────────────────────
@@ -189,6 +265,45 @@ export default function CameraTab() {
                         )}
                     </View>
 
+                    {/* Live scan bounding box overlays */}
+                    {liveMode && liveResult && !frozen && liveResult.original.boundingBoxes.length > 0 && (
+                        <View style={styles.boundingBoxContainer}>
+                            {liveResult.original.boundingBoxes.slice(0, 10).map((box, i) => (
+                                <View
+                                    key={`bb-${i}`}
+                                    style={[
+                                        styles.boundingBox,
+                                        {
+                                            left: (box.x / 1000) * SCREEN_WIDTH,
+                                            top: (box.y / 1000) * 200,
+                                            width: Math.max(40, (box.width / 1000) * SCREEN_WIDTH),
+                                        },
+                                    ]}
+                                >
+                                    <Text style={styles.boundingBoxText} numberOfLines={1}>
+                                        {box.text}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
+                    {/* Detected language + live mode badge */}
+                    {liveMode && (
+                        <View style={styles.liveBadgeRow}>
+                            <View style={styles.liveBadge}>
+                                <Text style={styles.liveBadgeText}>🟢 LIVE</Text>
+                            </View>
+                            {detectedLang && (
+                                <View style={styles.detectedLangBadge}>
+                                    <Text style={styles.detectedLangText}>
+                                        {getFlag(detectedLang)} {getName(detectedLang)}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+
                     {/* Instruction / error */}
                     {error ? (
                         <View style={styles.errorBanner}>
@@ -197,7 +312,7 @@ export default function CameraTab() {
                                 <Text style={styles.errorDismiss}>✕</Text>
                             </Pressable>
                         </View>
-                    ) : !result ? (
+                    ) : !result && !liveMode ? (
                         <Text style={styles.hint}>Point at text and tap the button below</Text>
                     ) : null}
                 </View>
@@ -275,20 +390,39 @@ export default function CameraTab() {
                 </ScrollView>
 
                 {/* Capture button */}
-                <Pressable
-                    style={[styles.captureBtn, capturing && styles.captureBtnDisabled]}
-                    onPress={handleCapture}
-                    disabled={capturing}
-                >
-                    {capturing ? (
-                        <ActivityIndicator size="small" color={colors.background} />
-                    ) : (
-                        <Text style={styles.captureBtnEmoji}>📸</Text>
+                <View style={styles.captureRow}>
+                    <Pressable
+                        style={[styles.captureBtn, capturing && styles.captureBtnDisabled]}
+                        onPress={handleCapture}
+                        disabled={capturing || liveMode}
+                    >
+                        {capturing ? (
+                            <ActivityIndicator size="small" color={colors.background} />
+                        ) : (
+                            <Text style={styles.captureBtnEmoji}>📸</Text>
+                        )}
+                        <Text style={styles.captureBtnText}>
+                            {capturing ? 'Processing...' : 'Capture'}
+                        </Text>
+                    </Pressable>
+
+                    {/* Live scan toggle */}
+                    <Pressable
+                        style={[styles.liveBtn, liveMode && styles.liveBtnActive]}
+                        onPress={() => liveMode ? stopLiveScan() : startLiveScan()}
+                    >
+                        <Text style={styles.liveBtnText}>
+                            {liveMode ? '⏹ Stop Live' : '🟢 Live Scan'}
+                        </Text>
+                    </Pressable>
+
+                    {/* Freeze button (visible in live mode) */}
+                    {liveMode && liveResult && !frozen && (
+                        <Pressable style={styles.freezeBtn} onPress={freezeFrame}>
+                            <Text style={styles.freezeBtnText}>❄️ Freeze</Text>
+                        </Pressable>
                     )}
-                    <Text style={styles.captureBtnText}>
-                        {capturing ? 'Processing...' : 'Capture & Translate'}
-                    </Text>
-                </Pressable>
+                </View>
             </View>
         </View>
     );
@@ -386,12 +520,41 @@ const styles = StyleSheet.create({
     langChipNameActive: { color: colors.accent, fontWeight: '600' },
     captureBtn: {
         backgroundColor: colors.accent, borderRadius: borderRadius.lg,
-        paddingVertical: 14, flexDirection: 'row',
+        paddingVertical: 14, flexDirection: 'row', flex: 1,
         alignItems: 'center', justifyContent: 'center', gap: 8,
     },
     captureBtnDisabled: { opacity: 0.6 },
     captureBtnEmoji: { fontSize: 22 },
     captureBtnText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    captureRow: { flexDirection: 'row', gap: 8 },
+    liveBtn: {
+        backgroundColor: colors.surface, borderRadius: borderRadius.lg,
+        paddingVertical: 14, paddingHorizontal: 16,
+        alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1, borderColor: colors.borderLight,
+    },
+    liveBtnActive: { backgroundColor: 'rgba(34,197,94,0.15)', borderColor: '#22c55e' },
+    liveBtnText: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+    freezeBtn: {
+        backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: borderRadius.lg,
+        paddingVertical: 14, paddingHorizontal: 16,
+        alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1, borderColor: '#3b82f6',
+    },
+    freezeBtnText: { fontSize: 13, fontWeight: '600', color: '#3b82f6' },
+
+    // Live overlays
+    boundingBoxContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+    boundingBox: {
+        position: 'absolute', backgroundColor: 'rgba(99,102,241,0.75)',
+        paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3,
+    },
+    boundingBoxText: { fontSize: 10, color: '#fff', fontWeight: '600' },
+    liveBadgeRow: { flexDirection: 'row', gap: 8, alignSelf: 'center' },
+    liveBadge: { backgroundColor: 'rgba(34,197,94,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+    liveBadgeText: { fontSize: 12, fontWeight: '700', color: '#22c55e' },
+    detectedLangBadge: { backgroundColor: 'rgba(99,102,241,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+    detectedLangText: { fontSize: 12, fontWeight: '600', color: '#6366f1' },
 
     // History
     historyHeader: {

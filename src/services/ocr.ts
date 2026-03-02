@@ -78,6 +78,53 @@ class OcrService {
     }
 
     /**
+     * Camera OCR via backend — POST /api/ocr/translate
+     * Returns translated bounding boxes for overlay
+     */
+    async translateFromCamera(
+        base64Frame: string,
+        targetLang: string
+    ): Promise<OcrTranslation> {
+        try {
+            const response = await fetch('https://windypro.thewindstorm.uk/api/ocr/translate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image: base64Frame,
+                    target_lang: targetLang,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`OCR API failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            return {
+                original: {
+                    text: data.original_text || '',
+                    confidence: data.confidence || 0.9,
+                    boundingBoxes: (data.bounding_boxes || []).map((b: any) => ({
+                        text: b.text,
+                        x: b.x,
+                        y: b.y,
+                        width: b.width,
+                        height: b.height,
+                    })),
+                    language: data.detected_language,
+                },
+                translated: data.translated_text || '',
+                fromLang: data.detected_language || 'en',
+                toLang: targetLang,
+            };
+        } catch (err) {
+            console.warn('[OCR] Backend OCR failed, falling back to local:', err);
+            return this.extractAndTranslate(base64Frame, targetLang);
+        }
+    }
+
+    /**
      * Cloud OCR via Google Vision API
      */
     private async cloudOcr(base64Image: string): Promise<OcrResult> {
