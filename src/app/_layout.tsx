@@ -21,6 +21,7 @@ import { pushNotificationService } from '@/services/push-notifications';
 import { offlinePackService } from '@/services/offline-packs';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkBanner } from '@/components/NetworkBanner';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Keep splash screen visible until we're ready
 SplashScreen.preventAutoHideAsync();
@@ -188,78 +189,80 @@ export default function RootLayout() {
   }
 
   return (
-    <View style={styles.container} onLayout={onLayoutReady}>
-      <StatusBar style="light" translucent backgroundColor="transparent" />
-      <ErrorBoundary>
-        <NetworkBanner />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.background },
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen
-            name="onboarding/index"
-            options={{
-              presentation: 'fullScreenModal',
-              animation: 'fade',
+    <SafeAreaProvider>
+      <View style={styles.container} onLayout={onLayoutReady}>
+        <StatusBar style="light" translucent backgroundColor="transparent" />
+        <ErrorBoundary>
+          <NetworkBanner />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+              animation: 'slide_from_right',
             }}
-          />
-          <Stack.Screen
-            name="session/[id]"
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen
-            name="translate/index"
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen
-            name="clone/index"
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen
-            name="subscription/index"
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen
-            name="video/index"
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen
-            name="appstore/index"
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen
-            name="legal/privacy"
-            options={{ headerShown: true, headerTitle: 'Privacy Policy' }}
-          />
-          <Stack.Screen
-            name="legal/terms"
-            options={{ headerShown: true, headerTitle: 'Terms of Service' }}
-          />
-        </Stack>
-      </ErrorBoundary>
-    </View>
+          >
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen
+              name="onboarding/index"
+              options={{
+                presentation: 'fullScreenModal',
+                animation: 'fade',
+              }}
+            />
+            <Stack.Screen
+              name="session/[id]"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="translate/index"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="clone/index"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="subscription/index"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="video/index"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="appstore/index"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="legal/privacy"
+              options={{ headerShown: true, headerTitle: 'Privacy Policy' }}
+            />
+            <Stack.Screen
+              name="legal/terms"
+              options={{ headerShown: true, headerTitle: 'Terms of Service' }}
+            />
+          </Stack>
+        </ErrorBoundary>
+      </View>
+    </SafeAreaProvider>
   );
 }
 

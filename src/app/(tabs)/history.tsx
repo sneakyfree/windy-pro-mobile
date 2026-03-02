@@ -5,6 +5,7 @@
 import { View, Text, StyleSheet, FlatList, Pressable, Platform, TextInput, Alert, Animated } from 'react-native';
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { colors, spacing, borderRadius } from '@/theme';
@@ -253,7 +254,7 @@ export default function HistoryScreen() {
   const storageColor = storagePct > 80 ? colors.stateError : storagePct > 50 ? '#eab308' : colors.accent;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Storage Usage Indicator */}
       {storage && (
         <View style={styles.storageCard}>
@@ -359,7 +360,7 @@ export default function HistoryScreen() {
           keyboardDismissMode="on-drag"
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

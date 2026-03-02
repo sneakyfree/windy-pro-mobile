@@ -9,6 +9,7 @@ import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -196,226 +197,228 @@ export default function SettingsScreen() {
   const themeLabels: Record<string, string> = { dark: '🌙 Dark', light: '☀️ Light', system: '📱 System' };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Account Section */}
-      <SettingsSection title="Account">
-        <SettingsRow
-          label="License"
-          value={settings.licenseTier === 'free' ? 'Free' : formatTier(settings.licenseTier)}
-          valueColor={settings.licenseTier === 'free' ? colors.textTertiary : colors.accent}
-        />
-        {settings.licenseTier === 'free' && (
-          <Pressable style={styles.upgradeButton} onPress={handleUpgrade}>
-            <Text style={styles.upgradeText}>⚡ Upgrade to Pro — $49</Text>
-          </Pressable>
-        )}
-      </SettingsSection>
-
-      {/* Voice Engine */}
-      <SettingsSection title="Voice Engine">
-        <Pressable style={styles.navRow} onPress={() => setEnginePickerVisible(true)}>
-          <Text style={styles.navRowLabel}>Current Engine</Text>
-          <Text style={styles.rowValue}>{settings.selectedEngine || 'Auto'}</Text>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-        <SettingsToggle label="Auto-select best engine" value={settings.windyTuneAutoSelect} onToggle={settings.setWindyTuneAutoSelect} />
-        <SettingsToggle label="Cloud fallback" subtitle="Use cloud if device struggles" value={settings.cloudFallbackEnabled} onToggle={settings.setCloudFallbackEnabled} />
-      </SettingsSection>
-
-      {/* Recording */}
-      <SettingsSection title="Recording">
-        <Pressable style={styles.navRow} onPress={() => setLanguagePickerVisible(true)}>
-          <Text style={styles.navRowLabel}>Language</Text>
-          <Text style={styles.rowValue}>{settings.defaultLanguage.toUpperCase()}</Text>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-        <SettingsToggle label="High quality audio" subtitle="44.1 kHz (larger files)" value={settings.highQualityAudio} onToggle={settings.setHighQualityAudio} />
-        <SettingsToggle label="Location tagging" value={settings.locationTagging} onToggle={settings.setLocationTagging} />
-      </SettingsSection>
-
-      {/* Features */}
-      <SettingsSection title="Features">
-        <Pressable style={styles.navRow} onPress={() => router.push('/translate')}>
-          <Text style={styles.navRowLabel}>🌐 Windy Translate</Text>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-        <Pressable style={styles.navRow} onPress={() => router.push('/clone')}>
-          <Text style={styles.navRowLabel}>🧬 Voice Clone</Text>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-        <Pressable style={styles.navRow} onPress={() => router.push('/video')}>
-          <Text style={styles.navRowLabel}>📹 Video Recorder</Text>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-      </SettingsSection>
-
-      {/* UI */}
-      <SettingsSection title={Platform.OS === 'android' ? 'Windy Button' : 'Keyboard'}>
-        <SettingsToggle label="Haptic feedback" value={settings.hapticFeedback} onToggle={settings.setHapticFeedback} />
-        <SettingsToggle label="Audio feedback" subtitle="Blip sounds on record start/stop" value={settings.audioFeedback} onToggle={settings.setAudioFeedback} />
-      </SettingsSection>
-
-      {/* Cloud Sync */}
-      <SettingsSection title="Cloud Sync">
-        <SettingsToggle label="Enable sync" value={settings.syncEnabled} onToggle={settings.setSyncEnabled} />
-        {settings.syncEnabled && (
-          <>
-            <SettingsToggle label="Wi-Fi only" value={settings.wifiOnlySync} onToggle={settings.setWifiOnlySync} />
-            <SettingsToggle label="While plugged in only" value={settings.pluggedInOnlySync} onToggle={settings.setPluggedInOnlySync} />
-            <SyncStatusBanner />
-          </>
-        )}
-      </SettingsSection>
-
-      {/* Notifications */}
-      <SettingsSection title="Notifications">
-        <SettingsToggle label="Recording complete" subtitle="When a transcription finishes" value={settings.notifyRecordingComplete} onToggle={settings.setNotifyRecordingComplete} />
-        <SettingsToggle label="Sync complete" subtitle="When cloud sync finishes" value={settings.notifySyncComplete} onToggle={settings.setNotifySyncComplete} />
-        <SettingsToggle label="Clone milestone" subtitle="When you hit clone training goals" value={settings.notifyCloneMilestone} onToggle={settings.setNotifyCloneMilestone} />
-      </SettingsSection>
-
-      {/* Appearance */}
-      <SettingsSection title="Appearance">
-        <View style={styles.themeRow}>
-          {(['dark', 'light', 'system'] as const).map((t) => (
-            <Pressable
-              key={t}
-              style={[styles.themeBtn, settings.theme === t && styles.themeBtnActive]}
-              onPress={() => settings.setTheme(t)}
-            >
-              <Text style={[styles.themeBtnText, settings.theme === t && styles.themeBtnTextActive]}>
-                {themeLabels[t]}
-              </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Account Section */}
+        <SettingsSection title="Account">
+          <SettingsRow
+            label="License"
+            value={settings.licenseTier === 'free' ? 'Free' : formatTier(settings.licenseTier)}
+            valueColor={settings.licenseTier === 'free' ? colors.textTertiary : colors.accent}
+          />
+          {settings.licenseTier === 'free' && (
+            <Pressable style={styles.upgradeButton} onPress={handleUpgrade}>
+              <Text style={styles.upgradeText}>⚡ Upgrade to Pro — $49</Text>
             </Pressable>
-          ))}
-        </View>
-      </SettingsSection>
+          )}
+        </SettingsSection>
 
-      {/* Storage */}
-      <SettingsSection title="Storage">
-        {storage ? (
-          <>
-            <SettingsRow label="Sessions" value={`${storage.sessionCount} sessions`} />
-            <SettingsRow label="Audio" value={formatBytes(storage.audioBytes)} />
-            <SettingsRow label="Engines" value={formatBytes(storage.engineBytes)} />
-            <SettingsRow label="Total" value={formatBytes(storage.totalBytes)} valueColor={colors.accent} />
-          </>
-        ) : (
-          <SettingsRow label="Calculating..." value="" />
-        )}
-        <Pressable style={styles.storageAction} onPress={handleClearCache}>
-          <Text style={styles.storageActionText}>
-            {clearingCache ? '⏳ Clearing...' : `🗑 Clear Cache (${formatBytes(cacheSize)})`}
-          </Text>
-        </Pressable>
-        <Pressable style={styles.storageAction} onPress={handleExportAllData}>
-          <Text style={styles.storageActionText}>📦 Export All Data</Text>
-        </Pressable>
-      </SettingsSection>
+        {/* Voice Engine */}
+        <SettingsSection title="Voice Engine">
+          <Pressable style={styles.navRow} onPress={() => setEnginePickerVisible(true)}>
+            <Text style={styles.navRowLabel}>Current Engine</Text>
+            <Text style={styles.rowValue}>{settings.selectedEngine || 'Auto'}</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+          <SettingsToggle label="Auto-select best engine" value={settings.windyTuneAutoSelect} onToggle={settings.setWindyTuneAutoSelect} />
+          <SettingsToggle label="Cloud fallback" subtitle="Use cloud if device struggles" value={settings.cloudFallbackEnabled} onToggle={settings.setCloudFallbackEnabled} />
+        </SettingsSection>
 
-      {/* Downloaded Languages */}
-      <SettingsSection title="Downloaded Languages">
-        <SettingsRow
-          label="Total storage"
-          value={formatBytes(offlinePackService.getTotalStorageUsed())}
-          valueColor={colors.accent}
-        />
-        {packs.map((pack) => (
-          <View key={pack.code} style={styles.row}>
-            <View style={styles.rowLabelContainer}>
-              <Text style={styles.rowLabel}>{pack.flag} {pack.name}</Text>
-              <Text style={styles.rowSubtitle}>
-                {pack.status === 'downloaded'
-                  ? formatBytes(pack.downloadedBytes)
-                  : pack.status === 'downloading'
-                    ? `${Math.round(pack.progress * 100)}%`
-                    : formatBytes(pack.sizeBytes)}
-              </Text>
+        {/* Recording */}
+        <SettingsSection title="Recording">
+          <Pressable style={styles.navRow} onPress={() => setLanguagePickerVisible(true)}>
+            <Text style={styles.navRowLabel}>Language</Text>
+            <Text style={styles.rowValue}>{settings.defaultLanguage.toUpperCase()}</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+          <SettingsToggle label="High quality audio" subtitle="44.1 kHz (larger files)" value={settings.highQualityAudio} onToggle={settings.setHighQualityAudio} />
+          <SettingsToggle label="Location tagging" value={settings.locationTagging} onToggle={settings.setLocationTagging} />
+        </SettingsSection>
+
+        {/* Features */}
+        <SettingsSection title="Features">
+          <Pressable style={styles.navRow} onPress={() => router.push('/translate')}>
+            <Text style={styles.navRowLabel}>🌐 Windy Translate</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+          <Pressable style={styles.navRow} onPress={() => router.push('/clone')}>
+            <Text style={styles.navRowLabel}>🧬 Voice Clone</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+          <Pressable style={styles.navRow} onPress={() => router.push('/video')}>
+            <Text style={styles.navRowLabel}>📹 Video Recorder</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+        </SettingsSection>
+
+        {/* UI */}
+        <SettingsSection title={Platform.OS === 'android' ? 'Windy Button' : 'Keyboard'}>
+          <SettingsToggle label="Haptic feedback" value={settings.hapticFeedback} onToggle={settings.setHapticFeedback} />
+          <SettingsToggle label="Audio feedback" subtitle="Blip sounds on record start/stop" value={settings.audioFeedback} onToggle={settings.setAudioFeedback} />
+        </SettingsSection>
+
+        {/* Cloud Sync */}
+        <SettingsSection title="Cloud Sync">
+          <SettingsToggle label="Enable sync" value={settings.syncEnabled} onToggle={settings.setSyncEnabled} />
+          {settings.syncEnabled && (
+            <>
+              <SettingsToggle label="Wi-Fi only" value={settings.wifiOnlySync} onToggle={settings.setWifiOnlySync} />
+              <SettingsToggle label="While plugged in only" value={settings.pluggedInOnlySync} onToggle={settings.setPluggedInOnlySync} />
+              <SyncStatusBanner />
+            </>
+          )}
+        </SettingsSection>
+
+        {/* Notifications */}
+        <SettingsSection title="Notifications">
+          <SettingsToggle label="Recording complete" subtitle="When a transcription finishes" value={settings.notifyRecordingComplete} onToggle={settings.setNotifyRecordingComplete} />
+          <SettingsToggle label="Sync complete" subtitle="When cloud sync finishes" value={settings.notifySyncComplete} onToggle={settings.setNotifySyncComplete} />
+          <SettingsToggle label="Clone milestone" subtitle="When you hit clone training goals" value={settings.notifyCloneMilestone} onToggle={settings.setNotifyCloneMilestone} />
+        </SettingsSection>
+
+        {/* Appearance */}
+        <SettingsSection title="Appearance">
+          <View style={styles.themeRow}>
+            {(['dark', 'light', 'system'] as const).map((t) => (
+              <Pressable
+                key={t}
+                style={[styles.themeBtn, settings.theme === t && styles.themeBtnActive]}
+                onPress={() => settings.setTheme(t)}
+              >
+                <Text style={[styles.themeBtnText, settings.theme === t && styles.themeBtnTextActive]}>
+                  {themeLabels[t]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </SettingsSection>
+
+        {/* Storage */}
+        <SettingsSection title="Storage">
+          {storage ? (
+            <>
+              <SettingsRow label="Sessions" value={`${storage.sessionCount} sessions`} />
+              <SettingsRow label="Audio" value={formatBytes(storage.audioBytes)} />
+              <SettingsRow label="Engines" value={formatBytes(storage.engineBytes)} />
+              <SettingsRow label="Total" value={formatBytes(storage.totalBytes)} valueColor={colors.accent} />
+            </>
+          ) : (
+            <SettingsRow label="Calculating..." value="" />
+          )}
+          <Pressable style={styles.storageAction} onPress={handleClearCache}>
+            <Text style={styles.storageActionText}>
+              {clearingCache ? '⏳ Clearing...' : `🗑 Clear Cache (${formatBytes(cacheSize)})`}
+            </Text>
+          </Pressable>
+          <Pressable style={styles.storageAction} onPress={handleExportAllData}>
+            <Text style={styles.storageActionText}>📦 Export All Data</Text>
+          </Pressable>
+        </SettingsSection>
+
+        {/* Downloaded Languages */}
+        <SettingsSection title="Downloaded Languages">
+          <SettingsRow
+            label="Total storage"
+            value={formatBytes(offlinePackService.getTotalStorageUsed())}
+            valueColor={colors.accent}
+          />
+          {packs.map((pack) => (
+            <View key={pack.code} style={styles.row}>
+              <View style={styles.rowLabelContainer}>
+                <Text style={styles.rowLabel}>{pack.flag} {pack.name}</Text>
+                <Text style={styles.rowSubtitle}>
+                  {pack.status === 'downloaded'
+                    ? formatBytes(pack.downloadedBytes)
+                    : pack.status === 'downloading'
+                      ? `${Math.round(pack.progress * 100)}%`
+                      : formatBytes(pack.sizeBytes)}
+                </Text>
+                {pack.status === 'downloading' && (
+                  <View style={styles.packProgress}>
+                    <View style={[styles.packProgressFill, { width: `${pack.progress * 100}%` }]} />
+                  </View>
+                )}
+              </View>
+              {pack.status === 'available' && (
+                <Pressable onPress={async () => {
+                  await offlinePackService.downloadPack(pack.code);
+                  setPacks(offlinePackService.getPacks());
+                }}>
+                  <Text style={styles.storageActionText}>⬇️</Text>
+                </Pressable>
+              )}
+              {pack.status === 'downloaded' && (
+                <Pressable onPress={async () => {
+                  await offlinePackService.deletePack(pack.code);
+                  setPacks(offlinePackService.getPacks());
+                }}>
+                  <Text style={[styles.storageActionText, { color: colors.stateError }]}>🗑</Text>
+                </Pressable>
+              )}
               {pack.status === 'downloading' && (
-                <View style={styles.packProgress}>
-                  <View style={[styles.packProgressFill, { width: `${pack.progress * 100}%` }]} />
-                </View>
+                <Pressable onPress={async () => {
+                  await offlinePackService.cancelDownload(pack.code);
+                  setPacks(offlinePackService.getPacks());
+                }}>
+                  <Text style={styles.storageActionText}>✕</Text>
+                </Pressable>
+              )}
+              {pack.status === 'error' && (
+                <Pressable onPress={async () => {
+                  await offlinePackService.downloadPack(pack.code);
+                  setPacks(offlinePackService.getPacks());
+                }}>
+                  <Text style={styles.storageActionText}>🔄</Text>
+                </Pressable>
               )}
             </View>
-            {pack.status === 'available' && (
-              <Pressable onPress={async () => {
-                await offlinePackService.downloadPack(pack.code);
-                setPacks(offlinePackService.getPacks());
-              }}>
-                <Text style={styles.storageActionText}>⬇️</Text>
-              </Pressable>
-            )}
-            {pack.status === 'downloaded' && (
-              <Pressable onPress={async () => {
-                await offlinePackService.deletePack(pack.code);
-                setPacks(offlinePackService.getPacks());
-              }}>
-                <Text style={[styles.storageActionText, { color: colors.stateError }]}>🗑</Text>
-              </Pressable>
-            )}
-            {pack.status === 'downloading' && (
-              <Pressable onPress={async () => {
-                await offlinePackService.cancelDownload(pack.code);
-                setPacks(offlinePackService.getPacks());
-              }}>
-                <Text style={styles.storageActionText}>✕</Text>
-              </Pressable>
-            )}
-            {pack.status === 'error' && (
-              <Pressable onPress={async () => {
-                await offlinePackService.downloadPack(pack.code);
-                setPacks(offlinePackService.getPacks());
-              }}>
-                <Text style={styles.storageActionText}>🔄</Text>
-              </Pressable>
-            )}
-          </View>
-        ))}
-      </SettingsSection>
+          ))}
+        </SettingsSection>
 
-      {/* Clone */}
-      <SettingsSection title="Voice Clone">
-        <SettingsToggle label="Track clone progress" subtitle="Silently accumulate voice data" value={settings.cloneTrackingEnabled} onToggle={settings.setCloneTrackingEnabled} />
-        <SettingsRow
-          label="Progress"
-          value={`${cloneHours.toFixed(1)} of 10 hours (${Math.round(cloneReadiness)}%)`}
-          valueColor={cloneReadiness >= 100 ? colors.accent : colors.textSecondary}
-        />
-      </SettingsSection>
+        {/* Clone */}
+        <SettingsSection title="Voice Clone">
+          <SettingsToggle label="Track clone progress" subtitle="Silently accumulate voice data" value={settings.cloneTrackingEnabled} onToggle={settings.setCloneTrackingEnabled} />
+          <SettingsRow
+            label="Progress"
+            value={`${cloneHours.toFixed(1)} of 10 hours (${Math.round(cloneReadiness)}%)`}
+            valueColor={cloneReadiness >= 100 ? colors.accent : colors.textSecondary}
+          />
+        </SettingsSection>
 
-      {/* About */}
-      <SettingsSection title="About">
-        <Pressable style={styles.navRow} onPress={() => router.push('/appstore')}>
-          <Text style={styles.navRowLabel}>🌪️ About Windy Pro</Text>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-        <SettingsRow label="Version" value={`${appVersion} (Build ${buildNumber})`} />
-        <SettingsRow label="SDK" value={`Expo SDK ${Constants.expoConfig?.sdkVersion || '52'}`} />
-        <Pressable style={styles.navRow} onPress={() => router.push('/legal/privacy')}>
-          <Text style={styles.navRowLabel}>Privacy Policy</Text>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-        <Pressable style={styles.navRow} onPress={() => router.push('/legal/terms')}>
-          <Text style={styles.navRowLabel}>Terms of Service</Text>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-      </SettingsSection>
+        {/* About */}
+        <SettingsSection title="About">
+          <Pressable style={styles.navRow} onPress={() => router.push('/appstore')}>
+            <Text style={styles.navRowLabel}>🌪️ About Windy Pro</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+          <SettingsRow label="Version" value={`${appVersion} (Build ${buildNumber})`} />
+          <SettingsRow label="SDK" value={`Expo SDK ${Constants.expoConfig?.sdkVersion || '52'}`} />
+          <Pressable style={styles.navRow} onPress={() => router.push('/legal/privacy')}>
+            <Text style={styles.navRowLabel}>Privacy Policy</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+          <Pressable style={styles.navRow} onPress={() => router.push('/legal/terms')}>
+            <Text style={styles.navRowLabel}>Terms of Service</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+        </SettingsSection>
 
-      {/* Danger Zone */}
-      <SettingsSection title="Danger Zone">
-        <Pressable style={styles.dangerRow} onPress={handleDeleteAccount}>
-          <Text style={styles.dangerText}>🗑 Delete Account & Data</Text>
-        </Pressable>
-      </SettingsSection>
+        {/* Danger Zone */}
+        <SettingsSection title="Danger Zone">
+          <Pressable style={styles.dangerRow} onPress={handleDeleteAccount}>
+            <Text style={styles.dangerText}>🗑 Delete Account & Data</Text>
+          </Pressable>
+        </SettingsSection>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Made with 🌪️ by Windy Pro</Text>
-        <Text style={styles.footerVersion}>v{appVersion} · {Platform.OS}</Text>
-      </View>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Made with 🌪️ by Windy Pro</Text>
+          <Text style={styles.footerVersion}>v{appVersion} · {Platform.OS}</Text>
+        </View>
 
-      <EnginePickerSheet visible={enginePickerVisible} onClose={() => setEnginePickerVisible(false)} />
-      <LanguagePickerSheet visible={languagePickerVisible} onClose={() => setLanguagePickerVisible(false)} />
-    </ScrollView>
+        <EnginePickerSheet visible={enginePickerVisible} onClose={() => setEnginePickerVisible(false)} />
+        <LanguagePickerSheet visible={languagePickerVisible} onClose={() => setLanguagePickerVisible(false)} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

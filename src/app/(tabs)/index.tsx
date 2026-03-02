@@ -12,6 +12,7 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, Platform, Share, Alert, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import { CameraView } from 'expo-camera';
@@ -25,6 +26,7 @@ import { feedbackService } from '@/services/feedback';
 import { localStorageService } from '@/services/storage-local';
 import { videoCaptureService } from '@/services/video-capture';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { useHaptic } from '@/hooks/useHaptic';
 import type { Session } from '@/types';
 
 const WAVEFORM_BARS = 40;
@@ -450,7 +452,7 @@ export default function RecordScreen() {
     const playbackPct = playbackDuration > 0 ? (playbackPosition / playbackDuration) * 100 : 0;
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <StatusBar style="light" />
 
             {/* Header */}
@@ -671,7 +673,7 @@ export default function RecordScreen() {
                     </Pressable>
                 </View>
             )}
-        </View>
+        </SafeAreaView>
     );
 }
 
