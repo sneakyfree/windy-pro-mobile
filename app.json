@@ -25,8 +25,6 @@
         "NSLocationWhenInUseUsageDescription": "Windy Pro tags recordings with location for easy searching. Location data stays on your device.",
         "UIBackgroundModes": [
           "audio",
-          "fetch",
-          "audio",
           "fetch"
         ],
         "ITSAppUsesNonExemptEncryption": false
