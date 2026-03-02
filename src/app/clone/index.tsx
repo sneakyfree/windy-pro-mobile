@@ -7,11 +7,17 @@ import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Alert, Animate
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, borderRadius } from '@/theme';
 import { cloneTracker, CloneProgress } from '@/services/clone-tracker';
 import { feedbackService } from '@/services/feedback';
 import { localStorageService } from '@/services/storage-local';
 import type { SessionSummary } from '@/types';
+
+const CLONE_API = 'https://windypro.thewindstorm.uk/api/voice-clone';
+const CLONE_VOICE_KEY = 'windy-clone-voice-id';
+const SAMPLE_DURATION = 30; // seconds
 
 // ── Training states ──
 type TrainingStatus = 'collecting' | 'ready' | 'training' | 'complete';
@@ -38,6 +44,17 @@ export default function CloneDashboardScreen() {
     // Voice sample list
     const [samples, setSamples] = useState<SessionSummary[]>([]);
 
+    // ─── Clone Recording Pipeline ───────────────────────────────
+    const [cloneRecording, setCloneRecording] = useState(false);
+    const [cloneCountdown, setCloneCountdown] = useState(SAMPLE_DURATION);
+    const [cloneUploading, setCloneUploading] = useState(false);
+    const [cloneUploadProgress, setCloneUploadProgress] = useState(0);
+    const [cloneProcessing, setCloneProcessing] = useState(false);
+    const [cloneVoiceId, setCloneVoiceId] = useState<string | null>(null);
+    const cloneRecRef = useRef<Audio.Recording | null>(null);
+    const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const countdownAnim = useRef(new Animated.Value(1)).current;
+
     // Test My Clone modal
     const [showTestModal, setShowTestModal] = useState(false);
     const [testText, setTestText] = useState('Hello, this is my cloned voice speaking.');
@@ -48,6 +65,10 @@ export default function CloneDashboardScreen() {
             setLoading(true);
             const data = await cloneTracker.recalculate();
             setProgress(data);
+
+            // Load saved voice ID
+            const savedId = await AsyncStorage.getItem(CLONE_VOICE_KEY);
+            if (savedId) setCloneVoiceId(savedId);
 
             // Load recent voice samples (sessions with cloneUsable quality)
             try {
@@ -74,6 +95,10 @@ export default function CloneDashboardScreen() {
                 ])
             ).start();
         })();
+
+        return () => {
+            if (countdownRef.current) clearInterval(countdownRef.current);
+        };
     }, []);
 
     const handleDeleteSample = useCallback(async (id: string) => {
@@ -94,6 +119,161 @@ export default function CloneDashboardScreen() {
             },
         ]);
     }, []);
+
+    // ─── Clone Recording Pipeline Methods ───────────────────────
+
+    const startCloneRecording = async () => {
+        try {
+            const { status } = await Audio.requestPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Required', 'Microphone access is needed to record your voice sample.');
+                return;
+            }
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: true,
+                playsInSilentModeIOS: true,
+            });
+            const { recording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
+            );
+            cloneRecRef.current = recording;
+            setCloneRecording(true);
+            setCloneCountdown(SAMPLE_DURATION);
+
+            // Start countdown animation
+            countdownAnim.setValue(1);
+            Animated.timing(countdownAnim, {
+                toValue: 0,
+                duration: SAMPLE_DURATION * 1000,
+                useNativeDriver: false,
+            }).start();
+
+            // Countdown timer
+            countdownRef.current = setInterval(() => {
+                setCloneCountdown(prev => {
+                    if (prev <= 1) {
+                        // Auto-stop at 0
+                        finishCloneRecording();
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
+            await feedbackService.tap();
+        } catch (err) {
+            console.error('[Clone] Recording start failed:', err);
+            Alert.alert('Recording Error', 'Could not start recording. Please try again.');
+        }
+    };
+
+    const finishCloneRecording = async () => {
+        if (countdownRef.current) {
+            clearInterval(countdownRef.current);
+            countdownRef.current = null;
+        }
+        setCloneRecording(false);
+
+        if (!cloneRecRef.current) return;
+
+        try {
+            await cloneRecRef.current.stopAndUnloadAsync();
+            const uri = cloneRecRef.current.getURI();
+            cloneRecRef.current = null;
+            await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+
+            if (!uri) {
+                Alert.alert('Error', 'No audio was captured. Please try again.');
+                return;
+            }
+
+            await uploadCloneSample(uri);
+        } catch (err) {
+            console.error('[Clone] Recording stop failed:', err);
+            Alert.alert('Error', 'Failed to process recording.');
+        }
+    };
+
+    const uploadCloneSample = async (audioUri: string) => {
+        setCloneUploading(true);
+        setCloneUploadProgress(0);
+
+        try {
+            // Simulate upload progress
+            const progressInterval = setInterval(() => {
+                setCloneUploadProgress(prev => Math.min(prev + 15, 90));
+            }, 500);
+
+            const response = await FileSystem.uploadAsync(CLONE_API, audioUri, {
+                httpMethod: 'POST',
+                uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+                fieldName: 'audio',
+                parameters: { duration: String(SAMPLE_DURATION) },
+            });
+
+            clearInterval(progressInterval);
+            setCloneUploadProgress(100);
+
+            // Clean up audio file
+            await FileSystem.deleteAsync(audioUri, { idempotent: true });
+
+            if (response.status >= 200 && response.status < 300) {
+                const data = JSON.parse(response.body);
+
+                if (data.voice_id) {
+                    // Clone is ready immediately
+                    await AsyncStorage.setItem(CLONE_VOICE_KEY, data.voice_id);
+                    setCloneVoiceId(data.voice_id);
+                    setCloneUploading(false);
+                    await feedbackService.success();
+                    Alert.alert('🎉 Clone Ready!', 'Your voice clone has been created and saved.');
+                } else if (data.job_id) {
+                    // Need to poll for processing
+                    setCloneUploading(false);
+                    setCloneProcessing(true);
+                    pollCloneStatus(data.job_id);
+                }
+            } else {
+                throw new Error(`Upload failed: ${response.status}`);
+            }
+        } catch (err) {
+            console.error('[Clone] Upload failed:', err);
+            setCloneUploading(false);
+            Alert.alert('Upload Failed', 'Could not upload voice sample. Check your connection.');
+        }
+    };
+
+    const pollCloneStatus = async (jobId: string) => {
+        const maxPolls = 60; // 5 minutes max
+        let polls = 0;
+        const poll = setInterval(async () => {
+            polls++;
+            try {
+                const res = await fetch(`${CLONE_API}/status/${jobId}`);
+                const data = await res.json();
+
+                if (data.status === 'complete' && data.voice_id) {
+                    clearInterval(poll);
+                    await AsyncStorage.setItem(CLONE_VOICE_KEY, data.voice_id);
+                    setCloneVoiceId(data.voice_id);
+                    setCloneProcessing(false);
+                    await feedbackService.success();
+                    Alert.alert('🎉 Clone Ready!', 'Your voice clone has been processed and saved.');
+                } else if (data.status === 'failed') {
+                    clearInterval(poll);
+                    setCloneProcessing(false);
+                    Alert.alert('Clone Failed', 'Voice processing failed. Please record a new sample.');
+                }
+            } catch {
+                // Ignore transient poll errors
+            }
+            if (polls >= maxPolls) {
+                clearInterval(poll);
+                setCloneProcessing(false);
+                Alert.alert('Timeout', 'Clone processing is taking longer than expected. Check back later.');
+            }
+        }, 5000);
+    };
 
     const handleTestClone = async () => {
         setTestPlaying(true);
@@ -131,6 +311,11 @@ export default function CloneDashboardScreen() {
                 </Pressable>
                 <Text style={styles.title}>Voice Clone</Text>
                 <View style={styles.headerRight}>
+                    {cloneVoiceId && (
+                        <View style={styles.cloneReadyBadge}>
+                            <Text style={styles.cloneReadyBadgeText}>✅ Clone Ready</Text>
+                        </View>
+                    )}
                     <Text style={styles.headerStat}>{progress.sessionsCount} sessions</Text>
                 </View>
             </View>
@@ -294,18 +479,74 @@ export default function CloneDashboardScreen() {
                 </View>
             )}
 
+            {/* ─── Record Voice Sample ───────────────────────────── */}
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Record Voice Sample</Text>
+                <View style={styles.recordCard}>
+                    {cloneRecording ? (
+                        /* Active Recording */
+                        <View style={styles.recordActive}>
+                            <View style={styles.countdownRing}>
+                                <Animated.View style={[
+                                    styles.countdownFill,
+                                    { transform: [{ scaleX: countdownAnim }] },
+                                ]} />
+                            </View>
+                            <Text style={styles.countdownText}>{cloneCountdown}s</Text>
+                            <Text style={styles.recordHint}>🔴 Recording... speak naturally</Text>
+                            <Pressable style={styles.recordStopBtn} onPress={finishCloneRecording}>
+                                <Text style={styles.recordStopText}>⏹ Stop Early</Text>
+                            </Pressable>
+                        </View>
+                    ) : cloneUploading ? (
+                        /* Upload Progress */
+                        <View style={styles.uploadActive}>
+                            <Text style={styles.uploadEmoji}>📤</Text>
+                            <Text style={styles.uploadText}>Uploading voice sample...</Text>
+                            <View style={styles.uploadBarBg}>
+                                <View style={[styles.uploadBarFill, { width: `${cloneUploadProgress}%` }]} />
+                            </View>
+                            <Text style={styles.uploadPercent}>{cloneUploadProgress}%</Text>
+                        </View>
+                    ) : cloneProcessing ? (
+                        /* Processing Status */
+                        <View style={styles.uploadActive}>
+                            <Text style={styles.uploadEmoji}>⚙️</Text>
+                            <Text style={styles.uploadText}>Processing your voice clone...</Text>
+                            <Text style={styles.processingHint}>This may take a few minutes</Text>
+                        </View>
+                    ) : (
+                        /* Ready to Record */
+                        <View style={styles.recordReady}>
+                            <Text style={styles.recordReadyEmoji}>🎙️</Text>
+                            <Text style={styles.recordReadyTitle}>
+                                {cloneVoiceId ? 'Re-record Voice Sample' : 'Record Voice Sample'}
+                            </Text>
+                            <Text style={styles.recordReadyDesc}>
+                                Record a 30-second voice sample. Speak naturally — read aloud or talk about your day.
+                            </Text>
+                            <Pressable style={styles.recordStartBtn} onPress={startCloneRecording}>
+                                <Text style={styles.recordStartText}>
+                                    {cloneVoiceId ? '🔄 Record New Sample' : '🎙️ Start Recording'}
+                                </Text>
+                            </Pressable>
+                        </View>
+                    )}
+                </View>
+            </View>
+
             {/* Test My Clone / Start Clone CTA */}
             <View style={styles.section}>
                 <Pressable
                     style={[
                         styles.cloneCta,
-                        progress.cloneReadiness < 100 && styles.cloneCtaDisabled,
+                        !cloneVoiceId && progress.cloneReadiness < 100 && styles.cloneCtaDisabled,
                     ]}
                     onPress={async () => {
-                        if (progress.cloneReadiness < 100) {
+                        if (!cloneVoiceId && progress.cloneReadiness < 100) {
                             Alert.alert(
                                 '🔒 More Data Needed',
-                                `Your clone is ${Math.round(progress.cloneReadiness)}% ready. Keep recording to unlock this feature.`
+                                `Your clone is ${Math.round(progress.cloneReadiness)}% ready. Record a voice sample or keep using the app to unlock this feature.`
                             );
                             return;
                         }
@@ -317,9 +558,11 @@ export default function CloneDashboardScreen() {
                     <View style={styles.cloneCtaContent}>
                         <Text style={styles.cloneCtaText}>Test My Clone</Text>
                         <Text style={styles.cloneCtaSubtext}>
-                            {progress.cloneReadiness >= 100
+                            {cloneVoiceId
                                 ? 'Preview how your AI voice sounds'
-                                : `Unlocks at 100% (${Math.round(progress.cloneReadiness)}% now)`}
+                                : progress.cloneReadiness >= 100
+                                    ? 'Preview how your AI voice sounds'
+                                    : `Unlocks at 100% (${Math.round(progress.cloneReadiness)}% now)`}
                         </Text>
                     </View>
                 </Pressable>
@@ -625,4 +868,29 @@ const styles = StyleSheet.create({
     modalDisclaimer: {
         fontSize: 11, color: colors.textTertiary, textAlign: 'center', marginTop: spacing.xs,
     },
+
+    // Clone Recording Pipeline
+    cloneReadyBadge: { backgroundColor: 'rgba(45,212,191,0.15)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginBottom: 4 },
+    cloneReadyBadgeText: { fontSize: 11, fontWeight: '700', color: '#2dd4bf' },
+    recordCard: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.lg, alignItems: 'center' },
+    recordReady: { alignItems: 'center', gap: spacing.sm },
+    recordReadyEmoji: { fontSize: 48 },
+    recordReadyTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+    recordReadyDesc: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 18 },
+    recordStartBtn: { backgroundColor: colors.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: borderRadius.md, marginTop: spacing.xs },
+    recordStartText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    recordActive: { alignItems: 'center', gap: spacing.sm },
+    countdownRing: { width: 120, height: 8, borderRadius: 4, backgroundColor: colors.surfaceLight, overflow: 'hidden' },
+    countdownFill: { height: '100%', backgroundColor: '#ef4444', borderRadius: 4, width: '100%', transformOrigin: 'left' },
+    countdownText: { fontSize: 48, fontWeight: '700', color: colors.textPrimary, fontVariant: ['tabular-nums'] },
+    recordHint: { fontSize: 14, color: colors.stateRecording },
+    recordStopBtn: { backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: borderRadius.md },
+    recordStopText: { fontSize: 14, fontWeight: '600', color: '#ef4444' },
+    uploadActive: { alignItems: 'center', gap: spacing.sm },
+    uploadEmoji: { fontSize: 36 },
+    uploadText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+    uploadBarBg: { width: 200, height: 6, borderRadius: 3, backgroundColor: colors.surfaceLight },
+    uploadBarFill: { height: '100%', borderRadius: 3, backgroundColor: colors.accent },
+    uploadPercent: { fontSize: 13, color: colors.textTertiary, fontVariant: ['tabular-nums'] },
+    processingHint: { fontSize: 13, color: colors.textTertiary },
 });
