@@ -19,6 +19,7 @@ import { localStorageService } from '@/services/storage-local';
 import { licenseService } from '@/services/license';
 import { pushNotificationService } from '@/services/push-notifications';
 import { offlinePackService } from '@/services/offline-packs';
+import { subscriptionService } from '@/services/subscription';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkBanner } from '@/components/NetworkBanner';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -59,6 +60,8 @@ export default function RootLayout() {
         pushNotificationService.initialize().catch(() => { });
         // Initialize offline language packs
         offlinePackService.initialize().catch(() => { });
+        // Initialize RevenueCat subscriptions
+        subscriptionService.initialize().catch(() => { });
 
         // Android-specific: theme navigation bar
         if (Platform.OS === 'android') {

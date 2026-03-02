@@ -8,7 +8,9 @@ import { useRouter } from 'expo-router';
 import { colors, spacing, borderRadius } from '@/theme';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { licenseService, FEATURE_MATRIX, RECORDING_LIMITS } from '@/services/license';
+import { subscriptionService } from '@/services/subscription';
 import { feedbackService } from '@/services/feedback';
+import { useHaptic } from '@/hooks/useHaptic';
 
 // ── Plan definitions ──
 interface PlanInfo {
@@ -125,7 +127,9 @@ export default function SubscriptionScreen() {
     const { licenseTier } = useSettingsStore();
     const [purchasing, setPurchasing] = useState<string | null>(null);
     const [showComparison, setShowComparison] = useState(false);
+    const [restoring, setRestoring] = useState(false);
     const heroAnim = useRef(new Animated.Value(0)).current;
+    const haptic = useHaptic();
 
     useEffect(() => {
         Animated.spring(heroAnim, {
@@ -141,42 +145,88 @@ export default function SubscriptionScreen() {
         if (plan.tier === 'free') return;
 
         setPurchasing(plan.id);
-        await feedbackService.tap();
+        haptic.medium();
 
         try {
-            const url = await licenseService.getPurchaseUrl(`device-${Date.now().toString(36)}`);
-            await Linking.openURL(url);
-        } catch (err) {
-            Alert.alert('Error', 'Could not open purchase page. Please try again.');
+            // Try RevenueCat in-app purchase first
+            const offerings = await subscriptionService.getOfferings();
+            const pkg = offerings[0]?.packages.find(
+                (p) => p.identifier.toLowerCase().includes(plan.id)
+            );
+
+            if (pkg) {
+                const tier = await subscriptionService.purchasePackage(pkg.rcPackage);
+                if (tier && tier !== 'free') {
+                    useSettingsStore.getState().setLicense(tier, `rc-${Date.now()}`);
+                    haptic.success();
+                    Alert.alert(
+                        '🎉 Welcome!',
+                        `You now have ${plan.name} access!`,
+                        [{ text: 'Awesome!', onPress: () => router.back() }]
+                    );
+                }
+            } else {
+                // Fallback to web purchase URL
+                const url = await licenseService.getPurchaseUrl(`device-${Date.now().toString(36)}`);
+                await Linking.openURL(url);
+            }
+        } catch (err: any) {
+            if (!err?.userCancelled) {
+                haptic.error();
+                Alert.alert('Error', 'Could not complete purchase. Please try again.');
+            }
         } finally {
             setPurchasing(null);
         }
     };
 
     const handleRestore = async () => {
-        await feedbackService.tap();
-        Alert.prompt(
-            'Restore Purchase',
-            'Enter your license key to restore your purchase:',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Restore',
-                    onPress: async (key?: string) => {
-                        if (!key?.trim()) return;
-                        try {
-                            const validation = await licenseService.activateKey(key.trim());
-                            useSettingsStore.getState().setLicense(validation.tier, key.trim());
-                            await feedbackService.success();
-                            Alert.alert('✅ Restored!', `Welcome back to ${validation.tier.replace('_', ' ')} tier!`);
-                        } catch (err) {
-                            Alert.alert('Error', 'Invalid license key. Please check and try again.');
-                        }
-                    },
-                },
-            ],
-            'plain-text'
-        );
+        haptic.medium();
+        setRestoring(true);
+
+        try {
+            // Try RevenueCat restore first
+            const tier = await subscriptionService.restorePurchases();
+            if (tier !== 'free') {
+                useSettingsStore.getState().setLicense(tier, `rc-restored-${Date.now()}`);
+                haptic.success();
+                Alert.alert(
+                    '✅ Restored!',
+                    `Welcome back to ${tier.replace('_', ' ')} tier!`,
+                    [{ text: 'Awesome!', onPress: () => router.back() }]
+                );
+            } else {
+                // Fallback: manual key entry
+                Alert.prompt(
+                    'No Subscription Found',
+                    'Enter a license key to restore your purchase:',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                            text: 'Restore',
+                            onPress: async (key?: string) => {
+                                if (!key?.trim()) return;
+                                try {
+                                    const validation = await licenseService.activateKey(key.trim());
+                                    useSettingsStore.getState().setLicense(validation.tier, key.trim());
+                                    haptic.success();
+                                    Alert.alert('✅ Restored!', `Welcome back to ${validation.tier.replace('_', ' ')} tier!`);
+                                } catch {
+                                    haptic.error();
+                                    Alert.alert('Error', 'Invalid license key.');
+                                }
+                            },
+                        },
+                    ],
+                    'plain-text'
+                );
+            }
+        } catch (err) {
+            haptic.error();
+            Alert.alert('Error', 'Could not restore purchases. Please try again.');
+        } finally {
+            setRestoring(false);
+        }
     };
 
     return (
@@ -295,8 +345,14 @@ export default function SubscriptionScreen() {
             )}
 
             {/* Restore Purchases */}
-            <Pressable style={styles.restoreButton} onPress={handleRestore}>
-                <Text style={styles.restoreText}>🔑 Restore Purchase</Text>
+            <Pressable
+                style={[styles.restoreButton, restoring && { opacity: 0.6 }]}
+                onPress={handleRestore}
+                disabled={restoring}
+            >
+                <Text style={styles.restoreText}>
+                    {restoring ? '⏳ Restoring...' : '🔑 Restore Purchase'}
+                </Text>
             </Pressable>
 
             {/* Guarantee */}
