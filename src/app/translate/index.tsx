@@ -231,6 +231,11 @@ export default function TranslateScreen() {
                 await translationService.speak(result.translated, toLang);
             }
 
+            // Auto-alternate speaker in split-screen mode
+            if (mode === 'split-screen') {
+                setActiveSpeaker(speaker === 'A' ? 'B' : 'A');
+            }
+
             // Auto-scroll
             setTimeout(() => {
                 scrollRefA.current?.scrollToEnd({ animated: true });
@@ -292,6 +297,7 @@ export default function TranslateScreen() {
                         <SplitSpeakerPanel
                             speaker="B"
                             lang={targetLang}
+                            otherLang={sourceLang}
                             turns={turns}
                             isActive={activeSpeaker === 'B'}
                             isRecording={isRecording}
@@ -321,6 +327,7 @@ export default function TranslateScreen() {
                     <SplitSpeakerPanel
                         speaker="A"
                         lang={sourceLang}
+                        otherLang={targetLang}
                         turns={turns}
                         isActive={activeSpeaker === 'A'}
                         isRecording={isRecording}
@@ -667,50 +674,83 @@ export default function TranslateScreen() {
 
 // ─── Split-Screen Speaker Panel ────────────────────────────────
 
-function SplitSpeakerPanel({ speaker, lang, turns, isActive, isRecording, processing, onPressIn, onPressOut, scrollRef, getFlag, getName }: {
-    speaker: 'A' | 'B'; lang: string; turns: ConversationTurn[];
+function SplitSpeakerPanel({ speaker, lang, otherLang, turns, isActive, isRecording, processing, onPressIn, onPressOut, scrollRef, getFlag, getName }: {
+    speaker: 'A' | 'B'; lang: string; otherLang: string; turns: ConversationTurn[];
     isActive: boolean; isRecording: boolean; processing: boolean;
     onPressIn: () => void; onPressOut: () => void; scrollRef: React.RefObject<ScrollView>;
     getFlag: (c: string) => string; getName: (c: string) => string;
 }) {
-    const speakerTurns = turns.filter((t) => t.speaker === speaker);
     const bgColor = speaker === 'A' ? colors.background : '#0d1f17';
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+
+    // Pulse animation when this panel is the active speaker
+    useEffect(() => {
+        if (isActive && !isRecording && !processing) {
+            const pulse = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 1.06, duration: 800, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+                ]),
+            );
+            pulse.start();
+            return () => pulse.stop();
+        } else {
+            pulseAnim.setValue(1);
+        }
+    }, [isActive, isRecording, processing]);
 
     return (
         <View style={[styles.splitPanel, { backgroundColor: bgColor }]}>
-            {/* Speaker label */}
-            <Text style={styles.splitLabel}>
-                {getFlag(lang)} {getName(lang)} — Speaker {speaker}
+            {/* Speaker label with active indicator */}
+            <Text style={[styles.splitLabel, isActive && styles.splitLabelActive]}>
+                {isActive ? '● ' : ''}{getFlag(lang)} {getName(lang)} — Speaker {speaker}
             </Text>
 
-            {/* Messages */}
+            {/* Dual transcript — all turns, styled per speaker */}
             <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: 12 }}>
-                {speakerTurns.map((t) => (
-                    <View key={t.id} style={styles.splitBubble}>
-                        <Text style={styles.splitOriginal}>{t.original}</Text>
-                        <Text style={styles.splitTranslated}>{getFlag(t.toLang)} {t.translated}</Text>
-                    </View>
-                ))}
+                {turns.map((t) => {
+                    const isOwnTurn = t.speaker === speaker;
+                    return (
+                        <View key={t.id} style={[
+                            styles.splitBubble,
+                            !isOwnTurn && styles.splitBubbleOther,
+                        ]}>
+                            <Text style={[styles.splitSpeakerLabel, !isOwnTurn && { color: colors.textTertiary }]}>
+                                {getFlag(t.fromLang)} Speaker {t.speaker}
+                            </Text>
+                            <Text style={[styles.splitOriginal, !isOwnTurn && { opacity: 0.6 }]}>
+                                {isOwnTurn ? t.original : t.translated}
+                            </Text>
+                            <Text style={[styles.splitTranslated, !isOwnTurn && { opacity: 0.6 }]}>
+                                {getFlag(isOwnTurn ? t.toLang : t.fromLang)} {isOwnTurn ? t.translated : t.original}
+                            </Text>
+                        </View>
+                    );
+                })}
             </ScrollView>
 
-            {/* Record button — press-and-hold */}
-            <Pressable
-                style={[
-                    styles.splitRecordBtn,
-                    isActive && isRecording && styles.splitRecordBtnActive,
-                    isActive && processing && styles.splitRecordBtnProcessing,
-                ]}
-                onPressIn={onPressIn}
-                onPressOut={onPressOut}
-                accessibilityLabel={`Hold to speak ${getName(lang)}`}
-                accessibilityRole="button"
-            >
-                <Text style={styles.splitRecordText}>
-                    {isActive && processing ? '⏳ Translating...'
-                        : isActive && isRecording ? '🔴 Release to Translate'
-                            : `🎤 Hold to Speak ${getName(lang)}`}
-                </Text>
-            </Pressable>
+            {/* Record button — press-and-hold with pulse */}
+            <Animated.View style={{ transform: [{ scale: isActive ? pulseAnim : 1 }] }}>
+                <Pressable
+                    style={[
+                        styles.splitRecordBtn,
+                        isActive && styles.splitRecordBtnReady,
+                        isActive && isRecording && styles.splitRecordBtnActive,
+                        isActive && processing && styles.splitRecordBtnProcessing,
+                    ]}
+                    onPressIn={onPressIn}
+                    onPressOut={onPressOut}
+                    accessibilityLabel={`Hold to speak ${getName(lang)}`}
+                    accessibilityRole="button"
+                >
+                    <Text style={styles.splitRecordText}>
+                        {isActive && processing ? '⏳ Translating...'
+                            : isActive && isRecording ? '🔴 Release to Translate'
+                                : isActive ? `🎤 Your turn — Hold to Speak ${getName(lang)}`
+                                    : `⏸ Waiting for Speaker ${speaker === 'A' ? 'B' : 'A'}...`}
+                    </Text>
+                </Pressable>
+            </Animated.View>
         </View>
     );
 }
@@ -829,10 +869,14 @@ const styles = StyleSheet.create({
     splitExitText: { fontSize: 12, color: colors.textSecondary },
     splitPanel: { flex: 1, paddingTop: 8 },
     splitLabel: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, textAlign: 'center', paddingVertical: 8 },
+    splitLabelActive: { color: colors.accent },
     splitBubble: { backgroundColor: colors.surface, borderRadius: borderRadius.md, padding: 10, marginBottom: 8 },
+    splitBubbleOther: { backgroundColor: 'rgba(255,255,255,0.03)' },
+    splitSpeakerLabel: { fontSize: 11, fontWeight: '600', color: colors.textTertiary, marginBottom: 4 },
     splitOriginal: { fontSize: 14, color: colors.textPrimary, marginBottom: 4 },
     splitTranslated: { fontSize: 14, color: colors.accent },
     splitRecordBtn: { padding: 16, alignItems: 'center', backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8, borderRadius: borderRadius.lg, borderWidth: 2, borderColor: colors.border },
+    splitRecordBtnReady: { borderColor: colors.accent, backgroundColor: 'rgba(56,189,248,0.08)' },
     splitRecordBtnActive: { borderColor: colors.stateRecording, backgroundColor: 'rgba(34,197,94,0.1)' },
     splitRecordBtnProcessing: { borderColor: colors.stateProcessing },
     splitRecordText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
