@@ -1,14 +1,17 @@
 /**
  * 🧬 M6 — Windy Translate Conversation Mode (Enhanced)
  * Three modes: Manual, Auto, Split-Screen
- * Features: TTS, language picker, export, history, favorites, confidence
+ * Features: Speech-to-speech, press-and-hold mic, animated waveform,
+ * TTS, language picker, export, history, favorites, confidence
  */
 import {
     View, Text, StyleSheet, Pressable, ScrollView, Platform,
-    Alert, Modal, FlatList, Dimensions, Animated,
+    Alert, Modal, FlatList, Dimensions, Animated, KeyboardAvoidingView,
 } from 'react-native';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, borderRadius } from '@/theme';
@@ -16,10 +19,10 @@ import {
     translationService, TIER_1_LANGUAGES,
     type ConversationTurn, type ConversationMode,
 } from '@/services/translation';
-import { audioCaptureService } from '@/services/audio-capture';
-import { transcriptionService } from '@/services/transcription';
 import { feedbackService } from '@/services/feedback';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { useHaptic } from '@/hooks/useHaptic';
+import { SpeechWaveform } from '@/components/SpeechWaveform';
 import type { TranscriptSegment } from '@/types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -29,6 +32,7 @@ const MAX_HISTORY = 50;
 export default function TranslateScreen() {
     const router = useRouter();
     const { requireFeature } = useFeatureGate();
+    const haptic = useHaptic();
 
     // State
     const [sourceLang, setSourceLang] = useState('en');
@@ -46,10 +50,12 @@ export default function TranslateScreen() {
     const [history, setHistory] = useState<ConversationTurn[]>([]);
     const [copyToast, setCopyToast] = useState(false);
     const [detectedLangInfo, setDetectedLangInfo] = useState<{ lang: string; confidence: number } | null>(null);
+    const [audioLevel, setAudioLevel] = useState(0);
     const scrollRefA = useRef<ScrollView>(null);
     const scrollRefB = useRef<ScrollView>(null);
     const conversationStartTime = useRef(Date.now());
     const toastAnim = useRef(new Animated.Value(0)).current;
+    const recordingRef = useRef<Audio.Recording | null>(null);
 
     useEffect(() => {
         if (!requireFeature('translate', 'Windy Translate')) {
@@ -110,96 +116,114 @@ export default function TranslateScreen() {
         feedbackService.tap();
     };
 
-    // ─── Recording + Translate Flow ────────────────────────────
+    // ─── Press-and-Hold Recording + Speech Translation ─────────
 
-    const handleRecord = useCallback(async () => {
-        if (isRecording) {
-            setIsRecording(false);
-            setProcessing(true);
-
-            try {
-                const result = await audioCaptureService.stopRecording();
-
-                // Transcribe
-                let transcribedText = '';
-                transcriptionService.onSegment = (seg: TranscriptSegment) => {
-                    transcribedText += seg.text + ' ';
-                };
-                await transcriptionService.transcribeFile(result.uri);
-                transcribedText = transcribedText.trim();
-
-                if (!transcribedText) {
-                    setProcessing(false);
-                    return;
-                }
-
-                // Determine speaker (auto mode: detect language)
-                let speaker = activeSpeaker;
-                if (mode === 'auto') {
-                    speaker = await translationService.autoDetectSpeaker(transcribedText);
-                    setActiveSpeaker(speaker);
-                }
-
-                const fromLang = speaker === 'A' ? sourceLang : targetLang;
-                const toLang = speaker === 'A' ? targetLang : sourceLang;
-
-                // Translate
-                const translation = await translationService.translate(
-                    transcribedText, fromLang, toLang,
-                );
-
-                // Auto-detect indicator
-                if (mode === 'auto') {
-                    const detection = await translationService.detectLanguage(transcribedText);
-                    setDetectedLangInfo({ lang: detection.language, confidence: detection.confidence });
-                }
-
-                const elapsed = (Date.now() - conversationStartTime.current) / 1000;
-                const turn: ConversationTurn = {
-                    id: `turn-${Date.now()}`,
-                    speaker,
-                    original: transcribedText,
-                    translated: translation.translated,
-                    fromLang,
-                    toLang,
-                    timestamp: Date.now(),
-                    startTime: elapsed,
-                    endTime: elapsed + 5,
-                    confidence: translation.confidence,
-                    detectedLang: mode === 'auto' ? (await translationService.detectLanguage(transcribedText)).language : undefined,
-                    favorite: false,
-                };
-                setTurns((prev) => [...prev, turn]);
-                saveToHistory(turn);
-
-                // TTS: speak the translation aloud
-                if (ttsEnabled) {
-                    await translationService.speak(translation.translated, toLang);
-                }
-
-                // Auto-scroll
-                setTimeout(() => {
-                    scrollRefA.current?.scrollToEnd({ animated: true });
-                    scrollRefB.current?.scrollToEnd({ animated: true });
-                }, 100);
-            } catch (err) {
-                console.error('[Translate] Error:', err);
-                feedbackService.error();
-                Alert.alert('Translation Error', 'Could not translate. Check your connection.');
-            } finally {
-                setProcessing(false);
-            }
-        } else {
-            try {
-                await audioCaptureService.startRecording(`translate-${Date.now()}`);
-                setIsRecording(true);
-                feedbackService.recordStart();
-            } catch (err) {
-                console.error('[Translate] Start failed:', err);
-                feedbackService.error();
-            }
+    /** Start recording on press-in */
+    const handlePressIn = useCallback(async () => {
+        if (processing) return;
+        try {
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: true,
+                playsInSilentModeIOS: true,
+            });
+            const { recording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY,
+                (status) => {
+                    if (status.isRecording && status.metering != null) {
+                        // Normalize metering from dB (-160..0) to 0..1
+                        const normalized = Math.max(0, Math.min(1, (status.metering + 60) / 60));
+                        setAudioLevel(normalized);
+                    }
+                },
+                100 // metering interval ms
+            );
+            recordingRef.current = recording;
+            setIsRecording(true);
+            setAudioLevel(0);
+            haptic.medium();
+            feedbackService.recordStart();
+        } catch (err) {
+            console.error('[Translate] Start recording failed:', err);
+            haptic.error();
         }
-    }, [isRecording, activeSpeaker, sourceLang, targetLang, mode, ttsEnabled]);
+    }, [processing, haptic]);
+
+    /** Stop recording on press-out, send to speech API */
+    const handlePressOut = useCallback(async () => {
+        if (!recordingRef.current || !isRecording) return;
+        setIsRecording(false);
+        setProcessing(true);
+        setAudioLevel(0);
+        haptic.light();
+
+        try {
+            await recordingRef.current.stopAndUnloadAsync();
+            const uri = recordingRef.current.getURI();
+            recordingRef.current = null;
+
+            await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+
+            if (!uri) {
+                setProcessing(false);
+                return;
+            }
+
+            // Determine speaker direction
+            const speaker = activeSpeaker;
+            const fromLang = speaker === 'A' ? sourceLang : targetLang;
+            const toLang = speaker === 'A' ? targetLang : sourceLang;
+
+            // Send audio to speech translation API
+            const result = await translationService.translateSpeech(uri, fromLang, toLang);
+
+            if (!result.originalText && !result.translated) {
+                setProcessing(false);
+                haptic.warning();
+                return;
+            }
+
+            // Auto-detect for auto mode
+            if (mode === 'auto' && result.detectedLanguage) {
+                setDetectedLangInfo({ lang: result.detectedLanguage, confidence: result.confidence });
+            }
+
+            const elapsed = (Date.now() - conversationStartTime.current) / 1000;
+            const turn: ConversationTurn = {
+                id: `turn-${Date.now()}`,
+                speaker,
+                original: result.originalText,
+                translated: result.translated,
+                fromLang,
+                toLang,
+                timestamp: Date.now(),
+                startTime: elapsed,
+                endTime: elapsed + 5,
+                confidence: result.confidence,
+                detectedLang: result.detectedLanguage,
+                favorite: false,
+            };
+            setTurns((prev) => [...prev, turn]);
+            saveToHistory(turn);
+            haptic.success();
+
+            // TTS: speak the translation aloud
+            if (ttsEnabled) {
+                await translationService.speak(result.translated, toLang);
+            }
+
+            // Auto-scroll
+            setTimeout(() => {
+                scrollRefA.current?.scrollToEnd({ animated: true });
+                scrollRefB.current?.scrollToEnd({ animated: true });
+            }, 100);
+        } catch (err) {
+            console.error('[Translate] Speech translation error:', err);
+            haptic.error();
+            Alert.alert('Translation Error', 'Could not translate speech. Check your connection.');
+        } finally {
+            setProcessing(false);
+        }
+    }, [isRecording, activeSpeaker, sourceLang, targetLang, mode, ttsEnabled, haptic]);
 
     // ─── Export ─────────────────────────────────────────────────
 
@@ -249,7 +273,8 @@ export default function TranslateScreen() {
                             isActive={activeSpeaker === 'B'}
                             isRecording={isRecording}
                             processing={processing}
-                            onPress={() => { setActiveSpeaker('B'); handleRecord(); }}
+                            onPressIn={() => { setActiveSpeaker('B'); handlePressIn(); }}
+                            onPressOut={handlePressOut}
                             scrollRef={scrollRefB}
                             getFlag={getFlag}
                             getName={getName}
@@ -277,7 +302,8 @@ export default function TranslateScreen() {
                         isActive={activeSpeaker === 'A'}
                         isRecording={isRecording}
                         processing={processing}
-                        onPress={() => { setActiveSpeaker('A'); handleRecord(); }}
+                        onPressIn={() => { setActiveSpeaker('A'); handlePressIn(); }}
+                        onPressOut={handlePressOut}
                         scrollRef={scrollRefA}
                         getFlag={getFlag}
                         getName={getName}
@@ -455,6 +481,16 @@ export default function TranslateScreen() {
                     </View>
                 )}
 
+                {/* Waveform Visualizer */}
+                {(isRecording || processing) && (
+                    <SpeechWaveform
+                        isActive={isRecording}
+                        level={audioLevel}
+                        color={isRecording ? colors.accent : colors.stateProcessing}
+                        height={48}
+                    />
+                )}
+
                 {/* Record + TTS Toggle */}
                 <View style={styles.recordRow}>
                     <Pressable
@@ -462,8 +498,10 @@ export default function TranslateScreen() {
                         onPress={() => {
                             setTtsEnabled(!ttsEnabled);
                             translationService.setTtsEnabled(!ttsEnabled);
-                            feedbackService.tap();
+                            haptic.selection();
                         }}
+                        accessibilityLabel={ttsEnabled ? 'Disable text-to-speech' : 'Enable text-to-speech'}
+                        accessibilityRole="button"
                     >
                         <Text style={styles.ttsBtnText}>{ttsEnabled ? '🔊' : '🔇'}</Text>
                     </Pressable>
@@ -474,14 +512,18 @@ export default function TranslateScreen() {
                             isRecording && styles.recordBtnActive,
                             processing && styles.recordBtnProcessing,
                         ]}
-                        onPress={handleRecord}
+                        onPressIn={handlePressIn}
+                        onPressOut={handlePressOut}
                         disabled={processing}
+                        accessibilityLabel={processing ? 'Translating speech' : isRecording ? 'Release to translate' : 'Hold to record'}
+                        accessibilityRole="button"
+                        accessibilityHint="Press and hold to record your voice, release to translate"
                     >
                         <Text style={styles.recordBtnEmoji}>
-                            {processing ? '⏳' : isRecording ? '⏹' : '🎤'}
+                            {processing ? '⏳' : isRecording ? '🔴' : '🎤'}
                         </Text>
                         <Text style={styles.recordBtnText}>
-                            {processing ? 'Translating...' : isRecording ? 'Stop' : 'Record'}
+                            {processing ? 'Translating...' : isRecording ? 'Release to Translate' : 'Hold to Speak'}
                         </Text>
                     </Pressable>
 
@@ -492,6 +534,8 @@ export default function TranslateScreen() {
                                 { text: 'Cancel', style: 'cancel' },
                                 { text: 'Clear', style: 'destructive', onPress: () => setTurns([]) },
                             ])}
+                            accessibilityLabel="Clear conversation"
+                            accessibilityRole="button"
                         >
                             <Text style={styles.ttsBtnText}>🗑</Text>
                         </Pressable>
@@ -595,10 +639,10 @@ export default function TranslateScreen() {
 
 // ─── Split-Screen Speaker Panel ────────────────────────────────
 
-function SplitSpeakerPanel({ speaker, lang, turns, isActive, isRecording, processing, onPress, scrollRef, getFlag, getName }: {
+function SplitSpeakerPanel({ speaker, lang, turns, isActive, isRecording, processing, onPressIn, onPressOut, scrollRef, getFlag, getName }: {
     speaker: 'A' | 'B'; lang: string; turns: ConversationTurn[];
     isActive: boolean; isRecording: boolean; processing: boolean;
-    onPress: () => void; scrollRef: React.RefObject<ScrollView>;
+    onPressIn: () => void; onPressOut: () => void; scrollRef: React.RefObject<ScrollView>;
     getFlag: (c: string) => string; getName: (c: string) => string;
 }) {
     const speakerTurns = turns.filter((t) => t.speaker === speaker);
@@ -621,19 +665,22 @@ function SplitSpeakerPanel({ speaker, lang, turns, isActive, isRecording, proces
                 ))}
             </ScrollView>
 
-            {/* Record button */}
+            {/* Record button — press-and-hold */}
             <Pressable
                 style={[
                     styles.splitRecordBtn,
                     isActive && isRecording && styles.splitRecordBtnActive,
                     isActive && processing && styles.splitRecordBtnProcessing,
                 ]}
-                onPress={onPress}
+                onPressIn={onPressIn}
+                onPressOut={onPressOut}
+                accessibilityLabel={`Hold to speak ${getName(lang)}`}
+                accessibilityRole="button"
             >
                 <Text style={styles.splitRecordText}>
                     {isActive && processing ? '⏳ Translating...'
-                        : isActive && isRecording ? '⏹ Stop'
-                            : `🎤 Tap to Speak ${getName(lang)}`}
+                        : isActive && isRecording ? '🔴 Release to Translate'
+                            : `🎤 Hold to Speak ${getName(lang)}`}
                 </Text>
             </Pressable>
         </View>

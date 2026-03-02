@@ -10,6 +10,7 @@ import type { LicenseTier } from '@/types';
 
 /** Cloud translation API */
 const TRANSLATE_API = 'https://windypro.thewindstorm.uk/api/translate';
+const SPEECH_API = 'https://windypro.thewindstorm.uk/translate/speech';
 const DETECT_API = 'https://windypro.thewindstorm.uk/api/detect-language';
 
 /** Translation result */
@@ -132,6 +133,68 @@ class TranslationService {
             console.warn('[Translation] Cloud failed:', error);
             return {
                 translated: `[Translation unavailable] ${text}`,
+                confidence: 0,
+                fromLanguage: from,
+                toLanguage: to,
+            };
+        }
+    }
+
+    // ─── Speech-to-Speech Translation ──────────────────────────
+
+    /**
+     * Translate speech audio to text + translated text.
+     * Sends audio file to the speech translation API as multipart/form-data.
+     * @param audioUri - Local file URI of the recorded audio (WAV/M4A)
+     * @param from - Source language code
+     * @param to - Target language code
+     * @returns TranslationResult with original transcript and translation
+     */
+    async translateSpeech(
+        audioUri: string,
+        from: string,
+        to: string
+    ): Promise<TranslationResult & { originalText: string }> {
+        try {
+            const fileInfo = await FileSystem.getInfoAsync(audioUri);
+            if (!fileInfo.exists) {
+                throw new Error('Audio file not found');
+            }
+
+            // Upload audio as multipart/form-data
+            const uploadResult = await FileSystem.uploadAsync(SPEECH_API, audioUri, {
+                httpMethod: 'POST',
+                uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+                fieldName: 'audio',
+                parameters: {
+                    source: from,
+                    target: to,
+                },
+                headers: {
+                    Accept: 'application/json',
+                },
+            });
+
+            if (uploadResult.status < 200 || uploadResult.status >= 300) {
+                throw new Error(`Speech API returned ${uploadResult.status}`);
+            }
+
+            const data = JSON.parse(uploadResult.body);
+            return {
+                originalText: data.original || data.transcript || '',
+                translated: data.translated || data.translation || '',
+                confidence: data.confidence ?? 0.85,
+                fromLanguage: from,
+                toLanguage: to,
+                detectedLanguage: data.detected_language || data.detectedLanguage,
+            };
+        } catch (error) {
+            console.warn('[Translation] Speech API failed:', error);
+
+            // Fallback: return error state
+            return {
+                originalText: '',
+                translated: '[Speech translation unavailable]',
                 confidence: 0,
                 fromLanguage: from,
                 toLanguage: to,
