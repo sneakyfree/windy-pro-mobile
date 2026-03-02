@@ -7,9 +7,8 @@ node_modules/
 dist/
 web-build/
 
-# Native builds
-ios/
-android/
+# Native build artifacts (custom native code IS tracked)
+# android/ and ios/ are NOT ignored — they contain custom Kotlin/Swift modules
 *.jks
 *.p8
 *.p12
