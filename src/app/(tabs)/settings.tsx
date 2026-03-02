@@ -159,7 +159,11 @@ export default function SettingsScreen() {
 
       {/* About */}
       <SettingsSection title="About">
-        <SettingsRow label="Version" value="0.1.0 (Build 1)" />
+        <Pressable style={styles.navRow} onPress={() => router.push('/appstore')}>
+          <Text style={styles.navRowLabel}>🌪️ About Windy Pro</Text>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
+        <SettingsRow label="Version" value="1.0.0 (Build 1)" />
         <Pressable style={styles.navRow} onPress={() => router.push('/legal/privacy')}>
           <Text style={styles.navRowLabel}>Privacy Policy</Text>
           <Text style={styles.chevron}>›</Text>
