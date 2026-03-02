@@ -60,6 +60,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="camera"
+        options={{
+          title: 'Camera',
+          headerShown: false,
+          tabBarIcon: ({ focused }) => null,
+          tabBarLabel: '📷 Camera',
+        }}
+      />
+      <Tabs.Screen
         name="history"
         options={{
           title: 'History',
