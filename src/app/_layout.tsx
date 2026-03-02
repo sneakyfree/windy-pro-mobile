@@ -24,29 +24,58 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
+  const [splashDismissed, setSplashDismissed] = useState(false);
   const { setLicense } = useSettingsStore();
 
   // RP-1.5: Load Inter font family
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
   });
 
+  // Log font loading status for debugging
+  useEffect(() => {
+    if (fontError) {
+      console.warn('[Fonts] Font loading error:', fontError);
+    }
+    if (fontsLoaded) {
+      console.log('[Fonts] All fonts loaded successfully');
+    }
+  }, [fontsLoaded, fontError]);
+
   useEffect(() => {
     async function prepare() {
       try {
         // Initialize local database
         await localStorageService.initialize();
+        console.log('[App] Storage initialized successfully');
       } catch (e) {
-        console.warn('App initialization error:', e);
+        console.warn('[App] Storage initialization error:', e);
       } finally {
         setAppReady(true);
       }
     }
     prepare();
   }, []);
+
+  // Safety timeout: force-dismiss splash after 5 seconds no matter what
+  useEffect(() => {
+    const timeout = setTimeout(async () => {
+      if (!splashDismissed) {
+        console.warn('[App] Splash screen timeout — force dismissing after 5s');
+        try {
+          await SplashScreen.hideAsync();
+        } catch (e) {
+          console.warn('[App] SplashScreen.hideAsync error:', e);
+        }
+        setSplashDismissed(true);
+        if (!appReady) setAppReady(true);
+      }
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, [splashDismissed, appReady]);
 
   // RP-5.2: Deep link handler (windypro:// scheme)
   useEffect(() => {
@@ -114,14 +143,20 @@ export default function RootLayout() {
     return () => sub.remove();
   }, [setLicense]);
 
-  // Hide splash when both fonts and app are ready
+  // Hide splash when both fonts and app are ready (or font error occurred)
+  const canRender = appReady && (fontsLoaded || fontError);
   const onLayoutReady = useCallback(async () => {
-    if (appReady && fontsLoaded) {
-      await SplashScreen.hideAsync();
+    if (canRender && !splashDismissed) {
+      try {
+        await SplashScreen.hideAsync();
+      } catch (e) {
+        console.warn('[App] SplashScreen.hideAsync error:', e);
+      }
+      setSplashDismissed(true);
     }
-  }, [appReady, fontsLoaded]);
+  }, [canRender, splashDismissed]);
 
-  if (!appReady || !fontsLoaded) {
+  if (!canRender && !splashDismissed) {
     return (
       <View style={styles.loading}>
         <StatusBar style="light" />
