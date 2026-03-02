@@ -3,7 +3,7 @@
  * RP-5.1: Upgrade button wired to Stripe URL
  * RP-8.4: Real storage usage
  * RP-8.5: Real clone progress
- * Navigation to Translate, Clone, Privacy, Terms
+ * Navigation features, translation prefs, voice selection
  */
 import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert } from 'react-native';
 import { useState, useCallback } from 'react';
@@ -21,10 +21,20 @@ import { cloneTracker } from '@/services/clone-tracker';
 import { licenseService } from '@/services/license';
 import { feedbackService } from '@/services/feedback';
 import { offlinePackService, type LanguagePack } from '@/services/offline-packs';
+import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import EnginePickerSheet from '@/components/EnginePickerSheet';
 import LanguagePickerSheet from '@/components/LanguagePickerSheet';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 import type { StorageUsage } from '@/types';
+
+const AUDIO_QUALITY_PRESETS = [
+  { id: 'low' as const, label: '🟢 Low', desc: '16 kHz · small files', color: '#22c55e' },
+  { id: 'medium' as const, label: '🟡 Medium', desc: '22 kHz · balanced', color: '#eab308' },
+  { id: 'high' as const, label: '🔴 High', desc: '44.1 kHz · best quality', color: '#ef4444' },
+];
+
+const CLONE_VOICE_KEY = 'windy-clone-voice-id';
 
 export default function SettingsScreen() {
   const settings = useSettingsStore();
@@ -37,6 +47,8 @@ export default function SettingsScreen() {
   const [cacheSize, setCacheSize] = useState<number>(0);
   const [clearingCache, setClearingCache] = useState(false);
   const [packs, setPacks] = useState<LanguagePack[]>([]);
+  const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
+  const [targetLangPickerVisible, setTargetLangPickerVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -67,6 +79,12 @@ export default function SettingsScreen() {
     try {
       await offlinePackService.initialize();
       setPacks(offlinePackService.getPacks());
+    } catch { /* ignore */ }
+
+    // Load cloned voice ID
+    try {
+      const voiceId = await AsyncStorage.getItem(CLONE_VOICE_KEY);
+      setClonedVoiceId(voiceId);
     } catch { /* ignore */ }
   };
 
@@ -233,6 +251,80 @@ export default function SettingsScreen() {
           </Pressable>
           <SettingsToggle label="High quality audio" subtitle="44.1 kHz (larger files)" value={settings.highQualityAudio} onToggle={settings.setHighQualityAudio} />
           <SettingsToggle label="Location tagging" value={settings.locationTagging} onToggle={settings.setLocationTagging} />
+        </SettingsSection>
+
+        {/* Translation Preferences */}
+        <SettingsSection title="Translation">
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Default Source</Text>
+            <Pressable onPress={() => setLanguagePickerVisible(true)}>
+              <Text style={styles.rowValue}>
+                {translationService.getFlag(settings.defaultLanguage)} {settings.defaultLanguage.toUpperCase()}
+              </Text>
+            </Pressable>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Default Target</Text>
+            <Pressable onPress={() => setTargetLangPickerVisible(true)}>
+              <Text style={styles.rowValue}>
+                {translationService.getFlag(settings.defaultTargetLanguage)} {settings.defaultTargetLanguage.toUpperCase()}
+              </Text>
+            </Pressable>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Audio Quality</Text>
+            <View style={styles.qualityPresetRow}>
+              {AUDIO_QUALITY_PRESETS.map((p) => (
+                <Pressable
+                  key={p.id}
+                  style={[
+                    styles.qualityPresetBtn,
+                    settings.audioQualityPreset === p.id && { borderColor: p.color, backgroundColor: `${p.color}15` },
+                  ]}
+                  onPress={() => settings.setAudioQualityPreset(p.id)}
+                >
+                  <Text style={[
+                    styles.qualityPresetText,
+                    settings.audioQualityPreset === p.id && { color: p.color, fontWeight: '700' },
+                  ]}>
+                    {p.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </SettingsSection>
+
+        {/* Voice Selection */}
+        <SettingsSection title="Voice">
+          <Pressable
+            style={[styles.row, settings.selectedVoice === null && styles.voiceRowActive]}
+            onPress={() => settings.setSelectedVoice(null)}
+          >
+            <Text style={styles.rowLabel}>🔊 System Default</Text>
+            {settings.selectedVoice === null && <Text style={styles.voiceCheck}>✓</Text>}
+          </Pressable>
+          {clonedVoiceId && (
+            <Pressable
+              style={[styles.row, settings.selectedVoice === clonedVoiceId && styles.voiceRowActive]}
+              onPress={() => settings.setSelectedVoice(clonedVoiceId)}
+            >
+              <View style={styles.rowLabelContainer}>
+                <Text style={styles.rowLabel}>🧬 My Cloned Voice</Text>
+                <Text style={styles.rowSubtitle}>ID: {clonedVoiceId.slice(0, 8)}...</Text>
+              </View>
+              {settings.selectedVoice === clonedVoiceId && <Text style={styles.voiceCheck}>✓</Text>}
+            </Pressable>
+          )}
+          <Pressable
+            style={styles.row}
+            onPress={() => {
+              translationService.speak('This is a voice preview.', settings.defaultTargetLanguage);
+              feedbackService.tap();
+            }}
+          >
+            <Text style={[styles.rowLabel, { color: colors.accent }]}>▶️ Preview Voice</Text>
+          </Pressable>
         </SettingsSection>
 
         {/* Features */}
@@ -403,6 +495,43 @@ export default function SettingsScreen() {
           </Pressable>
         </SettingsSection>
 
+        {/* Account Management */}
+        <SettingsSection title="Account">
+          <SettingsRow
+            label="Subscription"
+            value={settings.licenseTier === 'free' ? 'Free' : formatTier(settings.licenseTier)}
+            valueColor={settings.licenseTier === 'free' ? colors.textTertiary : colors.accent}
+          />
+          {settings.licenseKey && (
+            <SettingsRow label="License Key" value={`${settings.licenseKey.slice(0, 8)}...`} />
+          )}
+          {settings.licenseTier !== 'free' && (
+            <Pressable style={styles.navRow} onPress={() => router.push('/subscription')}>
+              <Text style={styles.navRowLabel}>💳 Manage Subscription</Text>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+          )}
+          <Pressable
+            style={styles.navRow}
+            onPress={() => {
+              Alert.alert('Log Out', 'Are you sure you want to log out?', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Log Out',
+                  style: 'destructive',
+                  onPress: () => {
+                    settings.setLicense('free', null);
+                    feedbackService.success();
+                    Alert.alert('Logged Out', 'You have been logged out.');
+                  },
+                },
+              ]);
+            }}
+          >
+            <Text style={[styles.navRowLabel, { color: colors.stateError }]}>🚪 Log Out</Text>
+          </Pressable>
+        </SettingsSection>
+
         {/* Danger Zone */}
         <SettingsSection title="Danger Zone">
           <Pressable style={styles.dangerRow} onPress={handleDeleteAccount}>
@@ -417,6 +546,12 @@ export default function SettingsScreen() {
 
         <EnginePickerSheet visible={enginePickerVisible} onClose={() => setEnginePickerVisible(false)} />
         <LanguagePickerSheet visible={languagePickerVisible} onClose={() => setLanguagePickerVisible(false)} />
+        {targetLangPickerVisible && (
+          <LanguagePickerSheet
+            visible={targetLangPickerVisible}
+            onClose={() => setTargetLangPickerVisible(false)}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -506,4 +641,16 @@ const styles = StyleSheet.create({
   footer: { alignItems: 'center', paddingVertical: spacing.xl },
   footerText: { fontSize: 13, color: colors.textTertiary },
   footerVersion: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
+
+  // Translation prefs
+  qualityPresetRow: { flexDirection: 'row', gap: 6 },
+  qualityPresetBtn: {
+    paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8,
+    borderWidth: 1, borderColor: colors.borderLight,
+  },
+  qualityPresetText: { fontSize: 11, color: colors.textTertiary },
+
+  // Voice selection
+  voiceRowActive: { backgroundColor: 'rgba(163, 230, 53, 0.06)' },
+  voiceCheck: { fontSize: 16, color: colors.accent, fontWeight: '700' },
 });

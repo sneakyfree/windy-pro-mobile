@@ -24,11 +24,17 @@ interface SettingsStore {
 
     // Recording
     defaultLanguage: string;
+    defaultTargetLanguage: string;
     highQualityAudio: boolean;
     locationTagging: boolean;
+    audioQualityPreset: 'low' | 'medium' | 'high';
+    selectedVoice: string | null; // voice ID (system or cloned)
     setDefaultLanguage: (lang: string) => void;
+    setDefaultTargetLanguage: (lang: string) => void;
     setHighQualityAudio: (on: boolean) => void;
     setLocationTagging: (on: boolean) => void;
+    setAudioQualityPreset: (preset: 'low' | 'medium' | 'high') => void;
+    setSelectedVoice: (voice: string | null) => void;
 
     // UI
     hapticFeedback: boolean;
@@ -81,11 +87,17 @@ export const useSettingsStore = create<SettingsStore>()(
             setCloudFallbackEnabled: (on) => set({ cloudFallbackEnabled: on }),
 
             defaultLanguage: 'en',
+            defaultTargetLanguage: 'es',
             highQualityAudio: true,
             locationTagging: false,
+            audioQualityPreset: 'high',
+            selectedVoice: null,
             setDefaultLanguage: (lang) => set({ defaultLanguage: lang }),
+            setDefaultTargetLanguage: (lang) => set({ defaultTargetLanguage: lang }),
             setHighQualityAudio: (on) => set({ highQualityAudio: on }),
             setLocationTagging: (on) => set({ locationTagging: on }),
+            setAudioQualityPreset: (preset) => set({ audioQualityPreset: preset }),
+            setSelectedVoice: (voice) => set({ selectedVoice: voice }),
 
             hapticFeedback: true,
             audioFeedback: true,
