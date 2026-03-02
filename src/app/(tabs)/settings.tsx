@@ -10,6 +10,9 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import * as Linking from 'expo-linking';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import Constants from 'expo-constants';
 import { colors, spacing, borderRadius } from '@/theme';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { localStorageService } from '@/services/storage-local';
@@ -29,6 +32,8 @@ export default function SettingsScreen() {
   const [cloneReadiness, setCloneReadiness] = useState(0);
   const [enginePickerVisible, setEnginePickerVisible] = useState(false);
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
+  const [cacheSize, setCacheSize] = useState<number>(0);
+  const [clearingCache, setClearingCache] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -45,6 +50,15 @@ export default function SettingsScreen() {
     const progress = cloneTracker.getProgress();
     setCloneHours(progress.totalHours);
     setCloneReadiness(progress.cloneReadiness);
+
+    // Calculate cache size
+    try {
+      const cacheDir = FileSystem.cacheDirectory;
+      if (cacheDir) {
+        const info = await FileSystem.getInfoAsync(cacheDir);
+        setCacheSize((info as any).size || 0);
+      }
+    } catch { setCacheSize(0); }
   };
 
   const formatBytes = (bytes: number): string => {
@@ -60,6 +74,118 @@ export default function SettingsScreen() {
     await feedbackService.tap();
     router.push('/subscription');
   };
+
+  const handleClearCache = () => {
+    Alert.alert(
+      'Clear Cache',
+      `This will remove ${formatBytes(cacheSize)} of cached data. Your recordings and settings will not be affected.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            setClearingCache(true);
+            try {
+              const cacheDir = FileSystem.cacheDirectory;
+              if (cacheDir) {
+                const files = await FileSystem.readDirectoryAsync(cacheDir);
+                for (const file of files) {
+                  await FileSystem.deleteAsync(`${cacheDir}${file}`, { idempotent: true });
+                }
+              }
+              setCacheSize(0);
+              await feedbackService.success();
+              Alert.alert('Done', 'Cache cleared successfully.');
+            } catch {
+              Alert.alert('Error', 'Could not clear cache.');
+            } finally {
+              setClearingCache(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleExportAllData = async () => {
+    try {
+      const sessions = await localStorageService.getSessions();
+      const exportData = {
+        exported: new Date().toISOString(),
+        app: 'Windy Pro',
+        version: Constants.expoConfig?.version || '1.0.0',
+        sessions: sessions.map(s => ({
+          id: s.id,
+          createdAt: s.createdAt,
+          duration: s.duration,
+          previewText: s.previewText,
+          quality: s.quality,
+          source: s.source,
+          synced: s.synced,
+        })),
+      };
+      const json = JSON.stringify(exportData, null, 2);
+      const path = (FileSystem.cacheDirectory || '') + `windy-pro-export-${Date.now()}.json`;
+      await FileSystem.writeAsStringAsync(path, json);
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(path, {
+          mimeType: 'application/json',
+          dialogTitle: 'Export All Data',
+        });
+      }
+      await feedbackService.success();
+    } catch {
+      Alert.alert('Export Failed', 'Could not export data.');
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      '⚠️ Delete Account',
+      'This will permanently delete your account and all local data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'I Understand, Delete',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Final Confirmation',
+              'Are you absolutely sure? All recordings, settings, and clone data will be erased.',
+              [
+                { text: 'Keep Account', style: 'cancel' },
+                {
+                  text: 'Delete Everything',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      // Reset settings
+                      settings.setLicense('free', null);
+                      settings.setOnboardingComplete(false);
+                      settings.setCloneTrackingEnabled(false);
+                      // Clear local storage
+                      await localStorageService.initialize(); // re-init clears
+                      await feedbackService.success();
+                      Alert.alert('Account Deleted', 'Your data has been removed.');
+                    } catch {
+                      Alert.alert('Error', 'Could not complete account deletion.');
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const appVersion = Constants.expoConfig?.version || '1.0.0';
+  const buildNumber = Constants.expoConfig?.ios?.buildNumber || Constants.expoConfig?.android?.versionCode || '1';
+  const themeLabels: Record<string, string> = { dark: '🌙 Dark', light: '☀️ Light', system: '📱 System' };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -133,6 +259,30 @@ export default function SettingsScreen() {
         )}
       </SettingsSection>
 
+      {/* Notifications */}
+      <SettingsSection title="Notifications">
+        <SettingsToggle label="Recording complete" subtitle="When a transcription finishes" value={settings.notifyRecordingComplete} onToggle={settings.setNotifyRecordingComplete} />
+        <SettingsToggle label="Sync complete" subtitle="When cloud sync finishes" value={settings.notifySyncComplete} onToggle={settings.setNotifySyncComplete} />
+        <SettingsToggle label="Clone milestone" subtitle="When you hit clone training goals" value={settings.notifyCloneMilestone} onToggle={settings.setNotifyCloneMilestone} />
+      </SettingsSection>
+
+      {/* Appearance */}
+      <SettingsSection title="Appearance">
+        <View style={styles.themeRow}>
+          {(['dark', 'light', 'system'] as const).map((t) => (
+            <Pressable
+              key={t}
+              style={[styles.themeBtn, settings.theme === t && styles.themeBtnActive]}
+              onPress={() => settings.setTheme(t)}
+            >
+              <Text style={[styles.themeBtnText, settings.theme === t && styles.themeBtnTextActive]}>
+                {themeLabels[t]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </SettingsSection>
+
       {/* Storage */}
       <SettingsSection title="Storage">
         {storage ? (
@@ -145,6 +295,14 @@ export default function SettingsScreen() {
         ) : (
           <SettingsRow label="Calculating..." value="" />
         )}
+        <Pressable style={styles.storageAction} onPress={handleClearCache}>
+          <Text style={styles.storageActionText}>
+            {clearingCache ? '⏳ Clearing...' : `🗑 Clear Cache (${formatBytes(cacheSize)})`}
+          </Text>
+        </Pressable>
+        <Pressable style={styles.storageAction} onPress={handleExportAllData}>
+          <Text style={styles.storageActionText}>📦 Export All Data</Text>
+        </Pressable>
       </SettingsSection>
 
       {/* Clone */}
@@ -163,7 +321,8 @@ export default function SettingsScreen() {
           <Text style={styles.navRowLabel}>🌪️ About Windy Pro</Text>
           <Text style={styles.chevron}>›</Text>
         </Pressable>
-        <SettingsRow label="Version" value="1.0.0 (Build 1)" />
+        <SettingsRow label="Version" value={`${appVersion} (Build ${buildNumber})`} />
+        <SettingsRow label="SDK" value={`Expo SDK ${Constants.expoConfig?.sdkVersion || '52'}`} />
         <Pressable style={styles.navRow} onPress={() => router.push('/legal/privacy')}>
           <Text style={styles.navRowLabel}>Privacy Policy</Text>
           <Text style={styles.chevron}>›</Text>
@@ -174,8 +333,16 @@ export default function SettingsScreen() {
         </Pressable>
       </SettingsSection>
 
+      {/* Danger Zone */}
+      <SettingsSection title="Danger Zone">
+        <Pressable style={styles.dangerRow} onPress={handleDeleteAccount}>
+          <Text style={styles.dangerText}>🗑 Delete Account & Data</Text>
+        </Pressable>
+      </SettingsSection>
+
       <View style={styles.footer}>
         <Text style={styles.footerText}>Made with 🌪️ by Windy Pro</Text>
+        <Text style={styles.footerVersion}>v{appVersion} · {Platform.OS}</Text>
       </View>
 
       <EnginePickerSheet visible={enginePickerVisible} onClose={() => setEnginePickerVisible(false)} />
@@ -239,6 +406,29 @@ const styles = StyleSheet.create({
   navRowLabel: { fontSize: 15, color: colors.textPrimary },
   upgradeButton: { backgroundColor: colors.accent, margin: spacing.sm, paddingVertical: spacing.sm + 2, borderRadius: borderRadius.md, alignItems: 'center' },
   upgradeText: { fontSize: 15, fontWeight: '600', color: colors.background },
+
+  // Theme toggle
+  themeRow: { flexDirection: 'row', gap: spacing.xs, padding: spacing.sm },
+  themeBtn: {
+    flex: 1.0, paddingVertical: spacing.sm, alignItems: 'center',
+    borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.borderLight,
+  },
+  themeBtnActive: { borderColor: colors.accent, backgroundColor: 'rgba(163, 230, 53, 0.1)' },
+  themeBtnText: { fontSize: 13, color: colors.textTertiary },
+  themeBtnTextActive: { color: colors.accent, fontWeight: '600' },
+
+  // Storage actions
+  storageAction: {
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight,
+  },
+  storageActionText: { fontSize: 14, color: colors.accent, fontWeight: '500' },
+
+  // Danger zone
+  dangerRow: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, alignItems: 'center' },
+  dangerText: { fontSize: 15, fontWeight: '600', color: colors.stateError },
+
   footer: { alignItems: 'center', paddingVertical: spacing.xl },
   footerText: { fontSize: 13, color: colors.textTertiary },
+  footerVersion: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
 });

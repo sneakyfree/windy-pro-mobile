@@ -52,6 +52,18 @@ interface SettingsStore {
     licenseTier: LicenseTier;
     licenseKey: string | null;
     setLicense: (tier: LicenseTier, key: string | null) => void;
+
+    // Theme
+    theme: 'dark' | 'light' | 'system';
+    setTheme: (theme: 'dark' | 'light' | 'system') => void;
+
+    // Notifications
+    notifyRecordingComplete: boolean;
+    notifySyncComplete: boolean;
+    notifyCloneMilestone: boolean;
+    setNotifyRecordingComplete: (on: boolean) => void;
+    setNotifySyncComplete: (on: boolean) => void;
+    setNotifyCloneMilestone: (on: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -93,6 +105,16 @@ export const useSettingsStore = create<SettingsStore>()(
             licenseTier: 'free',
             licenseKey: null,
             setLicense: (tier, key) => set({ licenseTier: tier, licenseKey: key }),
+
+            theme: 'dark',
+            setTheme: (theme) => set({ theme }),
+
+            notifyRecordingComplete: true,
+            notifySyncComplete: true,
+            notifyCloneMilestone: true,
+            setNotifyRecordingComplete: (on) => set({ notifyRecordingComplete: on }),
+            setNotifySyncComplete: (on) => set({ notifySyncComplete: on }),
+            setNotifyCloneMilestone: (on) => set({ notifyCloneMilestone: on }),
         }),
         {
             name: 'windy-settings',
