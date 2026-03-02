@@ -140,13 +140,40 @@ export default function RootLayout() {
 
         // Route deep links: windypro://translate, windypro://clone, etc.
         const routeMap: Record<string, string> = {
-          'translate': '/translate',
           'clone': '/clone',
           'subscribe': '/subscription',
           'subscription': '/subscription',
           'video': '/video',
           'settings': '/(tabs)/settings',
         };
+
+        // Handle translate deep link specially — with params goes to quick-translate
+        if (parsed.path === 'translate') {
+          const { text, from, to } = parsed.queryParams || {};
+          if (text) {
+            // Has text param → route to quick-translate with params
+            const params = new URLSearchParams();
+            params.set('text', text as string);
+            if (from) params.set('from', from as string);
+            if (to) params.set('to', to as string);
+            setTimeout(() => {
+              try {
+                const { router } = require('expo-router');
+                router.push(`/quick-translate?${params.toString()}`);
+              } catch { /* layout not ready */ }
+            }, 500);
+          } else {
+            // No text param → full translate screen
+            setTimeout(() => {
+              try {
+                const { router } = require('expo-router');
+                router.push('/translate');
+              } catch { /* layout not ready */ }
+            }, 500);
+          }
+          return;
+        }
+
         const route = routeMap[parsed.path || ''];
         if (route) {
           setTimeout(() => {
@@ -249,6 +276,13 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="appstore/index"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="quick-translate"
               options={{
                 presentation: 'modal',
                 animation: 'slide_from_bottom',
