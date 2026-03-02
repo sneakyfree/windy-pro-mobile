@@ -6,35 +6,86 @@
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "scheme": "windypro",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./src/assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1a1a2e"
+      "backgroundColor": "#0f172a"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "uk.thewindstorm.windypro",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Windy Pro needs microphone access for real-time speech translation",
-        "NSSpeechRecognitionUsageDescription": "Windy Pro uses speech recognition for translation",
-        "NSCameraUsageDescription": "Windy Pro uses the camera for OCR translation of text in images"
-      }
+        "NSMicrophoneUsageDescription": "Windy Pro uses your microphone to convert speech to text. Audio is processed on your device and never sent to our servers.",
+        "NSSpeechRecognitionUsageDescription": "Windy Pro uses speech recognition to convert your voice to text.",
+        "NSCameraUsageDescription": "Windy Pro uses your camera for OCR translation and optional video recording.",
+        "NSLocationWhenInUseUsageDescription": "Windy Pro tags recordings with location for easy searching. Location data stays on your device.",
+        "UIBackgroundModes": [
+          "audio",
+          "fetch",
+          "audio",
+          "fetch"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "backgroundColor": "#0f172a"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/adaptive-icon.png",
-        "backgroundColor": "#1a1a2e"
+        "backgroundColor": "#0f172a"
       },
       "package": "uk.thewindstorm.windypro",
       "permissions": [
         "RECORD_AUDIO",
-        "CAMERA"
-      ]
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "SYSTEM_ALERT_WINDOW",
+        "FOREGROUND_SERVICE",
+        "POST_NOTIFICATIONS",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "backgroundColor": "#0f172a"
     },
     "plugins": [
-      "expo-router"
-    ]
+      "expo-router",
+      "expo-font",
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Windy Pro uses your camera for OCR translation and optional video recording."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Windy Pro tags recordings with location for easy searching."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Windy Pro needs microphone access to convert your speech to text."
+        }
+      ],
+      "expo-asset"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "4fe09157-9616-4fce-9dcb-5d8b7c2297bf"
+      }
+    },
+    "owner": "windypro"
   }
 }

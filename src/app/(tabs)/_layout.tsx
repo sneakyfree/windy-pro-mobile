@@ -1,26 +1,79 @@
+/**
+ * 🧬 M1.2.1 — Tab Bar Configuration
+ * 3 tabs: Record (home), History, Settings
+ * Dark theme, lime green active tint, comfortable tap targets
+ */
 import { Tabs } from 'expo-router';
+import { Platform, StyleSheet } from 'react-native';
+import { colors } from '@/theme';
+
+// Simple text-based icons (will be replaced with proper icons later)
+function TabIcon({ name, focused }: { name: string; focused: boolean }) {
+  const icons: Record<string, string> = {
+    index: '🎤',
+    history: '📋',
+    settings: '⚙️',
+  };
+  return null; // Icons handled by tabBarIcon option text
+}
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#4f46e5',
-        tabBarStyle: { backgroundColor: '#1a1a2e' },
-        headerStyle: { backgroundColor: '#1a1a2e' },
-        headerTintColor: '#fff',
+        // Tab bar appearance
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          height: Platform.OS === 'ios' ? 88 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
+        },
+
+        // Header appearance
+        headerStyle: {
+          backgroundColor: colors.background,
+          shadowColor: 'transparent',
+          elevation: 0,
+        },
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: {
+          fontWeight: '600',
+          fontSize: 18,
+        },
       }}
     >
       <Tabs.Screen
-        name="translate"
-        options={{ title: 'Translate', tabBarIcon: () => null }}
+        name="index"
+        options={{
+          title: 'Record',
+          headerShown: false,
+          tabBarIcon: ({ focused }) => null,
+          tabBarLabel: '🎤 Record',
+        }}
       />
       <Tabs.Screen
         name="history"
-        options={{ title: 'History', tabBarIcon: () => null }}
+        options={{
+          title: 'History',
+          tabBarIcon: ({ focused }) => null,
+          tabBarLabel: '📋 History',
+        }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: 'Settings', tabBarIcon: () => null }}
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ focused }) => null,
+          tabBarLabel: '⚙️ Settings',
+        }}
       />
     </Tabs>
   );
