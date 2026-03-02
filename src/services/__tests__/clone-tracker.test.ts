@@ -80,21 +80,21 @@ describe('CloneTracker', () => {
             const tracker = CloneTrackerModule.cloneTracker;
             tracker.addSession(3600, { score: 70, label: 'good', snrDb: 25, speechRatio: 0.7, hasClipping: false, sampleRate: 44100 });
             const progress = tracker.getProgress();
-            expect(progress.totalHours).toBeCloseTo(0.8);
+            expect(progress.weightedHours).toBeCloseTo(0.8);
         });
 
         it('should count fair quality at 50%', () => {
             const tracker = CloneTrackerModule.cloneTracker;
             tracker.addSession(3600, { score: 50, label: 'fair', snrDb: 15, speechRatio: 0.5, hasClipping: false, sampleRate: 16000 });
             const progress = tracker.getProgress();
-            expect(progress.totalHours).toBeCloseTo(0.5);
+            expect(progress.weightedHours).toBeCloseTo(0.5);
         });
 
         it('should count poor quality at 0% (does not contribute)', () => {
             const tracker = CloneTrackerModule.cloneTracker;
             tracker.addSession(3600, { score: 20, label: 'poor', snrDb: 5, speechRatio: 0.1, hasClipping: true, sampleRate: 8000 });
             const progress = tracker.getProgress();
-            expect(progress.totalHours).toBe(0);
+            expect(progress.weightedHours).toBe(0);
         });
 
         it('should accumulate hours from multiple sessions', () => {
@@ -103,7 +103,7 @@ describe('CloneTracker', () => {
             tracker.addSession(3600, { score: 90, label: 'excellent', snrDb: 30, speechRatio: 0.8, hasClipping: false, sampleRate: 44100 });
             tracker.addSession(3600, { score: 70, label: 'good', snrDb: 25, speechRatio: 0.7, hasClipping: false, sampleRate: 44100 });
             const progress = tracker.getProgress();
-            expect(progress.totalHours).toBeCloseTo(1.8);
+            expect(progress.weightedHours).toBeCloseTo(1.8);
         });
     });
 
