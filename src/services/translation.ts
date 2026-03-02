@@ -32,6 +32,9 @@ export interface ConversationTurn {
     timestamp: number;
     startTime?: number;  // seconds from start (for SRT)
     endTime?: number;
+    confidence?: number; // translation quality 0-1
+    detectedLang?: string; // auto-detected source language
+    favorite?: boolean; // pinned/favorited by user
 }
 
 /** Supported language with display info */

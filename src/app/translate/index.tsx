@@ -1,7 +1,7 @@
 /**
- * 🧬 M6 — Windy Translate Conversation Mode
+ * 🧬 M6 — Windy Translate Conversation Mode (Enhanced)
  * Three modes: Manual, Auto, Split-Screen
- * Features: TTS playback, language picker, conversation export
+ * Features: TTS, language picker, export, history, favorites, confidence
  */
 import {
     View, Text, StyleSheet, Pressable, ScrollView, Platform,
@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, borderRadius } from '@/theme';
 import {
     translationService, TIER_1_LANGUAGES,
@@ -21,6 +23,8 @@ import { useFeatureGate } from '@/hooks/useFeatureGate';
 import type { TranscriptSegment } from '@/types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+const HISTORY_KEY = 'windy-translate-history';
+const MAX_HISTORY = 50;
 
 export default function TranslateScreen() {
     const router = useRouter();
@@ -38,15 +42,64 @@ export default function TranslateScreen() {
     const [showLangPicker, setShowLangPicker] = useState<'source' | 'target' | null>(null);
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [showModeMenu, setShowModeMenu] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
+    const [history, setHistory] = useState<ConversationTurn[]>([]);
+    const [copyToast, setCopyToast] = useState(false);
+    const [detectedLangInfo, setDetectedLangInfo] = useState<{ lang: string; confidence: number } | null>(null);
     const scrollRefA = useRef<ScrollView>(null);
     const scrollRefB = useRef<ScrollView>(null);
     const conversationStartTime = useRef(Date.now());
+    const toastAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         if (!requireFeature('translate', 'Windy Translate')) {
             router.back();
         }
+        loadHistory();
     }, []);
+
+    const loadHistory = async () => {
+        try {
+            const raw = await AsyncStorage.getItem(HISTORY_KEY);
+            if (raw) setHistory(JSON.parse(raw));
+        } catch { /* ignore */ }
+    };
+
+    const saveToHistory = async (turn: ConversationTurn) => {
+        try {
+            const newHistory = [turn, ...history].slice(0, MAX_HISTORY);
+            setHistory(newHistory);
+            await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
+        } catch { /* ignore */ }
+    };
+
+    // Copy turn text to clipboard with toast
+    const handleCopyTurn = async (turn: ConversationTurn) => {
+        const text = `${turn.original}\n→ ${turn.translated}`;
+        await Clipboard.setStringAsync(text);
+        feedbackService.tap();
+        setCopyToast(true);
+        Animated.sequence([
+            Animated.timing(toastAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+            Animated.delay(1500),
+            Animated.timing(toastAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        ]).start(() => setCopyToast(false));
+    };
+
+    // Toggle favorite/pin on a turn
+    const handleToggleFavorite = (turnId: string) => {
+        setTurns(prev => prev.map(t =>
+            t.id === turnId ? { ...t, favorite: !t.favorite } : t
+        ));
+        feedbackService.tap();
+    };
+
+    // Confidence color mapping
+    const getConfidenceColor = (c: number): string => {
+        if (c >= 0.85) return 'rgba(34, 197, 94, 0.3)';
+        if (c >= 0.6) return 'rgba(234, 179, 8, 0.3)';
+        return 'rgba(239, 68, 68, 0.3)';
+    };
 
     // Helpers
     const getFlag = (code: string) => translationService.getFlag(code);
@@ -95,6 +148,12 @@ export default function TranslateScreen() {
                     transcribedText, fromLang, toLang,
                 );
 
+                // Auto-detect indicator
+                if (mode === 'auto') {
+                    const detection = await translationService.detectLanguage(transcribedText);
+                    setDetectedLangInfo({ lang: detection.language, confidence: detection.confidence });
+                }
+
                 const elapsed = (Date.now() - conversationStartTime.current) / 1000;
                 const turn: ConversationTurn = {
                     id: `turn-${Date.now()}`,
@@ -106,8 +165,12 @@ export default function TranslateScreen() {
                     timestamp: Date.now(),
                     startTime: elapsed,
                     endTime: elapsed + 5,
+                    confidence: translation.confidence,
+                    detectedLang: mode === 'auto' ? (await translationService.detectLanguage(transcribedText)).language : undefined,
+                    favorite: false,
                 };
                 setTurns((prev) => [...prev, turn]);
+                saveToHistory(turn);
 
                 // TTS: speak the translation aloud
                 if (ttsEnabled) {
@@ -312,15 +375,36 @@ export default function TranslateScreen() {
                             style={[
                                 styles.bubble,
                                 turn.speaker === 'A' ? styles.bubbleLeft : styles.bubbleRight,
+                                turn.favorite && styles.bubbleFavorite,
                             ]}
                             onPress={() => {
-                                // Tap bubble to replay TTS
                                 translationService.speak(turn.translated, turn.toLang);
                             }}
+                            onLongPress={() => handleCopyTurn(turn)}
                         >
-                            <Text style={styles.bubbleSpeaker}>
-                                {getFlag(turn.fromLang)} Speaker {turn.speaker}
-                            </Text>
+                            <View style={styles.bubbleTopRow}>
+                                <Text style={styles.bubbleSpeaker}>
+                                    {getFlag(turn.fromLang)} Speaker {turn.speaker}
+                                </Text>
+                                <View style={styles.bubbleActions}>
+                                    {turn.confidence !== undefined && (
+                                        <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(turn.confidence) }]}>
+                                            <Text style={styles.confidenceText}>{Math.round(turn.confidence * 100)}%</Text>
+                                        </View>
+                                    )}
+                                    <Pressable onPress={() => handleToggleFavorite(turn.id)} hitSlop={8}>
+                                        <Text style={styles.favoriteBtn}>{turn.favorite ? '⭐' : '☆'}</Text>
+                                    </Pressable>
+                                    <Pressable onPress={() => handleCopyTurn(turn)} hitSlop={8}>
+                                        <Text style={styles.copyBtn}>📋</Text>
+                                    </Pressable>
+                                </View>
+                            </View>
+                            {turn.detectedLang && (
+                                <Text style={styles.detectedLangHint}>
+                                    🔍 Detected: {getName(turn.detectedLang)}
+                                </Text>
+                            )}
                             <Text style={styles.bubbleOriginal}>{turn.original}</Text>
                             <View style={styles.bubbleDivider} />
                             <View style={styles.bubbleTransRow}>
@@ -359,9 +443,16 @@ export default function TranslateScreen() {
                 )}
 
                 {mode === 'auto' && (
-                    <Text style={styles.autoHint}>
-                        🤖 Language auto-detected — just speak naturally
-                    </Text>
+                    <View style={styles.autoDetectRow}>
+                        <Text style={styles.autoHint}>
+                            🤖 Language auto-detected — just speak naturally
+                        </Text>
+                        {detectedLangInfo && (
+                            <Text style={styles.detectedLangBadge}>
+                                {getFlag(detectedLangInfo.lang)} {getName(detectedLangInfo.lang)} ({Math.round(detectedLangInfo.confidence * 100)}%)
+                            </Text>
+                        )}
+                    </View>
                 )}
 
                 {/* Record + TTS Toggle */}
@@ -595,6 +686,14 @@ const styles = StyleSheet.create({
     bubbleTransRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     bubbleTranslated: { fontSize: 15, color: colors.accent, lineHeight: 22, flex: 1 },
     bubbleTtsHint: { fontSize: 14, color: colors.textTertiary, marginLeft: 8 },
+    bubbleFavorite: { borderWidth: 1, borderColor: 'rgba(234, 179, 8, 0.4)' },
+    bubbleTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+    bubbleActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    confidenceBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+    confidenceText: { fontSize: 10, fontWeight: '700', color: colors.textPrimary },
+    favoriteBtn: { fontSize: 16 },
+    copyBtn: { fontSize: 14 },
+    detectedLangHint: { fontSize: 11, color: colors.textTertiary, marginBottom: 4, fontStyle: 'italic' },
 
     // Controls
     controls: { paddingHorizontal: spacing.screenPadding, paddingBottom: Platform.OS === 'ios' ? 34 : 16 },
@@ -602,7 +701,9 @@ const styles = StyleSheet.create({
     speakerBtn: { flex: 1, paddingVertical: spacing.sm, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
     speakerActive: { borderColor: colors.accent, backgroundColor: colors.accentTransparent },
     speakerText: { fontSize: 14, color: colors.textPrimary },
-    autoHint: { fontSize: 13, color: colors.textTertiary, textAlign: 'center', marginBottom: 10 },
+    autoDetectRow: { alignItems: 'center', marginBottom: 10 },
+    autoHint: { fontSize: 13, color: colors.textTertiary, textAlign: 'center' },
+    detectedLangBadge: { fontSize: 12, color: colors.accent, fontWeight: '600', marginTop: 2 },
     recordRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
     ttsBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.borderLight },
     ttsBtnActive: { borderColor: colors.accent },
