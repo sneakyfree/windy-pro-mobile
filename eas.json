@@ -1,6 +1,7 @@
 {
     "cli": {
-        "version": ">= 13.0.0"
+        "version": ">= 13.0.0",
+        "appVersionSource": "local"
     },
     "build": {
         "development": {
@@ -9,12 +10,20 @@
         },
         "preview": {
             "distribution": "internal",
+            "android": {
+                "buildType": "apk",
+                "gradleCommand": ":app:assembleRelease"
+            },
             "ios": {
                 "simulator": true
             }
         },
         "production": {
-            "autoIncrement": true
+            "autoIncrement": true,
+            "android": {
+                "buildType": "app-bundle",
+                "gradleCommand": ":app:bundleRelease"
+            }
         }
     },
     "submit": {

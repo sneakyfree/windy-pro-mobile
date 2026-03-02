@@ -2,7 +2,7 @@
   "expo": {
     "name": "Windy Pro",
     "slug": "windy-pro-mobile",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "scheme": "windypro",
@@ -37,20 +37,15 @@
         "backgroundColor": "#0f172a"
       },
       "package": "uk.thewindstorm.windypro",
+      "versionCode": 2,
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",
-        "ACCESS_FINE_LOCATION",
-        "SYSTEM_ALERT_WINDOW",
-        "FOREGROUND_SERVICE",
-        "POST_NOTIFICATIONS",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "POST_NOTIFICATIONS"
       ],
-      "backgroundColor": "#0f172a"
+      "backgroundColor": "#0f172a",
+      "navigationBarColor": "#0f172a",
+      "navigationBarStyle": "light-content"
     },
     "plugins": [
       "expo-router",
@@ -75,7 +70,16 @@
         }
       ],
       "expo-asset",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/icon.png",
+          "color": "#a3e635",
+          "defaultChannel": "translation"
+        }
+      ],
+      "expo-navigation-bar"
     ],
     "extra": {
       "router": {

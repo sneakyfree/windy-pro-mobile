@@ -8,14 +8,17 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, Platform, BackHandler } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
+import * as NavigationBar from 'expo-navigation-bar';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { colors } from '@/theme';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { localStorageService } from '@/services/storage-local';
 import { licenseService } from '@/services/license';
+import { pushNotificationService } from '@/services/push-notifications';
+import { offlinePackService } from '@/services/offline-packs';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkBanner } from '@/components/NetworkBanner';
 
@@ -51,6 +54,16 @@ export default function RootLayout() {
         // Initialize local database
         await localStorageService.initialize();
         console.log('[App] Storage initialized successfully');
+        // Initialize push notifications
+        pushNotificationService.initialize().catch(() => { });
+        // Initialize offline language packs
+        offlinePackService.initialize().catch(() => { });
+
+        // Android-specific: theme navigation bar
+        if (Platform.OS === 'android') {
+          NavigationBar.setBackgroundColorAsync(colors.background).catch(() => { });
+          NavigationBar.setButtonStyleAsync('light').catch(() => { });
+        }
       } catch (e) {
         console.warn('[App] Storage initialization error:', e);
       } finally {
@@ -76,6 +89,16 @@ export default function RootLayout() {
     }, 5000);
     return () => clearTimeout(timeout);
   }, [splashDismissed, appReady]);
+
+  // Android back button handler — confirm exit on root screen
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Let the router handle back first; only intercept at root
+      return false;
+    });
+    return () => handler.remove();
+  }, []);
 
   // RP-5.2: Deep link handler (windypro:// scheme)
   useEffect(() => {
@@ -166,7 +189,7 @@ export default function RootLayout() {
 
   return (
     <View style={styles.container} onLayout={onLayoutReady}>
-      <StatusBar style="light" />
+      <StatusBar style="light" translucent backgroundColor="transparent" />
       <ErrorBoundary>
         <NetworkBanner />
         <Stack

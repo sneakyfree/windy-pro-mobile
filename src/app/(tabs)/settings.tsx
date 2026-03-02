@@ -19,6 +19,7 @@ import { localStorageService } from '@/services/storage-local';
 import { cloneTracker } from '@/services/clone-tracker';
 import { licenseService } from '@/services/license';
 import { feedbackService } from '@/services/feedback';
+import { offlinePackService, type LanguagePack } from '@/services/offline-packs';
 import EnginePickerSheet from '@/components/EnginePickerSheet';
 import LanguagePickerSheet from '@/components/LanguagePickerSheet';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
@@ -34,6 +35,7 @@ export default function SettingsScreen() {
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [cacheSize, setCacheSize] = useState<number>(0);
   const [clearingCache, setClearingCache] = useState(false);
+  const [packs, setPacks] = useState<LanguagePack[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -59,6 +61,12 @@ export default function SettingsScreen() {
         setCacheSize((info as any).size || 0);
       }
     } catch { setCacheSize(0); }
+
+    // Load offline packs
+    try {
+      await offlinePackService.initialize();
+      setPacks(offlinePackService.getPacks());
+    } catch { /* ignore */ }
   };
 
   const formatBytes = (bytes: number): string => {
@@ -305,6 +313,66 @@ export default function SettingsScreen() {
         </Pressable>
       </SettingsSection>
 
+      {/* Downloaded Languages */}
+      <SettingsSection title="Downloaded Languages">
+        <SettingsRow
+          label="Total storage"
+          value={formatBytes(offlinePackService.getTotalStorageUsed())}
+          valueColor={colors.accent}
+        />
+        {packs.map((pack) => (
+          <View key={pack.code} style={styles.row}>
+            <View style={styles.rowLabelContainer}>
+              <Text style={styles.rowLabel}>{pack.flag} {pack.name}</Text>
+              <Text style={styles.rowSubtitle}>
+                {pack.status === 'downloaded'
+                  ? formatBytes(pack.downloadedBytes)
+                  : pack.status === 'downloading'
+                    ? `${Math.round(pack.progress * 100)}%`
+                    : formatBytes(pack.sizeBytes)}
+              </Text>
+              {pack.status === 'downloading' && (
+                <View style={styles.packProgress}>
+                  <View style={[styles.packProgressFill, { width: `${pack.progress * 100}%` }]} />
+                </View>
+              )}
+            </View>
+            {pack.status === 'available' && (
+              <Pressable onPress={async () => {
+                await offlinePackService.downloadPack(pack.code);
+                setPacks(offlinePackService.getPacks());
+              }}>
+                <Text style={styles.storageActionText}>⬇️</Text>
+              </Pressable>
+            )}
+            {pack.status === 'downloaded' && (
+              <Pressable onPress={async () => {
+                await offlinePackService.deletePack(pack.code);
+                setPacks(offlinePackService.getPacks());
+              }}>
+                <Text style={[styles.storageActionText, { color: colors.stateError }]}>🗑</Text>
+              </Pressable>
+            )}
+            {pack.status === 'downloading' && (
+              <Pressable onPress={async () => {
+                await offlinePackService.cancelDownload(pack.code);
+                setPacks(offlinePackService.getPacks());
+              }}>
+                <Text style={styles.storageActionText}>✕</Text>
+              </Pressable>
+            )}
+            {pack.status === 'error' && (
+              <Pressable onPress={async () => {
+                await offlinePackService.downloadPack(pack.code);
+                setPacks(offlinePackService.getPacks());
+              }}>
+                <Text style={styles.storageActionText}>🔄</Text>
+              </Pressable>
+            )}
+          </View>
+        ))}
+      </SettingsSection>
+
       {/* Clone */}
       <SettingsSection title="Voice Clone">
         <SettingsToggle label="Track clone progress" subtitle="Silently accumulate voice data" value={settings.cloneTrackingEnabled} onToggle={settings.setCloneTrackingEnabled} />
@@ -423,6 +491,10 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight,
   },
   storageActionText: { fontSize: 14, color: colors.accent, fontWeight: '500' },
+
+  // Language pack progress
+  packProgress: { height: 3, backgroundColor: colors.surfaceLight, borderRadius: 2, marginTop: 4, overflow: 'hidden' },
+  packProgressFill: { height: '100%', backgroundColor: colors.accent, borderRadius: 2 },
 
   // Danger zone
   dangerRow: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, alignItems: 'center' },
