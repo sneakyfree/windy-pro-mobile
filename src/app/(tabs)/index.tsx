@@ -557,6 +557,10 @@ export default function RecordScreen() {
                         state === 'processing' && styles.recordButtonProcessing,
                     ]}
                     onPress={handleRecordPress}
+                    accessibilityLabel={state === 'recording' ? 'Stop recording' : state === 'processing' ? 'Processing audio' : 'Start recording'}
+                    accessibilityRole="button"
+                    accessibilityHint="Double tap to start or stop recording your voice"
+                    accessibilityState={{ busy: state === 'processing' }}
                 >
                     {state === 'recording' ? (
                         <View style={styles.stopSquare} />
@@ -605,7 +609,10 @@ export default function RecordScreen() {
             {/* Playback Progress Bar */}
             {playbackUri && state === 'idle' && (
                 <View style={styles.playbackContainer}>
-                    <Pressable style={styles.playPauseBtn} onPress={handlePlayPause}>
+                    <Pressable style={styles.playPauseBtn} onPress={handlePlayPause}
+                        accessibilityLabel={isPlaying ? 'Pause playback' : 'Play recording'}
+                        accessibilityRole="button"
+                    >
                         <Text style={styles.playPauseEmoji}>
                             {isPlaying ? '⏸️' : '▶️'}
                         </Text>
@@ -657,15 +664,23 @@ export default function RecordScreen() {
             {/* Action Buttons (visible when transcript exists) */}
             {fullText.length > 0 && state === 'idle' && (
                 <View style={styles.actionRow}>
-                    <Pressable style={styles.actionButton} onPress={handleCopy}>
+                    <Pressable style={styles.actionButton} onPress={handleCopy}
+                        accessibilityLabel="Copy transcript to clipboard"
+                        accessibilityRole="button"
+                    >
                         <Text style={styles.actionButtonText}>📋 Copy</Text>
                     </Pressable>
-                    <Pressable style={styles.actionButton} onPress={handleShare}>
+                    <Pressable style={styles.actionButton} onPress={handleShare}
+                        accessibilityLabel="Share transcript"
+                        accessibilityRole="button"
+                    >
                         <Text style={styles.actionButtonText}>📤 Share</Text>
                     </Pressable>
                     <Pressable
                         style={[styles.actionButton, styles.actionButtonPrimary]}
                         onPress={handleSave}
+                        accessibilityLabel="Save recording to history"
+                        accessibilityRole="button"
                     >
                         <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
                             📌 Save
