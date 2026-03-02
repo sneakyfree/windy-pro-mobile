@@ -24,6 +24,7 @@ import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { useHaptic } from '@/hooks/useHaptic';
 import { SpeechWaveform } from '@/components/SpeechWaveform';
 import { SpeechTranslationError, SPEECH_ERROR_MESSAGES } from '@/services/speech-translation';
+import { networkMonitor, type NetworkStatus } from '@/services/network-monitor';
 import type { TranscriptSegment } from '@/types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -52,6 +53,8 @@ export default function TranslateScreen() {
     const [copyToast, setCopyToast] = useState(false);
     const [detectedLangInfo, setDetectedLangInfo] = useState<{ lang: string; confidence: number } | null>(null);
     const [audioLevel, setAudioLevel] = useState(0);
+    const [networkStatus, setNetworkStatus] = useState<NetworkStatus>('online');
+    const [queueSize, setQueueSize] = useState(0);
     const scrollRefA = useRef<ScrollView>(null);
     const scrollRefB = useRef<ScrollView>(null);
     const conversationStartTime = useRef(Date.now());
@@ -63,6 +66,18 @@ export default function TranslateScreen() {
             router.back();
         }
         loadHistory();
+
+        // Start network monitoring
+        networkMonitor.start();
+        const unsubStatus = networkMonitor.onStatusChange((status) => {
+            setNetworkStatus(status);
+            setQueueSize(networkMonitor.getQueueSize());
+        });
+
+        return () => {
+            unsubStatus();
+            networkMonitor.stop();
+        };
     }, []);
 
     const loadHistory = async () => {
@@ -244,10 +259,19 @@ export default function TranslateScreen() {
         } catch (err) {
             console.error('[Translate] Speech translation error:', err);
             haptic.error();
-            const message = err instanceof SpeechTranslationError
-                ? SPEECH_ERROR_MESSAGES[err.type]
-                : 'Could not translate speech. Check your connection.';
-            Alert.alert('Translation Error', message);
+
+            // If network error, queue for later
+            if (err instanceof SpeechTranslationError && err.type === 'network') {
+                // Note: audio file was already cleaned up, so we can't queue it.
+                // Show the offline message.
+                Alert.alert('Offline', SPEECH_ERROR_MESSAGES.network);
+                setQueueSize(networkMonitor.getQueueSize());
+            } else {
+                const message = err instanceof SpeechTranslationError
+                    ? SPEECH_ERROR_MESSAGES[err.type]
+                    : 'Could not translate speech. Check your connection.';
+                Alert.alert('Translation Error', message);
+            }
         } finally {
             setProcessing(false);
         }
@@ -353,6 +377,16 @@ export default function TranslateScreen() {
                     <Text style={styles.backText}>← Back</Text>
                 </Pressable>
                 <Text style={styles.title}>Windy Translate</Text>
+                {networkStatus === 'offline' && (
+                    <View style={styles.offlineBadge}>
+                        <Text style={styles.offlineBadgeText}>📡 Offline</Text>
+                    </View>
+                )}
+                {queueSize > 0 && (
+                    <View style={styles.queueBadge}>
+                        <Text style={styles.queueBadgeText}>⏳ {queueSize}</Text>
+                    </View>
+                )}
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                     <Pressable style={styles.iconBtn} onPress={() => router.push('/ocr')}>
                         <Text style={styles.iconBtnText}>📷</Text>
@@ -767,6 +801,10 @@ const styles = StyleSheet.create({
     title: { fontSize: 20, fontWeight: '600', color: colors.textPrimary, flex: 1 },
     iconBtn: { padding: spacing.xs },
     iconBtnText: { fontSize: 18 },
+    offlineBadge: { backgroundColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+    offlineBadgeText: { fontSize: 11, fontWeight: '700', color: '#ef4444' },
+    queueBadge: { backgroundColor: 'rgba(234, 179, 8, 0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+    queueBadgeText: { fontSize: 11, fontWeight: '700', color: '#eab308' },
 
     // Mode chips
     modeRow: { flexDirection: 'row', paddingHorizontal: spacing.screenPadding, gap: 8, marginBottom: 12 },
