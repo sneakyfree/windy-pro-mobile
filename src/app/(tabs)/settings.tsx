@@ -55,11 +55,10 @@ export default function SettingsScreen() {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   };
 
-  // RP-5.1: Upgrade button handler
+  // RP-5.1: Upgrade button → navigate to subscription paywall
   const handleUpgrade = async () => {
     await feedbackService.tap();
-    const url = await licenseService.getPurchaseUrl('device-todo');
-    await Linking.openURL(url);
+    router.push('/subscription');
   };
 
   return (

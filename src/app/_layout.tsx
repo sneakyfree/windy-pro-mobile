@@ -131,6 +131,13 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="subscription/index"
+            options={{
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+            }}
+          />
+          <Stack.Screen
             name="legal/privacy"
             options={{ headerShown: true, headerTitle: 'Privacy Policy' }}
           />
