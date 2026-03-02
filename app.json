@@ -74,7 +74,8 @@
           "microphonePermission": "Windy Pro needs microphone access to convert your speech to text."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-secure-store"
     ],
     "extra": {
       "router": {
