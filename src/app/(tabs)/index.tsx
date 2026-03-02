@@ -7,10 +7,12 @@
  * RP-1.3: Copy/Share/Save buttons functional
  * RP-1.4: Haptic feedback on all interactions
  * RP-2.3: Transcription → TranscriptStore pipeline
+ * RP-3.1: Rolling waveform, playback bar, file size
  */
-import { View, Text, StyleSheet, Pressable, ScrollView, Platform, Share, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Platform, Share, Alert, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import { CameraView } from 'expo-camera';
 import { colors, spacing, borderRadius } from '@/theme';
@@ -24,6 +26,8 @@ import { localStorageService } from '@/services/storage-local';
 import { videoCaptureService } from '@/services/video-capture';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
 import type { Session } from '@/types';
+
+const WAVEFORM_BARS = 40;
 
 export default function RecordScreen() {
     const {
@@ -50,6 +54,26 @@ export default function RecordScreen() {
     const peakLevelRef = useRef<number>(0);
     const levelSamples = useRef<number>(0);
 
+    // Rolling waveform ring buffer
+    const waveformLevels = useRef<number[]>(new Array(WAVEFORM_BARS).fill(0));
+    const waveformIndex = useRef<number>(0);
+    const [waveformSnapshot, setWaveformSnapshot] = useState<number[]>(new Array(WAVEFORM_BARS).fill(0));
+
+    // Pulsing recording dot
+    const pulseAnim = useRef(new Animated.Value(0.4)).current;
+    const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
+
+    // Playback state
+    const [playbackSound, setPlaybackSound] = useState<Audio.Sound | null>(null);
+    const [playbackUri, setPlaybackUri] = useState<string | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [playbackPosition, setPlaybackPosition] = useState(0);
+    const [playbackDuration, setPlaybackDuration] = useState(0);
+    const playbackBarWidth = useRef(0);
+
+    // File size tracking
+    const [recordingFileSize, setRecordingFileSize] = useState(0);
+
     // Recording limits by tier (from hook)
     const maxDuration = getRecordingLimit();
 
@@ -59,6 +83,43 @@ export default function RecordScreen() {
         const secs = Math.floor(seconds % 60);
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
+
+    // Format file size
+    const formatFileSize = (bytes: number): string => {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / 1048576).toFixed(1)} MB`;
+    };
+
+    // Estimate file size from duration (WAV: sampleRate × channels × bytesPerSample)
+    const estimateFileSize = (secs: number): number => {
+        return Math.round(secs * 44100 * 1 * 2); // 16-bit mono WAV
+    };
+
+    // Start pulsing animation
+    useEffect(() => {
+        if (state === 'recording') {
+            pulseLoop.current = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 600,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 0.4,
+                        duration: 600,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            pulseLoop.current.start();
+        } else {
+            pulseLoop.current?.stop();
+            pulseAnim.setValue(0.4);
+        }
+        return () => { pulseLoop.current?.stop(); };
+    }, [state]);
 
     /**
      * RP-1.1: REAL recording — wired to AudioCaptureService
@@ -72,18 +133,44 @@ export default function RecordScreen() {
                 // Haptic feedback
                 await feedbackService.recordStart();
 
+                // Reset waveform
+                waveformLevels.current = new Array(WAVEFORM_BARS).fill(0);
+                waveformIndex.current = 0;
+                setWaveformSnapshot(new Array(WAVEFORM_BARS).fill(0));
+                setRecordingFileSize(0);
+
+                // Cleanup any previous playback
+                if (playbackSound) {
+                    await playbackSound.unloadAsync();
+                    setPlaybackSound(null);
+                }
+                setPlaybackUri(null);
+                setPlaybackPosition(0);
+                setPlaybackDuration(0);
+                setIsPlaying(false);
+
                 // Wire metering callback for real audio levels
                 avgLevelRef.current = 0;
                 peakLevelRef.current = 0;
                 levelSamples.current = 0;
                 audioCaptureService.onMeterUpdate = (level: number) => {
                     setAudioLevel(level);
+
                     // Track for quality scoring
                     levelSamples.current += 1;
                     avgLevelRef.current =
                         (avgLevelRef.current * (levelSamples.current - 1) + level) /
                         levelSamples.current;
                     if (level > peakLevelRef.current) peakLevelRef.current = level;
+
+                    // Push into ring buffer
+                    waveformLevels.current[waveformIndex.current % WAVEFORM_BARS] = level;
+                    waveformIndex.current += 1;
+
+                    // Snapshot every 3rd sample for rendering
+                    if (waveformIndex.current % 3 === 0) {
+                        setWaveformSnapshot([...waveformLevels.current]);
+                    }
                 };
 
                 // Start real recording
@@ -107,6 +194,7 @@ export default function RecordScreen() {
                 durationInterval.current = setInterval(() => {
                     const elapsed = (Date.now() - startTime) / 1000;
                     setDuration(elapsed);
+                    setRecordingFileSize(estimateFileSize(elapsed));
 
                     // Auto-stop at tier limit
                     if (elapsed >= maxDuration) {
@@ -125,7 +213,7 @@ export default function RecordScreen() {
         } else if (state === 'recording') {
             await handleStopRecording();
         }
-    }, [state, setRecordingStarted, setRecordingStopped, reset, setDuration, setAudioLevel, clearTranscript, maxDuration]);
+    }, [state, setRecordingStarted, setRecordingStopped, reset, setDuration, setAudioLevel, clearTranscript, maxDuration, playbackSound]);
 
     /**
      * Stop recording, transcribe, score quality
@@ -146,6 +234,10 @@ export default function RecordScreen() {
         try {
             // Stop real recording
             const result = await audioCaptureService.stopRecording();
+
+            // Update file size with actual size
+            setRecordingFileSize(result.fileSize);
+            setPlaybackUri(result.uri);
 
             // Stop video capture if active
             let videoResult: { uri: string; size: number } | null = null;
@@ -175,7 +267,6 @@ export default function RecordScreen() {
                 await transcriptionService.transcribeFile(result.uri);
             } catch (transcribeErr) {
                 console.warn('[Record] Transcription failed:', transcribeErr);
-                // Non-fatal — recording is still saved
             }
 
             // Save session to local database
@@ -213,6 +304,51 @@ export default function RecordScreen() {
 
         // Return to idle
         reset();
+    };
+
+    /**
+     * Playback controls
+     */
+    const handlePlayPause = async () => {
+        if (!playbackUri) return;
+
+        try {
+            if (playbackSound && isPlaying) {
+                await playbackSound.pauseAsync();
+                setIsPlaying(false);
+            } else if (playbackSound) {
+                await playbackSound.playAsync();
+                setIsPlaying(true);
+            } else {
+                // Load sound for first time
+                const { sound } = await Audio.Sound.createAsync(
+                    { uri: playbackUri },
+                    { shouldPlay: true },
+                    (status) => {
+                        if (status.isLoaded) {
+                            setPlaybackPosition(status.positionMillis || 0);
+                            setPlaybackDuration(status.durationMillis || 1);
+                            if (status.didJustFinish) {
+                                setIsPlaying(false);
+                                setPlaybackPosition(0);
+                            }
+                        }
+                    }
+                );
+                setPlaybackSound(sound);
+                setIsPlaying(true);
+            }
+        } catch (err) {
+            console.warn('[Playback] Error:', err);
+        }
+    };
+
+    const handleScrub = async (locationX: number) => {
+        if (!playbackSound || playbackDuration === 0 || playbackBarWidth.current === 0) return;
+        const pct = Math.max(0, Math.min(1, locationX / playbackBarWidth.current));
+        const posMs = Math.round(pct * playbackDuration);
+        await playbackSound.setPositionAsync(posMs);
+        setPlaybackPosition(posMs);
     };
 
     /**
@@ -286,8 +422,11 @@ export default function RecordScreen() {
             if (videoCaptureService.getIsRecording()) {
                 videoCaptureService.cancelVideoCapture();
             }
+            if (playbackSound) {
+                playbackSound.unloadAsync();
+            }
         };
-    }, []);
+    }, [playbackSound]);
 
     // Dynamic strobe color based on state
     const getStrobeColor = () => {
@@ -307,6 +446,8 @@ export default function RecordScreen() {
             case 'error': return 'Error — Tap to Retry';
         }
     };
+
+    const playbackPct = playbackDuration > 0 ? (playbackPosition / playbackDuration) * 100 : 0;
 
     return (
         <View style={styles.container}>
@@ -352,20 +493,23 @@ export default function RecordScreen() {
                 </Pressable>
             </View>
 
-            {/* Waveform / Level Indicator */}
+            {/* Rolling Waveform Visualization */}
             {state === 'recording' && (
                 <View style={styles.waveformContainer}>
-                    {Array.from({ length: 20 }).map((_, i) => {
-                        const barLevel = Math.max(0.05, Math.sin(i * 0.5 + Date.now() / 200) * audioLevel);
+                    {waveformSnapshot.map((level, i) => {
+                        // Bars ordered: oldest first, newest at right
+                        const idx = (waveformIndex.current + i) % WAVEFORM_BARS;
+                        const l = waveformSnapshot[idx] || 0;
+                        const age = 1 - (i / WAVEFORM_BARS) * 0.6; // Oldest dimmer
                         return (
                             <View
                                 key={i}
                                 style={[
                                     styles.waveformBar,
                                     {
-                                        height: barLevel * 60 + 4,
+                                        height: Math.max(4, l * 64),
                                         backgroundColor: colors.stateRecording,
-                                        opacity: 0.5 + barLevel * 0.5,
+                                        opacity: 0.3 + l * 0.5 * age,
                                     },
                                 ]}
                             />
@@ -422,17 +566,73 @@ export default function RecordScreen() {
                 </Pressable>
             </View>
 
-            {/* Duration */}
-            <Text style={styles.duration}>
-                {state === 'recording' || state === 'processing'
-                    ? formatDuration(duration)
-                    : '00:00'}
-            </Text>
+            {/* Duration + Recording Info Row */}
+            <View style={styles.durationRow}>
+                {state === 'recording' && (
+                    <Animated.View style={[styles.recordingDot, { opacity: pulseAnim }]} />
+                )}
+                <Text style={styles.duration}>
+                    {state === 'recording' || state === 'processing'
+                        ? formatDuration(duration)
+                        : '00:00'}
+                </Text>
+            </View>
+
+            {/* File Size Indicator */}
+            {(state === 'recording' || recordingFileSize > 0) && (
+                <View style={styles.fileSizeRow}>
+                    <Text style={styles.fileSizeText}>
+                        💾 {formatFileSize(recordingFileSize)}
+                    </Text>
+                    {state === 'recording' && (
+                        <Text style={styles.fileSizeSeparator}>•</Text>
+                    )}
+                    {state === 'recording' && (
+                        <Text style={styles.fileSizeText}>
+                            44.1kHz · 16-bit · Mono
+                        </Text>
+                    )}
+                </View>
+            )}
 
             {/* Status */}
             <Text style={[styles.statusText, { color: getStrobeColor() }]}>
                 {getStatusText()}
             </Text>
+
+            {/* Playback Progress Bar */}
+            {playbackUri && state === 'idle' && (
+                <View style={styles.playbackContainer}>
+                    <Pressable style={styles.playPauseBtn} onPress={handlePlayPause}>
+                        <Text style={styles.playPauseEmoji}>
+                            {isPlaying ? '⏸️' : '▶️'}
+                        </Text>
+                    </Pressable>
+                    <Pressable
+                        style={styles.playbackBarOuter}
+                        onLayout={(e) => { playbackBarWidth.current = e.nativeEvent.layout.width; }}
+                        onPress={(e) => handleScrub(e.nativeEvent.locationX)}
+                    >
+                        <View style={styles.playbackBarBg}>
+                            <View
+                                style={[
+                                    styles.playbackBarFill,
+                                    { width: `${Math.min(100, playbackPct)}%` },
+                                ]}
+                            />
+                            <View
+                                style={[
+                                    styles.playbackThumb,
+                                    { left: `${Math.min(100, playbackPct)}%` },
+                                ]}
+                            />
+                        </View>
+                    </Pressable>
+                    <Text style={styles.playbackTime}>
+                        {formatDuration(playbackPosition / 1000)}
+                    </Text>
+                </View>
+            )}
 
             {/* Transcript Preview */}
             <ScrollView
@@ -529,18 +729,19 @@ const styles = StyleSheet.create({
         color: colors.accent,
     },
 
-    // Waveform
+    // Rolling Waveform
     waveformContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        height: 64,
-        gap: 3,
+        justifyContent: 'center',
+        height: 72,
+        gap: 2,
         marginBottom: spacing.md,
-        paddingHorizontal: spacing.xl,
+        paddingHorizontal: spacing.md,
     },
     waveformBar: {
-        width: 4,
-        borderRadius: 2,
+        width: 3,
+        borderRadius: 1.5,
         minHeight: 4,
     },
 
@@ -550,7 +751,7 @@ const styles = StyleSheet.create({
         height: 140,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: spacing.md,
+        marginBottom: spacing.sm,
     },
     strobeRing: {
         position: 'absolute',
@@ -591,18 +792,109 @@ const styles = StyleSheet.create({
         fontSize: 48,
     },
 
-    // Duration & status
+    // Duration row with pulsing dot
+    durationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        marginBottom: 2,
+    },
+    recordingDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: colors.stateRecording,
+    },
     duration: {
         fontSize: 32,
         fontWeight: '300',
         color: colors.textPrimary,
         fontVariant: ['tabular-nums'],
     },
+
+    // File size row
+    fileSizeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        marginBottom: spacing.xs,
+    },
+    fileSizeText: {
+        fontSize: 12,
+        color: colors.textTertiary,
+        fontVariant: ['tabular-nums'],
+    },
+    fileSizeSeparator: {
+        fontSize: 12,
+        color: colors.textTertiary,
+    },
+
+    // Status
     statusText: {
         fontSize: 14,
         fontWeight: '500',
         marginTop: spacing.xs,
-        marginBottom: spacing.lg,
+        marginBottom: spacing.md,
+    },
+
+    // Playback bar
+    playbackContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        width: '100%',
+        paddingHorizontal: spacing.screenPadding,
+        marginBottom: spacing.md,
+    },
+    playPauseBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    playPauseEmoji: {
+        fontSize: 18,
+    },
+    playbackBarOuter: {
+        flex: 1,
+        height: 36,
+        justifyContent: 'center',
+    },
+    playbackBarBg: {
+        height: 6,
+        backgroundColor: colors.surfaceLight,
+        borderRadius: 3,
+        overflow: 'visible',
+    },
+    playbackBarFill: {
+        height: '100%',
+        backgroundColor: colors.accent,
+        borderRadius: 3,
+    },
+    playbackThumb: {
+        position: 'absolute',
+        top: -5,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: colors.accent,
+        marginLeft: -8,
+        shadowColor: colors.accent,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    playbackTime: {
+        fontSize: 12,
+        color: colors.textTertiary,
+        fontVariant: ['tabular-nums'],
+        width: 40,
+        textAlign: 'right',
     },
 
     // Transcript
