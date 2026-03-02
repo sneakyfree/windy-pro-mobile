@@ -170,9 +170,15 @@ export default function TranslateScreen() {
             }
 
             // Determine speaker direction
-            const speaker = activeSpeaker;
-            const fromLang = speaker === 'A' ? sourceLang : targetLang;
-            const toLang = speaker === 'A' ? targetLang : sourceLang;
+            let speaker = activeSpeaker;
+            let fromLang = speaker === 'A' ? sourceLang : targetLang;
+            let toLang = speaker === 'A' ? targetLang : sourceLang;
+
+            // In auto mode, send with 'auto' source to detect language
+            if (mode === 'auto') {
+                fromLang = 'auto';
+                toLang = targetLang; // default target
+            }
 
             // Send audio to speech translation API
             const result = await translationService.translateSpeech(uri, fromLang, toLang);
@@ -183,9 +189,22 @@ export default function TranslateScreen() {
                 return;
             }
 
-            // Auto-detect for auto mode
+            // Auto-detect: update speaker and language direction based on detection
             if (mode === 'auto' && result.detectedLanguage) {
                 setDetectedLangInfo({ lang: result.detectedLanguage, confidence: result.confidence });
+                // If detected lang matches target, swap direction
+                if (result.detectedLanguage === targetLang) {
+                    speaker = 'B';
+                    fromLang = targetLang;
+                    toLang = sourceLang;
+                } else {
+                    speaker = 'A';
+                    fromLang = result.detectedLanguage;
+                    // Auto-select source if different from current
+                    if (result.detectedLanguage !== sourceLang) {
+                        setSourceLang(result.detectedLanguage);
+                    }
+                }
             }
 
             const elapsed = (Date.now() - conversationStartTime.current) / 1000;
@@ -478,9 +497,14 @@ export default function TranslateScreen() {
                             🤖 Language auto-detected — just speak naturally
                         </Text>
                         {detectedLangInfo && (
-                            <Text style={styles.detectedLangBadge}>
-                                {getFlag(detectedLangInfo.lang)} {getName(detectedLangInfo.lang)} ({Math.round(detectedLangInfo.confidence * 100)}%)
-                            </Text>
+                            <View style={[
+                                styles.confidencePill,
+                                { backgroundColor: getConfidenceColor(detectedLangInfo.confidence) },
+                            ]}>
+                                <Text style={styles.confidencePillText}>
+                                    {getFlag(detectedLangInfo.lang)} {getName(detectedLangInfo.lang)} · {Math.round(detectedLangInfo.confidence * 100)}% confidence
+                                </Text>
+                            </View>
                         )}
                     </View>
                 )}
@@ -745,6 +769,8 @@ const styles = StyleSheet.create({
     favoriteBtn: { fontSize: 16 },
     copyBtn: { fontSize: 14 },
     detectedLangHint: { fontSize: 11, color: colors.textTertiary, marginBottom: 4, fontStyle: 'italic' },
+    confidencePill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginTop: 6, alignSelf: 'center' },
+    confidencePillText: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
 
     // Controls
     controls: { paddingHorizontal: spacing.screenPadding, paddingBottom: Platform.OS === 'ios' ? 34 : 16 },
