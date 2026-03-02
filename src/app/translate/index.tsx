@@ -23,6 +23,7 @@ import { feedbackService } from '@/services/feedback';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { useHaptic } from '@/hooks/useHaptic';
 import { SpeechWaveform } from '@/components/SpeechWaveform';
+import { SpeechTranslationError, SPEECH_ERROR_MESSAGES } from '@/services/speech-translation';
 import type { TranscriptSegment } from '@/types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -219,7 +220,10 @@ export default function TranslateScreen() {
         } catch (err) {
             console.error('[Translate] Speech translation error:', err);
             haptic.error();
-            Alert.alert('Translation Error', 'Could not translate speech. Check your connection.');
+            const message = err instanceof SpeechTranslationError
+                ? SPEECH_ERROR_MESSAGES[err.type]
+                : 'Could not translate speech. Check your connection.';
+            Alert.alert('Translation Error', message);
         } finally {
             setProcessing(false);
         }
