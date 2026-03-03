@@ -28,7 +28,6 @@ import LanguagePickerSheet from '@/components/LanguagePickerSheet';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 import type { StorageUsage } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
-import { syncManager } from '@/services/sync-manager';
 
 const AUDIO_QUALITY_PRESETS = [
   { id: 'low' as const, label: '🟢 Low', desc: '16 kHz · small files', color: '#22c55e' },
