@@ -2,7 +2,35 @@
 
 All notable changes to Windy Pro Mobile are documented here.
 
+## [1.0.0-rc.2] — 2026-03-02
+
+### 🍎 iOS Release Candidate 2 — Stability & Hardening
+
+#### Reliability
+- Wrapped all 12+ screens in `ScreenErrorBoundary` (defense-in-depth crash protection)
+- Added `AppState` backgrounding handler on Record screen — auto-stops & saves on suspend
+- Converted 39 `feedbackService` calls to fire-and-forget with `.catch()` (prevents unhandled rejections)
+- Fixed 3 cloud-sync test failures (mock field alignment: `isOnline`, `transcript`, `syncedAt`)
+
+#### Infrastructure
+- Created `BETA_FEEDBACK_TRIAGE.md` for structured feedback ingestion
+- Created `scripts/triage-feedback.ts` CLI for auto-tagging, deduplication, severity classification
+- Created `SHIP_DECISION.md` batch protocol (P0 → P1 → P2)
+
+#### Cloud Sync
+- Implemented `CloudSyncService` with offline queue, exponential backoff retry, conflict resolution
+- Added `SyncStatusBanner` component on home screen
+- Full integration test suite (157 tests, all passing)
+
+#### Validation
+- TypeScript: 0 errors
+- Tests: 157/157 passing
+- All lint-clean (IDE `--jsx` warnings are Expo false positives)
+
+---
+
 ## [1.0.0] — 2026-03-02
+
 
 ### 🚀 Initial Release — Android Launch
 
