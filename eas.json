@@ -20,9 +20,14 @@
         },
         "production": {
             "autoIncrement": true,
+            "env": {
+                "GOOGLE_VISION_API_KEY": "@google-vision-api-key",
+                "FCM_SERVER_KEY": "@fcm-server-key"
+            },
             "android": {
                 "buildType": "app-bundle",
-                "gradleCommand": ":app:bundleRelease"
+                "gradleCommand": ":app:bundleRelease",
+                "credentialsSource": "remote"
             }
         }
     },

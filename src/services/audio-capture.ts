@@ -18,7 +18,6 @@ const DEFAULT_CONFIG: RecordingConfig = {
 
 class AudioCaptureService {
     private recording: Audio.Recording | null = null;
-    private meteringInterval: ReturnType<typeof setInterval> | null = null;
     private config: RecordingConfig = DEFAULT_CONFIG;
 
     /** Callback for real-time audio level (0.0 - 1.0) */
@@ -98,6 +97,9 @@ class AudioCaptureService {
             allowsRecordingIOS: false,
         });
 
+        // Clear meter callback to prevent stale references
+        this.onMeterUpdate = null;
+
         // Get the URI and file info
         const uri = this.recording.getURI();
         if (!uri) {
@@ -134,6 +136,7 @@ class AudioCaptureService {
                 // Ignore errors during cancel
             }
             this.recording = null;
+            this.onMeterUpdate = null;
         }
     }
 

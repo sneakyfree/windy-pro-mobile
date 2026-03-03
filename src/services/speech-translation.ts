@@ -387,11 +387,14 @@ class SpeechTranslationService {
         if (this.recording) {
             try {
                 await this.recording.stopAndUnloadAsync();
+                // Reset audio mode (matches stopAndTranslate pattern)
+                await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
                 const uri = this.recording.getURI();
                 if (uri) await FileSystem.deleteAsync(uri, { idempotent: true });
             } catch { /* ignore */ }
             this.recording = null;
             this.isRecordingActive = false;
+            this.onMeterUpdate = null;
         }
     }
 

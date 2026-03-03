@@ -45,7 +45,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "uk.thewindstorm.windypro",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",
@@ -87,7 +87,17 @@
           "defaultChannel": "translation"
         }
       ],
-      "expo-navigation-bar"
+      "expo-navigation-bar",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 34,
+            "kotlinVersion": "1.9.24"
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {

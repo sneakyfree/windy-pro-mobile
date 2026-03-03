@@ -12,6 +12,7 @@ import { View, StyleSheet, Alert, Platform, BackHandler } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import * as NavigationBar from 'expo-navigation-bar';
+import * as Notifications from 'expo-notifications';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { colors } from '@/theme';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -20,6 +21,7 @@ import { licenseService } from '@/services/license';
 import { pushNotificationService } from '@/services/push-notifications';
 import { offlinePackService } from '@/services/offline-packs';
 import { subscriptionService } from '@/services/subscription';
+import { networkMonitor } from '@/services/network-monitor';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkBanner } from '@/components/NetworkBanner';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -102,6 +104,43 @@ export default function RootLayout() {
       return false;
     });
     return () => handler.remove();
+  }, []);
+
+  // Push notification tap routing
+  useEffect(() => {
+    const handleNotificationTap = (response: any) => {
+      const data = response?.notification?.request?.content?.data;
+      if (!data?.type) return;
+
+      setTimeout(() => {
+        try {
+          const { router } = require('expo-router');
+          if (data.type === 'translation') {
+            router.push('/translate');
+          } else if (data.type === 'subscription') {
+            router.push('/subscription');
+          } else if (data.type === 'update') {
+            Linking.openURL('market://details?id=uk.thewindstorm.windypro').catch(() => { });
+          }
+        } catch { /* layout not ready */ }
+      }, 300);
+    };
+
+    // Listen for notification taps while app is running
+    const subscription = pushNotificationService.addResponseListener(handleNotificationTap);
+
+    // Check if app was opened via notification tap (cold start)
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) handleNotificationTap(response);
+    }).catch(() => { });
+
+    return () => subscription.remove();
+  }, []);
+
+  // Network monitor lifecycle
+  useEffect(() => {
+    networkMonitor.start();
+    return () => networkMonitor.stop();
   }, []);
 
   // RP-5.2: Deep link handler (windypro:// scheme)

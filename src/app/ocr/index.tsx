@@ -11,6 +11,7 @@ import { ocrService, OcrTranslation } from '@/services/ocr';
 import { TIER_1_LANGUAGES } from '@/services/translation';
 import { feedbackService } from '@/services/feedback';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { networkMonitor } from '@/services/network-monitor';
 
 export default function OcrTranslateScreen() {
     const router = useRouter();
@@ -22,6 +23,7 @@ export default function OcrTranslateScreen() {
     const [capturing, setCapturing] = useState(false);
     const [results, setResults] = useState<OcrTranslation[]>([]);
     const [showLangPicker, setShowLangPicker] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const getFlag = (code: string): string => {
         const lang = TIER_1_LANGUAGES.find((l) => l.code === code);
@@ -37,7 +39,18 @@ export default function OcrTranslateScreen() {
         if (!cameraRef.current || capturing) return;
         if (!requireFeature('translate', 'OCR Translate')) return;
 
+        // Check network before making API calls
+        if (!networkMonitor.isOnline) {
+            Alert.alert(
+                '📡 No Connection',
+                'OCR translation requires an internet connection. Please check your network and try again.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
+
         setCapturing(true);
+        setError(null);
         await feedbackService.tap();
 
         try {
@@ -64,7 +77,13 @@ export default function OcrTranslateScreen() {
             await feedbackService.success();
         } catch (err) {
             console.error('[OCR] Error:', err);
-            Alert.alert('OCR Failed', 'Could not process image. Check your connection.');
+            const message = err instanceof Error ? err.message : String(err);
+            const isNetworkError = message.includes('Network') || message.includes('fetch') || message.includes('timeout');
+
+            setError(isNetworkError
+                ? 'Connection lost during OCR. Check your network and retry.'
+                : 'OCR processing failed. Try a clearer image or different angle.'
+            );
             await feedbackService.error();
         } finally {
             setCapturing(false);
@@ -147,6 +166,16 @@ export default function OcrTranslateScreen() {
                             </Pressable>
                         ))}
                     </ScrollView>
+                )}
+
+                {/* Error Banner */}
+                {error && (
+                    <View style={styles.errorBanner}>
+                        <Text style={styles.errorText}>⚠️ {error}</Text>
+                        <Pressable onPress={() => setError(null)} style={styles.errorDismiss}>
+                            <Text style={styles.errorDismissText}>✕</Text>
+                        </Pressable>
+                    </View>
                 )}
 
                 {/* Capture Button */}
@@ -253,6 +282,17 @@ const styles = StyleSheet.create({
     langChipFlag: { fontSize: 16 },
     langChipName: { fontSize: 12, color: colors.textSecondary },
     langChipNameActive: { color: colors.accent },
+
+    // Error Banner
+    errorBanner: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        backgroundColor: 'rgba(239, 68, 68, 0.15)', borderRadius: borderRadius.md,
+        padding: spacing.sm, marginBottom: spacing.sm,
+        borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)',
+    },
+    errorText: { flex: 1, fontSize: 13, color: '#f87171', lineHeight: 18 },
+    errorDismiss: { paddingLeft: spacing.sm },
+    errorDismissText: { fontSize: 16, color: '#f87171' },
 
     captureBtn: {
         backgroundColor: colors.accent, borderRadius: borderRadius.lg,
