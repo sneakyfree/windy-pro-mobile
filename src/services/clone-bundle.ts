@@ -6,6 +6,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as Battery from 'expo-battery';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { networkMonitor } from './network-monitor';
 
 const BUNDLES_KEY = 'windy-clone-bundles';
@@ -40,6 +42,11 @@ export interface CloneBundle {
         text: string;
         segments: TranscriptSegment[];
         language: string;
+    };
+    device: {
+        platform: 'android' | 'ios' | 'desktop';
+        model: string;
+        app_version: string;
     };
     sync_status: 'pending' | 'uploading' | 'synced' | 'failed';
     clone_training_ready: boolean;
@@ -140,6 +147,11 @@ class CloneBundleService {
             },
             sync_status: 'pending',
             clone_training_ready: hasVideo && hasAudio && hasTranscript && params.duration >= 10,
+            device: {
+                platform: Platform.OS === 'ios' ? 'ios' : 'android',
+                model: Constants.deviceName || 'Unknown',
+                app_version: Constants.expoConfig?.version || '2.0.0',
+            },
             tags: [],
         };
 

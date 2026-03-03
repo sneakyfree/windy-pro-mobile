@@ -8,10 +8,10 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import type { LicenseTier } from '@/types';
 
-/** Cloud translation API */
-const TRANSLATE_API = 'https://windypro.thewindstorm.uk/api/translate';
-const SPEECH_API = 'https://windypro.thewindstorm.uk/translate/speech';
-const DETECT_API = 'https://windypro.thewindstorm.uk/api/detect-language';
+/** Cloud translation API — canonical cross-platform URLs */
+const TRANSLATE_API = 'https://windypro.thewindstorm.uk/api/v1/translate/text';
+const SPEECH_API = 'https://windypro.thewindstorm.uk/api/v1/translate/speech';
+const DETECT_API = 'https://windypro.thewindstorm.uk/api/v1/translate/languages';
 
 /** Translation result */
 export interface TranslationResult {

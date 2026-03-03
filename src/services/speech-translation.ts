@@ -12,8 +12,8 @@ import * as Speech from 'expo-speech';
 import { TIER_1_LANGUAGES } from './translation';
 
 const API_BASE = 'https://windypro.thewindstorm.uk';
-const SPEECH_TRANSLATE_ENDPOINT = `${API_BASE}/translate/speech`;
-const DETECT_ENDPOINT = `${API_BASE}/api/detect-language`;
+const SPEECH_TRANSLATE_ENDPOINT = `${API_BASE}/api/v1/translate/speech`;
+const DETECT_ENDPOINT = `${API_BASE}/api/v1/translate/languages`;
 
 // ─── Error types ────────────────────────────────────────────────
 

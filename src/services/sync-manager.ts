@@ -54,8 +54,11 @@ export interface SyncQueueItem {
 }
 
 export interface SyncSettings {
-    autoSync: boolean;
-    syncOnCellular: boolean;
+    auto_sync: boolean;
+    sync_on_cellular: boolean;
+    sync_wifi_only_threshold: number; // bytes — files above this wait for Wi-Fi
+    last_sync_at: string | null;
+    device_id: string;
 }
 
 export interface SyncState {
@@ -78,7 +81,13 @@ type SyncStateCallback = (state: SyncState) => void;
 
 class SyncManager {
     private queue: SyncQueueItem[] = [];
-    private settings: SyncSettings = { autoSync: true, syncOnCellular: false };
+    private settings: SyncSettings = {
+        auto_sync: true,
+        sync_on_cellular: false,
+        sync_wifi_only_threshold: 5242880, // 5MB
+        last_sync_at: null,
+        device_id: '',
+    };
     private networkType: NetworkType = 'none';
     private isSyncing = false;
     private currentItem: SyncQueueItem | null = null;
@@ -147,17 +156,17 @@ class SyncManager {
         this.emit();
 
         // Auto-sync when switching to Wi-Fi
-        if (prev !== 'wifi' && this.networkType === 'wifi' && this.settings.autoSync) {
+        if (prev !== 'wifi' && this.networkType === 'wifi' && this.settings.auto_sync) {
             this.processQueue();
         }
 
         // On cellular: only process small files if allowed
-        if (this.networkType === 'cellular' && this.settings.autoSync) {
+        if (this.networkType === 'cellular' && this.settings.auto_sync) {
             this.processQueue();
         }
 
         // Notify user if they have pending items and are on cellular
-        if (this.networkType === 'cellular' && this.getPendingCount() > 0 && !this.settings.syncOnCellular) {
+        if (this.networkType === 'cellular' && this.getPendingCount() > 0 && !this.settings.sync_on_cellular) {
             this.notifyPendingSync();
         }
     };
@@ -221,7 +230,7 @@ class SyncManager {
         this.emit();
 
         // Start processing if auto-sync is on
-        if (this.settings.autoSync) {
+        if (this.settings.auto_sync) {
             this.processQueue();
         }
     }
@@ -251,7 +260,7 @@ class SyncManager {
 
     async processQueue(): Promise<void> {
         if (this.isSyncing || this.networkType === 'none') return;
-        if (!this.settings.autoSync) return;
+        if (!this.settings.auto_sync) return;
 
         this.isSyncing = true;
         this.emit();
@@ -293,6 +302,7 @@ class SyncManager {
                     item.status = 'completed';
                     item.progress = 100;
                     this.lastSyncTime = new Date().toISOString();
+                    this.settings.last_sync_at = this.lastSyncTime;
                 } else {
                     item.retry_count++;
                     item.status = item.retry_count >= 3 ? 'failed' : 'queued';
@@ -314,10 +324,10 @@ class SyncManager {
 
     /** Manual sync trigger */
     async manualSync(): Promise<void> {
-        const savedAutoSync = this.settings.autoSync;
-        this.settings.autoSync = true; // Temporarily enable
+        const saved = this.settings.auto_sync;
+        this.settings.auto_sync = true;
         await this.processQueue();
-        this.settings.autoSync = savedAutoSync;
+        this.settings.auto_sync = saved;
     }
 
     // ─── Upload Logic ───────────────────────────────────────────
@@ -325,9 +335,9 @@ class SyncManager {
     private shouldUpload(item: SyncQueueItem): boolean {
         if (this.networkType === 'wifi') return true;
         if (this.networkType === 'cellular') {
-            if (this.settings.syncOnCellular) return true;
-            // Only small files on cellular
-            return item.file_size < SMALL_FILE_THRESHOLD;
+            if (this.settings.sync_on_cellular) return true;
+            // Only small files on cellular (below threshold)
+            return item.file_size < this.settings.sync_wifi_only_threshold;
         }
         return false;
     }
@@ -541,7 +551,7 @@ class SyncManager {
         this.emit();
 
         // If auto-sync just turned on, start processing
-        if (updates.autoSync === true) {
+        if (updates.auto_sync === true) {
             this.processQueue();
         }
     }
@@ -631,10 +641,10 @@ TaskManager.defineTask(BACKGROUND_TASK_NAME, async () => {
         const settingsRaw = await AsyncStorage.getItem(SETTINGS_KEY);
         const settings: SyncSettings = settingsRaw
             ? JSON.parse(settingsRaw)
-            : { autoSync: true, syncOnCellular: false };
+            : { auto_sync: true, sync_on_cellular: false, sync_wifi_only_threshold: 5242880, last_sync_at: null, device_id: '' };
 
-        if (!settings.autoSync) return BackgroundFetch.BackgroundFetchResult.NoData;
-        if (!isWifi && !settings.syncOnCellular) return BackgroundFetch.BackgroundFetchResult.NoData;
+        if (!settings.auto_sync) return BackgroundFetch.BackgroundFetchResult.NoData;
+        if (!isWifi && !settings.sync_on_cellular) return BackgroundFetch.BackgroundFetchResult.NoData;
 
         await syncManager.processQueue();
         return BackgroundFetch.BackgroundFetchResult.NewData;

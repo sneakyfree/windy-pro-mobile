@@ -58,15 +58,16 @@ describe('SyncManager', () => {
     describe('Settings', () => {
         it('has correct default settings', () => {
             const settings = syncManager.getSettings();
-            expect(settings.autoSync).toBe(true);
-            expect(settings.syncOnCellular).toBe(false);
+            expect(settings.auto_sync).toBe(true);
+            expect(settings.sync_on_cellular).toBe(false);
+            expect(settings.sync_wifi_only_threshold).toBe(5242880);
         });
 
         it('persists settings updates', async () => {
-            await syncManager.updateSettings({ syncOnCellular: true });
+            await syncManager.updateSettings({ sync_on_cellular: true });
             expect(AsyncStorage.setItem).toHaveBeenCalledWith(
                 'windy-sync-settings',
-                expect.stringContaining('"syncOnCellular":true')
+                expect.stringContaining('"sync_on_cellular":true')
             );
         });
     });
@@ -108,13 +109,13 @@ describe('SyncManager', () => {
             expect(state.isSyncing).toBe(false);
             expect(state.queueLength).toBe(0);
             expect(state.pendingCount).toBe(0);
-            expect(state.settings.autoSync).toBe(true);
+            expect(state.settings.auto_sync).toBe(true);
         });
 
         it('notifies listeners on settings change', async () => {
             const listener = jest.fn();
             syncManager.onStateChange(listener);
-            await syncManager.updateSettings({ syncOnCellular: true });
+            await syncManager.updateSettings({ sync_on_cellular: true });
             expect(listener).toHaveBeenCalled();
         });
     });

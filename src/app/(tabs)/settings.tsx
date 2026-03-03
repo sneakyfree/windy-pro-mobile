@@ -504,14 +504,14 @@ export default function SettingsScreen() {
             <SettingsToggle
               label="Auto-Sync"
               subtitle="Automatically sync recordings when on Wi-Fi"
-              value={syncManager.getSettings().autoSync}
-              onToggle={(v) => syncManager.updateSettings({ autoSync: v })}
+              value={syncManager.getSettings().auto_sync}
+              onToggle={(v) => syncManager.updateSettings({ auto_sync: v })}
             />
             <SettingsToggle
               label="Sync on Cellular"
               subtitle="Allow large file uploads on mobile data"
-              value={syncManager.getSettings().syncOnCellular}
-              onToggle={(v) => syncManager.updateSettings({ syncOnCellular: v })}
+              value={syncManager.getSettings().sync_on_cellular}
+              onToggle={(v) => syncManager.updateSettings({ sync_on_cellular: v })}
             />
             <Pressable style={styles.navRow} onPress={async () => {
               await feedbackService.tap();
