@@ -13,12 +13,16 @@
 | Feature | Description |
 |---------|-------------|
 | 🎤 **Voice Recording** | Press-and-hold mic with live waveform + haptic feedback |
+| 🎥 **Video Recording** | Optional front/back camera + audio + transcript bundle |
 | 🌍 **15-Language Translation** | Real-time speech-to-speech translation |
 | 🗣️ **Conversation Mode** | Split-screen 2-person translation |
 | 📷 **Camera OCR** | Point camera at text → instant translation |
 | 🔊 **Text-to-Speech** | Hear translations in native accents |
 | 📚 **History** | Search, favorites, sort, export (CSV/SRT) |
-| ☁️ **Cloud Sync** | Sync across devices (Wi-Fi only option) |
+| 🧬 **Clone Data Dashboard** | Bundle viewer with training-ready badges, storage stats |
+| 📶 **Wi-Fi Auto-Sync** | iCloud-style: queue on cellular, upload on Wi-Fi |
+| 📱 **Phone-as-Camera** | Pair with desktop via 6-digit code, stream camera |
+| ☁️ **Cloud Sync** | Chunked upload with resume, conflict detection |
 | 🔔 **Push Notifications** | Translation complete, sync status, milestones |
 | 🛡️ **Error Boundaries** | Every screen protected — never a white screen |
 | 🎨 **Dark Mode** | Beautiful dark UI with Material Design 3 |
@@ -39,22 +43,27 @@
 ```
 src/
 ├── app/                    # expo-router pages
-│   ├── (tabs)/             # Tab screens (record, camera, history, settings)
+│   ├── (tabs)/             # Tab screens (record, camera, history, clone-data, settings)
 │   ├── translate/          # Full translate screen
+│   ├── video/              # Video recording screen
+│   ├── clone-data/         # Clone data dashboard
+│   ├── camera-link/        # Phone-as-camera pairing
 │   ├── onboarding/         # 3-screen swipeable onboarding
 │   ├── legal/              # Privacy policy, terms
 │   └── quick-translate.tsx # Deep link translate
 ├── components/             # Reusable components
+│   └── SyncStatusBanner    # Wi-Fi sync progress + network indicator
 ├── services/               # Business logic services
-│   ├── analytics.ts        # Local analytics tracking
 │   ├── audio-capture.ts    # Microphone recording
+│   ├── background-recording.ts # Silence detection, chunking, battery
+│   ├── clone-bundle.ts     # Clone training bundle format + CRUD
 │   ├── network-monitor.ts  # Offline detection
 │   ├── ocr.ts              # Camera OCR
-│   ├── rating-prompt.ts    # App rating (expo-store-review)
+│   ├── sync-manager.ts     # Wi-Fi auto-sync (iCloud-style)
 │   ├── speech-translation.ts # Speech-to-speech
 │   ├── storage-local.ts    # SQLite storage
 │   ├── storage-cloud.ts    # Cloud sync API
-│   ├── sync-engine.ts      # Background sync
+│   ├── video-capture.ts    # Camera video capture
 │   └── translation.ts      # Text translation + TTS
 ├── stores/                 # Zustand stores
 ├── hooks/                  # Custom React hooks

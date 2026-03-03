@@ -2,7 +2,7 @@
   "expo": {
     "name": "Windy Pro",
     "slug": "windy-pro-mobile",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "scheme": "windypro",
@@ -48,7 +48,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "uk.thewindstorm.windypro",
-      "versionCode": 4,
+      "versionCode": 5,
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",

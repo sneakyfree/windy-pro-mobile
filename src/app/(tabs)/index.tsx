@@ -32,6 +32,8 @@ import type { Session } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { analyticsService } from '@/services/analytics';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
+import { syncManager } from '@/services/sync-manager';
+import { cloneBundleService } from '@/services/clone-bundle';
 
 const WAVEFORM_BARS = 40;
 
@@ -338,6 +340,30 @@ export default function RecordScreen() {
             };
             try {
                 await localStorageService.saveSession(session);
+
+                // Auto-queue for Wi-Fi sync
+                const bundleId = session.id;
+                await cloneBundleService.createBundle({
+                    sessionId: bundleId,
+                    duration: session.duration,
+                    audioPath: result.uri,
+                    videoPath: videoResult?.uri,
+                    transcript: session.transcript,
+                    segments: session.segments?.map(s => ({
+                        start: s.startTime ?? 0,
+                        end: s.endTime ?? 0,
+                        text: s.text,
+                        confidence: s.confidence ?? 0.9,
+                    })),
+                });
+
+                await syncManager.addBundleToQueue(bundleId, {
+                    audioPath: result.uri,
+                    videoPath: videoResult?.uri,
+                });
+
+                // Toast notification
+                Alert.alert('✅ Saved', 'Recording saved — will sync on Wi-Fi');
             } catch (saveErr) {
                 console.warn('[Record] Save failed:', saveErr);
                 Alert.alert('Save Warning', 'Recording completed but could not be saved to history. Try exporting manually.');

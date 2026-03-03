@@ -2,6 +2,52 @@
 
 All notable changes to Windy Pro Mobile are documented here.
 
+## [2.0.0] — 2026-03-02
+
+### 🧬 v2.0 — Video Recording, Clone Training & Wi-Fi Auto-Sync
+
+#### Video Recording & Clone Training
+- Added optional front/back camera video recording alongside audio
+- Created `CloneBundleService` — standardized bundle format (audio + video + transcript)
+- Created Clone Data Dashboard tab (🧬 Clone) with stats, filters, training-ready badges
+- Added `BackgroundRecordingService` — silence detection, 5-min chunking, battery monitoring
+- Bundle format: `{ audio, video, transcript, sync_status, clone_training_ready }`
+
+#### Wi-Fi Auto-Sync (iCloud-style)
+- Created `SyncManager` — persistent upload queue with priority (transcript → audio → video)
+- Network-aware: videos wait for Wi-Fi, small files (<5MB) upload on cellular
+- Chunked upload (2MB) with resume from last successful chunk
+- Smart batching: combines small files into single request
+- Conflict detection: checks cloud by bundle_id before upload
+- Background sync: `expo-background-fetch` (every 15 min on Wi-Fi)
+- Cellular notification: "X recordings ready — connect to Wi-Fi"
+- Settings: Auto-Sync (ON), Sync on Cellular (OFF)
+
+#### Phone-as-Camera
+- New screen: pair with desktop via 6-digit code (WebSocket signaling)
+- Front/back camera switch from either end
+- Keep-awake while linked (`expo-keep-awake`)
+- Optional audio streaming toggle
+
+#### Integration
+- Wired SyncManager into record screen: auto-queues bundle + sync after every recording
+- Enhanced `SyncStatusBanner` with progress bar, network indicator, pending count
+- Added Cloud Sync section to Settings: toggles, Sync Now, Clear Synced Data
+- Added Clone Data tab to main tab navigator
+- SyncManager test suite (9 tests: settings, queue, priority, duplicates, cleanup)
+
+#### Packages Added
+- `@react-native-community/netinfo` (Wi-Fi vs cellular detection)
+- `expo-keep-awake` (screen on during camera link)
+- `expo-image-picker`, `expo-media-library` (photo features)
+
+#### Validation
+- TypeScript: 0 errors
+- Tests: 166+ passing (8 suites)
+- Version bump: 1.0.0 → 2.0.0 (versionCode 4 → 5)
+
+---
+
 ## [1.0.0-rc.2] — 2026-03-02
 
 ### 🍎 iOS Release Candidate 2 — Stability & Hardening

@@ -1,69 +1,89 @@
 /**
- * 🧬 RP2-3.1 — Sync Status Banner
- * Shows sync progress, last sync time, and pending count
+ * 🧬 RP2-3.1 — Sync Status Banner (Enhanced)
+ * Shows Wi-Fi sync progress, pending count, network type, last sync time
  */
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
 import { colors, spacing, borderRadius } from '@/theme';
-import { syncEngine } from '@/services/sync-engine';
+import { syncManager, type SyncState } from '@/services/sync-manager';
 import { feedbackService } from '@/services/feedback';
 
 export function SyncStatusBanner() {
-    const [status, setStatus] = useState<{
-        totalSessions: number;
-        syncedSessions: number;
-        pendingUploadBytes: number;
-        lastSyncAt: string | null;
-    } | null>(null);
-    const [syncing, setSyncing] = useState(false);
+    const [state, setState] = useState<SyncState | null>(null);
+    const progressAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        loadStatus();
+        syncManager.initialize().then(() => {
+            setState(syncManager.getState());
+        });
+
+        const unsub = syncManager.onStateChange((s) => {
+            setState(s);
+            Animated.timing(progressAnim, {
+                toValue: s.overallProgress / 100,
+                duration: 300,
+                useNativeDriver: false,
+            }).start();
+        });
+
+        return unsub;
     }, []);
 
-    const loadStatus = async () => {
-        try {
-            const s = await syncEngine.getSyncStatus();
-            setStatus(s);
-        } catch {
-            // Sync not available
-        }
-    };
-
     const handleSync = async () => {
-        setSyncing(true);
         await feedbackService.tap();
-        try {
-            await syncEngine.syncNow();
-        } catch (err) {
-            console.warn('[Sync] Manual sync failed:', err);
-        }
-        setSyncing(false);
-        await loadStatus();
+        await syncManager.manualSync();
     };
 
-    if (!status) return null;
+    if (!state) return null;
 
-    const pending = status.totalSessions - status.syncedSessions;
-    const lastSync = status.lastSyncAt
-        ? new Date(status.lastSyncAt).toLocaleString()
+    const { pendingCount, isSyncing, overallProgress, lastSyncTime, networkType } = state;
+
+    const networkIcon = networkType === 'wifi' ? '📶' : networkType === 'cellular' ? '📱' : '📵';
+    const networkLabel = networkType === 'wifi' ? 'Wi-Fi' : networkType === 'cellular' ? 'Cellular' : 'Offline';
+
+    const lastSync = lastSyncTime
+        ? new Date(lastSyncTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : 'Never';
+
+    if (pendingCount === 0 && !isSyncing) return null;
 
     return (
         <View style={styles.container}>
             <View style={styles.row}>
-                <Text style={styles.label}>☁️ Cloud Sync</Text>
-                <Pressable onPress={handleSync} style={styles.syncBtn}>
-                    <Text style={styles.syncBtnText}>
-                        {syncing ? '⏳ Syncing...' : '🔄 Sync Now'}
+                <View style={styles.leftCol}>
+                    <Text style={styles.label}>{networkIcon} {networkLabel}</Text>
+                    <Text style={styles.detail}>
+                        {isSyncing
+                            ? `⬆️ Uploading... ${overallProgress}%`
+                            : `${pendingCount} pending`}
                     </Text>
-                </Pressable>
+                </View>
+                <View style={styles.rightCol}>
+                    <Pressable onPress={handleSync} style={styles.syncBtn} disabled={isSyncing}>
+                        <Text style={styles.syncBtnText}>
+                            {isSyncing ? '⏳ Syncing' : '🔄 Sync'}
+                        </Text>
+                    </Pressable>
+                    <Text style={styles.lastSync}>Last: {lastSync}</Text>
+                </View>
             </View>
-            <Text style={styles.detail}>
-                {status.syncedSessions}/{status.totalSessions} synced
-                {pending > 0 ? ` · ${pending} pending` : ''}
-            </Text>
-            <Text style={styles.detail}>Last sync: {lastSync}</Text>
+
+            {/* Progress bar */}
+            {isSyncing && (
+                <View style={styles.progressTrack}>
+                    <Animated.View
+                        style={[
+                            styles.progressFill,
+                            {
+                                width: progressAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: ['0%', '100%'],
+                                }),
+                            },
+                        ]}
+                    />
+                </View>
+            )}
         </View>
     );
 }
@@ -72,7 +92,8 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: colors.surface,
         borderRadius: borderRadius.md,
-        padding: spacing.md,
+        padding: spacing.sm,
+        marginHorizontal: spacing.screenPadding,
         marginTop: spacing.sm,
         borderWidth: 1,
         borderColor: colors.border,
@@ -81,27 +102,45 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: spacing.xs,
     },
+    leftCol: { flex: 1 },
+    rightCol: { alignItems: 'flex-end' },
     label: {
         color: colors.textPrimary,
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '600',
     },
+    detail: {
+        color: colors.textSecondary,
+        fontSize: 12,
+        marginTop: 2,
+    },
     syncBtn: {
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.xs,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 4,
         backgroundColor: colors.accent + '20',
         borderRadius: borderRadius.sm,
     },
     syncBtnText: {
         color: colors.accent,
-        fontSize: 13,
-        fontWeight: '500',
+        fontSize: 12,
+        fontWeight: '600',
     },
-    detail: {
-        color: colors.textSecondary,
-        fontSize: 13,
-        marginTop: 2,
+    lastSync: {
+        color: colors.textTertiary,
+        fontSize: 10,
+        marginTop: 3,
+    },
+    progressTrack: {
+        height: 4,
+        backgroundColor: colors.border,
+        borderRadius: 2,
+        marginTop: spacing.xs,
+        overflow: 'hidden',
+    },
+    progressFill: {
+        height: '100%',
+        backgroundColor: colors.accent,
+        borderRadius: 2,
     },
 });

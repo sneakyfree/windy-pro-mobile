@@ -67,6 +67,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="clone-data"
+        options={{
+          title: 'Clone Data',
+          headerShown: false,
+          tabBarIcon: ({ focused }) => null,
+          tabBarLabel: '🧬 Clone',
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

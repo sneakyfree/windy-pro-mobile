@@ -28,6 +28,7 @@ import LanguagePickerSheet from '@/components/LanguagePickerSheet';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 import type { StorageUsage } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { syncManager } from '@/services/sync-manager';
 
 const AUDIO_QUALITY_PRESETS = [
   { id: 'low' as const, label: '🟢 Low', desc: '16 kHz · small files', color: '#22c55e' },
@@ -99,7 +100,7 @@ export default function SettingsScreen() {
 
   // RP-5.1: Upgrade button → navigate to subscription paywall
   const handleUpgrade = async () => {
-    feedbackService.tap().catch(() => {});
+    feedbackService.tap().catch(() => { });
     router.push('/subscription');
   };
 
@@ -123,7 +124,7 @@ export default function SettingsScreen() {
                 }
               }
               setCacheSize(0);
-              feedbackService.success().catch(() => {});
+              feedbackService.success().catch(() => { });
               Alert.alert('Done', 'Cache cleared successfully.');
             } catch {
               Alert.alert('Error', 'Could not clear cache.');
@@ -164,7 +165,7 @@ export default function SettingsScreen() {
           dialogTitle: 'Export All Data',
         });
       }
-      feedbackService.success().catch(() => {});
+      feedbackService.success().catch(() => { });
     } catch {
       Alert.alert('Export Failed', 'Could not export data.');
     }
@@ -196,7 +197,7 @@ export default function SettingsScreen() {
                       settings.setCloneTrackingEnabled(false);
                       // Clear local storage
                       await localStorageService.initialize(); // re-init clears
-                      feedbackService.success().catch(() => {});
+                      feedbackService.success().catch(() => { });
                       Alert.alert('Account Deleted', 'Your data has been removed.');
                     } catch {
                       Alert.alert('Error', 'Could not complete account deletion.');
@@ -496,6 +497,45 @@ export default function SettingsScreen() {
               value={`${cloneHours.toFixed(1)} of 10 hours (${Math.round(cloneReadiness)}%)`}
               valueColor={cloneReadiness >= 100 ? colors.accent : colors.textSecondary}
             />
+          </SettingsSection>
+
+          {/* Cloud Sync */}
+          <SettingsSection title="Cloud Sync">
+            <SettingsToggle
+              label="Auto-Sync"
+              subtitle="Automatically sync recordings when on Wi-Fi"
+              value={syncManager.getSettings().autoSync}
+              onToggle={(v) => syncManager.updateSettings({ autoSync: v })}
+            />
+            <SettingsToggle
+              label="Sync on Cellular"
+              subtitle="Allow large file uploads on mobile data"
+              value={syncManager.getSettings().syncOnCellular}
+              onToggle={(v) => syncManager.updateSettings({ syncOnCellular: v })}
+            />
+            <Pressable style={styles.navRow} onPress={async () => {
+              await feedbackService.tap();
+              await syncManager.manualSync();
+              Alert.alert('Sync', 'Sync started — uploads will process in the background.');
+            }}>
+              <Text style={styles.navRowLabel}>🔄 Sync Now</Text>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+            <Pressable style={styles.navRow} onPress={() => {
+              Alert.alert('Clear Synced Data', 'Remove completed uploads from the queue? This does not delete your recordings.', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Clear', style: 'destructive', onPress: async () => {
+                    await syncManager.clearCompleted();
+                    feedbackService.success();
+                    Alert.alert('Cleared', 'Synced data queue cleared.');
+                  },
+                },
+              ]);
+            }}>
+              <Text style={styles.navRowLabel}>🗑 Clear Synced Data</Text>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
           </SettingsSection>
 
           {/* About */}
