@@ -12,6 +12,9 @@
 - [x] VoiceOver accessibility: all 7 screens labeled
 - [x] RevenueCat SDK linked: `RNPurchases` / `PurchasesHybridCommon 5.59.2`
 - [x] Associated Domains: `applinks:` + `appclips:windypro.thewindstorm.uk`
+- [x] RC1 tag: `v1.0.0-rc.1`
+- [x] Stability hardening: permission checks, error Alerts, deep link validation
+- [x] CHANGELOG.md generated
 
 ---
 
@@ -98,3 +101,12 @@ In App Store Connect:
 - [ ] Verify deep link: `windypro://translate?from=en&to=es&text=hello`
 - [ ] Run VoiceOver through all tabs
 - [ ] Confirm haptic feedback works on device
+
+---
+
+## App Store Submission Assets
+
+- [ ] Screenshots captured (see `APP_STORE_SCREENSHOTS.md` for shot list)
+- [ ] App Store metadata entered in App Store Connect (see `APP_STORE_METADATA.md`)
+- [ ] Privacy Policy URL live: https://windypro.thewindstorm.uk/privacy
+- [ ] Support URL live: https://windypro.thewindstorm.uk/support
