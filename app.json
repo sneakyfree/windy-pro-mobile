@@ -48,7 +48,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "uk.thewindstorm.windypro",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",

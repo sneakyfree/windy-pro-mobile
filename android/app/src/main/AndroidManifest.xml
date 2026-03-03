@@ -36,6 +36,13 @@
         <data android:scheme="windypro"/>
         <data android:scheme="uk.thewindstorm.windypro"/>
       </intent-filter>
+      <!-- HTTPS App Links for Google Play verification -->
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="https" android:host="windypro.thewindstorm.uk" android:pathPrefix="/app"/>
+      </intent-filter>
     </activity>
     <!-- Windy floating overlay foreground service -->
     <service
