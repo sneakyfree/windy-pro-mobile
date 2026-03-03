@@ -81,7 +81,7 @@ class CloudStorageClient {
             }
             await SecureStore.setItemAsync(USER_KEY, email);
 
-            console.log('[Cloud] Logged in as:', email);
+            // console.log('[Cloud] Logged in as:', email);
             return { success: true };
         } catch (error: any) {
             console.error('[Cloud] Login error:', error);
@@ -100,7 +100,7 @@ class CloudStorageClient {
             if (token) {
                 this.jwtToken = token;
                 this.refreshToken = refresh;
-                console.log('[Cloud] Session restored');
+                // console.log('[Cloud] Session restored');
                 return true;
             }
             return false;
@@ -132,7 +132,7 @@ class CloudStorageClient {
                 await SecureStore.setItemAsync(TOKEN_KEY, this.jwtToken);
             }
 
-            console.log('[Cloud] Token refreshed');
+            // console.log('[Cloud] Token refreshed');
             return true;
         } catch {
             return false;
@@ -149,7 +149,7 @@ class CloudStorageClient {
         await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => { });
         await SecureStore.deleteItemAsync(REFRESH_KEY).catch(() => { });
         await SecureStore.deleteItemAsync(USER_KEY).catch(() => { });
-        console.log('[Cloud] Logged out');
+        // console.log('[Cloud] Logged out');
     }
 
     /**
@@ -260,7 +260,7 @@ class CloudStorageClient {
             }
 
             onProgress?.(100);
-            console.log(`[Cloud] Uploaded recording: ${sessionId} → ${remoteId}`);
+            // console.log(`[Cloud] Uploaded recording: ${sessionId} → ${remoteId}`);
             return { success: true, remoteId };
         } catch (error: any) {
             console.error('[Cloud] Upload failed:', error);
@@ -370,7 +370,7 @@ class CloudStorageClient {
         metadata: Record<string, any>
     ): Promise<void> {
         // No-op — metadata is now sent with uploadRecording
-        console.log('[Cloud] uploadMetadata called (no-op, use uploadRecording)');
+        // console.log('[Cloud] uploadMetadata called (no-op, use uploadRecording)');
     }
 
     /**

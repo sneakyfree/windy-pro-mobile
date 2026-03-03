@@ -27,6 +27,7 @@ import EnginePickerSheet from '@/components/EnginePickerSheet';
 import LanguagePickerSheet from '@/components/LanguagePickerSheet';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 import type { StorageUsage } from '@/types';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 const AUDIO_QUALITY_PRESETS = [
   { id: 'low' as const, label: '🟢 Low', desc: '16 kHz · small files', color: '#22c55e' },
@@ -215,368 +216,370 @@ export default function SettingsScreen() {
   const themeLabels: Record<string, string> = { dark: '🌙 Dark', light: '☀️ Light', system: '📱 System' };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Account Section */}
-        <SettingsSection title="Account">
-          <SettingsRow
-            label="License"
-            value={settings.licenseTier === 'free' ? 'Free' : formatTier(settings.licenseTier)}
-            valueColor={settings.licenseTier === 'free' ? colors.textTertiary : colors.accent}
-          />
-          {settings.licenseTier === 'free' && (
-            <Pressable style={styles.upgradeButton} onPress={handleUpgrade}
-              accessibilityLabel="Upgrade to Pro for $49"
+    <ScreenErrorBoundary screenName="Settings">
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+          {/* Account Section */}
+          <SettingsSection title="Account">
+            <SettingsRow
+              label="License"
+              value={settings.licenseTier === 'free' ? 'Free' : formatTier(settings.licenseTier)}
+              valueColor={settings.licenseTier === 'free' ? colors.textTertiary : colors.accent}
+            />
+            {settings.licenseTier === 'free' && (
+              <Pressable style={styles.upgradeButton} onPress={handleUpgrade}
+                accessibilityLabel="Upgrade to Pro for $49"
+                accessibilityRole="button"
+                accessibilityHint="Opens subscription page"
+              >
+                <Text style={styles.upgradeText}>⚡ Upgrade to Pro — $49</Text>
+              </Pressable>
+            )}
+          </SettingsSection>
+
+          {/* Voice Engine */}
+          <SettingsSection title="Voice Engine">
+            <Pressable style={styles.navRow} onPress={() => setEnginePickerVisible(true)}
+              accessibilityLabel={`Current engine: ${settings.selectedEngine || 'Auto'}`}
               accessibilityRole="button"
-              accessibilityHint="Opens subscription page"
+              accessibilityHint="Opens engine selection"
             >
-              <Text style={styles.upgradeText}>⚡ Upgrade to Pro — $49</Text>
+              <Text style={styles.navRowLabel}>Current Engine</Text>
+              <Text style={styles.rowValue}>{settings.selectedEngine || 'Auto'}</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
-          )}
-        </SettingsSection>
+            <SettingsToggle label="Auto-select best engine" value={settings.windyTuneAutoSelect} onToggle={settings.setWindyTuneAutoSelect} />
+            <SettingsToggle label="Cloud fallback" subtitle="Use cloud if device struggles" value={settings.cloudFallbackEnabled} onToggle={settings.setCloudFallbackEnabled} />
+          </SettingsSection>
 
-        {/* Voice Engine */}
-        <SettingsSection title="Voice Engine">
-          <Pressable style={styles.navRow} onPress={() => setEnginePickerVisible(true)}
-            accessibilityLabel={`Current engine: ${settings.selectedEngine || 'Auto'}`}
-            accessibilityRole="button"
-            accessibilityHint="Opens engine selection"
-          >
-            <Text style={styles.navRowLabel}>Current Engine</Text>
-            <Text style={styles.rowValue}>{settings.selectedEngine || 'Auto'}</Text>
-            <Text style={styles.chevron} importantForAccessibility="no">›</Text>
-          </Pressable>
-          <SettingsToggle label="Auto-select best engine" value={settings.windyTuneAutoSelect} onToggle={settings.setWindyTuneAutoSelect} />
-          <SettingsToggle label="Cloud fallback" subtitle="Use cloud if device struggles" value={settings.cloudFallbackEnabled} onToggle={settings.setCloudFallbackEnabled} />
-        </SettingsSection>
-
-        {/* Recording */}
-        <SettingsSection title="Recording">
-          <Pressable style={styles.navRow} onPress={() => setLanguagePickerVisible(true)}>
-            <Text style={styles.navRowLabel}>Language</Text>
-            <Text style={styles.rowValue}>{settings.defaultLanguage.toUpperCase()}</Text>
-            <Text style={styles.chevron}>›</Text>
-          </Pressable>
-          <SettingsToggle label="High quality audio" subtitle="44.1 kHz (larger files)" value={settings.highQualityAudio} onToggle={settings.setHighQualityAudio} />
-          <SettingsToggle label="Location tagging" value={settings.locationTagging} onToggle={settings.setLocationTagging} />
-        </SettingsSection>
-
-        {/* Translation Preferences */}
-        <SettingsSection title="Translation">
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Default Source</Text>
-            <Pressable onPress={() => setLanguagePickerVisible(true)}>
-              <Text style={styles.rowValue}>
-                {translationService.getFlag(settings.defaultLanguage)} {settings.defaultLanguage.toUpperCase()}
-              </Text>
+          {/* Recording */}
+          <SettingsSection title="Recording">
+            <Pressable style={styles.navRow} onPress={() => setLanguagePickerVisible(true)}>
+              <Text style={styles.navRowLabel}>Language</Text>
+              <Text style={styles.rowValue}>{settings.defaultLanguage.toUpperCase()}</Text>
+              <Text style={styles.chevron}>›</Text>
             </Pressable>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Default Target</Text>
-            <Pressable onPress={() => setTargetLangPickerVisible(true)}>
-              <Text style={styles.rowValue}>
-                {translationService.getFlag(settings.defaultTargetLanguage)} {settings.defaultTargetLanguage.toUpperCase()}
-              </Text>
+            <SettingsToggle label="High quality audio" subtitle="44.1 kHz (larger files)" value={settings.highQualityAudio} onToggle={settings.setHighQualityAudio} />
+            <SettingsToggle label="Location tagging" value={settings.locationTagging} onToggle={settings.setLocationTagging} />
+          </SettingsSection>
+
+          {/* Translation Preferences */}
+          <SettingsSection title="Translation">
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Default Source</Text>
+              <Pressable onPress={() => setLanguagePickerVisible(true)}>
+                <Text style={styles.rowValue}>
+                  {translationService.getFlag(settings.defaultLanguage)} {settings.defaultLanguage.toUpperCase()}
+                </Text>
+              </Pressable>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Default Target</Text>
+              <Pressable onPress={() => setTargetLangPickerVisible(true)}>
+                <Text style={styles.rowValue}>
+                  {translationService.getFlag(settings.defaultTargetLanguage)} {settings.defaultTargetLanguage.toUpperCase()}
+                </Text>
+              </Pressable>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Audio Quality</Text>
+              <View style={styles.qualityPresetRow}>
+                {AUDIO_QUALITY_PRESETS.map((p) => (
+                  <Pressable
+                    key={p.id}
+                    style={[
+                      styles.qualityPresetBtn,
+                      settings.audioQualityPreset === p.id && { borderColor: p.color, backgroundColor: `${p.color}15` },
+                    ]}
+                    onPress={() => settings.setAudioQualityPreset(p.id)}
+                  >
+                    <Text style={[
+                      styles.qualityPresetText,
+                      settings.audioQualityPreset === p.id && { color: p.color, fontWeight: '700' },
+                    ]}>
+                      {p.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </SettingsSection>
+
+          {/* Voice Selection */}
+          <SettingsSection title="Voice">
+            <Pressable
+              style={[styles.row, settings.selectedVoice === null && styles.voiceRowActive]}
+              onPress={() => settings.setSelectedVoice(null)}
+            >
+              <Text style={styles.rowLabel}>🔊 System Default</Text>
+              {settings.selectedVoice === null && <Text style={styles.voiceCheck}>✓</Text>}
             </Pressable>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Audio Quality</Text>
-            <View style={styles.qualityPresetRow}>
-              {AUDIO_QUALITY_PRESETS.map((p) => (
+            {clonedVoiceId && (
+              <Pressable
+                style={[styles.row, settings.selectedVoice === clonedVoiceId && styles.voiceRowActive]}
+                onPress={() => settings.setSelectedVoice(clonedVoiceId)}
+              >
+                <View style={styles.rowLabelContainer}>
+                  <Text style={styles.rowLabel}>🧬 My Cloned Voice</Text>
+                  <Text style={styles.rowSubtitle}>ID: {clonedVoiceId.slice(0, 8)}...</Text>
+                </View>
+                {settings.selectedVoice === clonedVoiceId && <Text style={styles.voiceCheck}>✓</Text>}
+              </Pressable>
+            )}
+            <Pressable
+              style={styles.row}
+              onPress={() => {
+                translationService.speak('This is a voice preview.', settings.defaultTargetLanguage);
+                feedbackService.tap();
+              }}
+            >
+              <Text style={[styles.rowLabel, { color: colors.accent }]}>▶️ Preview Voice</Text>
+            </Pressable>
+          </SettingsSection>
+
+          {/* Features */}
+          <SettingsSection title="Features">
+            <Pressable style={styles.navRow} onPress={() => router.push('/translate')}
+              accessibilityLabel="Windy Translate" accessibilityRole="button" accessibilityHint="Opens translation screen"
+            >
+              <Text style={styles.navRowLabel}>🌐 Windy Translate</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+            </Pressable>
+            <Pressable style={styles.navRow} onPress={() => router.push('/clone')}
+              accessibilityLabel="Voice Clone" accessibilityRole="button" accessibilityHint="Opens voice clone progress"
+            >
+              <Text style={styles.navRowLabel}>🧬 Voice Clone</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+            </Pressable>
+            <Pressable style={styles.navRow} onPress={() => router.push('/video')}
+              accessibilityLabel="Video Recorder" accessibilityRole="button" accessibilityHint="Opens video recording screen"
+            >
+              <Text style={styles.navRowLabel}>📹 Video Recorder</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+            </Pressable>
+          </SettingsSection>
+
+          {/* UI */}
+          <SettingsSection title={Platform.OS === 'android' ? 'Windy Button' : 'Keyboard'}>
+            <SettingsToggle label="Haptic feedback" value={settings.hapticFeedback} onToggle={settings.setHapticFeedback} />
+            <SettingsToggle label="Audio feedback" subtitle="Blip sounds on record start/stop" value={settings.audioFeedback} onToggle={settings.setAudioFeedback} />
+          </SettingsSection>
+
+          {/* Cloud Sync */}
+          <SettingsSection title="Cloud Sync">
+            <SettingsToggle label="Enable sync" value={settings.syncEnabled} onToggle={settings.setSyncEnabled} />
+            {settings.syncEnabled && (
+              <>
+                <SettingsToggle label="Wi-Fi only" value={settings.wifiOnlySync} onToggle={settings.setWifiOnlySync} />
+                <SettingsToggle label="While plugged in only" value={settings.pluggedInOnlySync} onToggle={settings.setPluggedInOnlySync} />
+                <SyncStatusBanner />
+              </>
+            )}
+          </SettingsSection>
+
+          {/* Notifications */}
+          <SettingsSection title="Notifications">
+            <SettingsToggle label="Recording complete" subtitle="When a transcription finishes" value={settings.notifyRecordingComplete} onToggle={settings.setNotifyRecordingComplete} />
+            <SettingsToggle label="Sync complete" subtitle="When cloud sync finishes" value={settings.notifySyncComplete} onToggle={settings.setNotifySyncComplete} />
+            <SettingsToggle label="Clone milestone" subtitle="When you hit clone training goals" value={settings.notifyCloneMilestone} onToggle={settings.setNotifyCloneMilestone} />
+          </SettingsSection>
+
+          {/* Appearance */}
+          <SettingsSection title="Appearance">
+            <View style={styles.themeRow}>
+              {(['dark', 'light', 'system'] as const).map((t) => (
                 <Pressable
-                  key={p.id}
-                  style={[
-                    styles.qualityPresetBtn,
-                    settings.audioQualityPreset === p.id && { borderColor: p.color, backgroundColor: `${p.color}15` },
-                  ]}
-                  onPress={() => settings.setAudioQualityPreset(p.id)}
+                  key={t}
+                  style={[styles.themeBtn, settings.theme === t && styles.themeBtnActive]}
+                  onPress={() => settings.setTheme(t)}
                 >
-                  <Text style={[
-                    styles.qualityPresetText,
-                    settings.audioQualityPreset === p.id && { color: p.color, fontWeight: '700' },
-                  ]}>
-                    {p.label}
+                  <Text style={[styles.themeBtnText, settings.theme === t && styles.themeBtnTextActive]}>
+                    {themeLabels[t]}
                   </Text>
                 </Pressable>
               ))}
             </View>
-          </View>
-        </SettingsSection>
+          </SettingsSection>
 
-        {/* Voice Selection */}
-        <SettingsSection title="Voice">
-          <Pressable
-            style={[styles.row, settings.selectedVoice === null && styles.voiceRowActive]}
-            onPress={() => settings.setSelectedVoice(null)}
-          >
-            <Text style={styles.rowLabel}>🔊 System Default</Text>
-            {settings.selectedVoice === null && <Text style={styles.voiceCheck}>✓</Text>}
-          </Pressable>
-          {clonedVoiceId && (
-            <Pressable
-              style={[styles.row, settings.selectedVoice === clonedVoiceId && styles.voiceRowActive]}
-              onPress={() => settings.setSelectedVoice(clonedVoiceId)}
+          {/* Storage */}
+          <SettingsSection title="Storage">
+            {storage ? (
+              <>
+                <SettingsRow label="Sessions" value={`${storage.sessionCount} sessions`} />
+                <SettingsRow label="Audio" value={formatBytes(storage.audioBytes)} />
+                <SettingsRow label="Engines" value={formatBytes(storage.engineBytes)} />
+                <SettingsRow label="Total" value={formatBytes(storage.totalBytes)} valueColor={colors.accent} />
+              </>
+            ) : (
+              <SettingsRow label="Calculating..." value="" />
+            )}
+            <Pressable style={styles.storageAction} onPress={handleClearCache}
+              accessibilityLabel={clearingCache ? 'Clearing cache' : `Clear cache, ${formatBytes(cacheSize)}`}
+              accessibilityRole="button"
             >
-              <View style={styles.rowLabelContainer}>
-                <Text style={styles.rowLabel}>🧬 My Cloned Voice</Text>
-                <Text style={styles.rowSubtitle}>ID: {clonedVoiceId.slice(0, 8)}...</Text>
-              </View>
-              {settings.selectedVoice === clonedVoiceId && <Text style={styles.voiceCheck}>✓</Text>}
+              <Text style={styles.storageActionText}>
+                {clearingCache ? '⏳ Clearing...' : `🗑 Clear Cache (${formatBytes(cacheSize)})`}
+              </Text>
             </Pressable>
-          )}
-          <Pressable
-            style={styles.row}
-            onPress={() => {
-              translationService.speak('This is a voice preview.', settings.defaultTargetLanguage);
-              feedbackService.tap();
-            }}
-          >
-            <Text style={[styles.rowLabel, { color: colors.accent }]}>▶️ Preview Voice</Text>
-          </Pressable>
-        </SettingsSection>
+            <Pressable style={styles.storageAction} onPress={handleExportAllData}
+              accessibilityLabel="Export all data" accessibilityRole="button"
+            >
+              <Text style={styles.storageActionText}>📦 Export All Data</Text>
+            </Pressable>
+          </SettingsSection>
 
-        {/* Features */}
-        <SettingsSection title="Features">
-          <Pressable style={styles.navRow} onPress={() => router.push('/translate')}
-            accessibilityLabel="Windy Translate" accessibilityRole="button" accessibilityHint="Opens translation screen"
-          >
-            <Text style={styles.navRowLabel}>🌐 Windy Translate</Text>
-            <Text style={styles.chevron} importantForAccessibility="no">›</Text>
-          </Pressable>
-          <Pressable style={styles.navRow} onPress={() => router.push('/clone')}
-            accessibilityLabel="Voice Clone" accessibilityRole="button" accessibilityHint="Opens voice clone progress"
-          >
-            <Text style={styles.navRowLabel}>🧬 Voice Clone</Text>
-            <Text style={styles.chevron} importantForAccessibility="no">›</Text>
-          </Pressable>
-          <Pressable style={styles.navRow} onPress={() => router.push('/video')}
-            accessibilityLabel="Video Recorder" accessibilityRole="button" accessibilityHint="Opens video recording screen"
-          >
-            <Text style={styles.navRowLabel}>📹 Video Recorder</Text>
-            <Text style={styles.chevron} importantForAccessibility="no">›</Text>
-          </Pressable>
-        </SettingsSection>
-
-        {/* UI */}
-        <SettingsSection title={Platform.OS === 'android' ? 'Windy Button' : 'Keyboard'}>
-          <SettingsToggle label="Haptic feedback" value={settings.hapticFeedback} onToggle={settings.setHapticFeedback} />
-          <SettingsToggle label="Audio feedback" subtitle="Blip sounds on record start/stop" value={settings.audioFeedback} onToggle={settings.setAudioFeedback} />
-        </SettingsSection>
-
-        {/* Cloud Sync */}
-        <SettingsSection title="Cloud Sync">
-          <SettingsToggle label="Enable sync" value={settings.syncEnabled} onToggle={settings.setSyncEnabled} />
-          {settings.syncEnabled && (
-            <>
-              <SettingsToggle label="Wi-Fi only" value={settings.wifiOnlySync} onToggle={settings.setWifiOnlySync} />
-              <SettingsToggle label="While plugged in only" value={settings.pluggedInOnlySync} onToggle={settings.setPluggedInOnlySync} />
-              <SyncStatusBanner />
-            </>
-          )}
-        </SettingsSection>
-
-        {/* Notifications */}
-        <SettingsSection title="Notifications">
-          <SettingsToggle label="Recording complete" subtitle="When a transcription finishes" value={settings.notifyRecordingComplete} onToggle={settings.setNotifyRecordingComplete} />
-          <SettingsToggle label="Sync complete" subtitle="When cloud sync finishes" value={settings.notifySyncComplete} onToggle={settings.setNotifySyncComplete} />
-          <SettingsToggle label="Clone milestone" subtitle="When you hit clone training goals" value={settings.notifyCloneMilestone} onToggle={settings.setNotifyCloneMilestone} />
-        </SettingsSection>
-
-        {/* Appearance */}
-        <SettingsSection title="Appearance">
-          <View style={styles.themeRow}>
-            {(['dark', 'light', 'system'] as const).map((t) => (
-              <Pressable
-                key={t}
-                style={[styles.themeBtn, settings.theme === t && styles.themeBtnActive]}
-                onPress={() => settings.setTheme(t)}
-              >
-                <Text style={[styles.themeBtnText, settings.theme === t && styles.themeBtnTextActive]}>
-                  {themeLabels[t]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </SettingsSection>
-
-        {/* Storage */}
-        <SettingsSection title="Storage">
-          {storage ? (
-            <>
-              <SettingsRow label="Sessions" value={`${storage.sessionCount} sessions`} />
-              <SettingsRow label="Audio" value={formatBytes(storage.audioBytes)} />
-              <SettingsRow label="Engines" value={formatBytes(storage.engineBytes)} />
-              <SettingsRow label="Total" value={formatBytes(storage.totalBytes)} valueColor={colors.accent} />
-            </>
-          ) : (
-            <SettingsRow label="Calculating..." value="" />
-          )}
-          <Pressable style={styles.storageAction} onPress={handleClearCache}
-            accessibilityLabel={clearingCache ? 'Clearing cache' : `Clear cache, ${formatBytes(cacheSize)}`}
-            accessibilityRole="button"
-          >
-            <Text style={styles.storageActionText}>
-              {clearingCache ? '⏳ Clearing...' : `🗑 Clear Cache (${formatBytes(cacheSize)})`}
-            </Text>
-          </Pressable>
-          <Pressable style={styles.storageAction} onPress={handleExportAllData}
-            accessibilityLabel="Export all data" accessibilityRole="button"
-          >
-            <Text style={styles.storageActionText}>📦 Export All Data</Text>
-          </Pressable>
-        </SettingsSection>
-
-        {/* Downloaded Languages */}
-        <SettingsSection title="Downloaded Languages">
-          <SettingsRow
-            label="Total storage"
-            value={formatBytes(offlinePackService.getTotalStorageUsed())}
-            valueColor={colors.accent}
-          />
-          {packs.map((pack) => (
-            <View key={pack.code} style={styles.row}>
-              <View style={styles.rowLabelContainer}>
-                <Text style={styles.rowLabel}>{pack.flag} {pack.name}</Text>
-                <Text style={styles.rowSubtitle}>
-                  {pack.status === 'downloaded'
-                    ? formatBytes(pack.downloadedBytes)
-                    : pack.status === 'downloading'
-                      ? `${Math.round(pack.progress * 100)}%`
-                      : formatBytes(pack.sizeBytes)}
-                </Text>
+          {/* Downloaded Languages */}
+          <SettingsSection title="Downloaded Languages">
+            <SettingsRow
+              label="Total storage"
+              value={formatBytes(offlinePackService.getTotalStorageUsed())}
+              valueColor={colors.accent}
+            />
+            {packs.map((pack) => (
+              <View key={pack.code} style={styles.row}>
+                <View style={styles.rowLabelContainer}>
+                  <Text style={styles.rowLabel}>{pack.flag} {pack.name}</Text>
+                  <Text style={styles.rowSubtitle}>
+                    {pack.status === 'downloaded'
+                      ? formatBytes(pack.downloadedBytes)
+                      : pack.status === 'downloading'
+                        ? `${Math.round(pack.progress * 100)}%`
+                        : formatBytes(pack.sizeBytes)}
+                  </Text>
+                  {pack.status === 'downloading' && (
+                    <View style={styles.packProgress}>
+                      <View style={[styles.packProgressFill, { width: `${pack.progress * 100}%` }]} />
+                    </View>
+                  )}
+                </View>
+                {pack.status === 'available' && (
+                  <Pressable onPress={async () => {
+                    await offlinePackService.downloadPack(pack.code);
+                    setPacks(offlinePackService.getPacks());
+                  }}>
+                    <Text style={styles.storageActionText}>⬇️</Text>
+                  </Pressable>
+                )}
+                {pack.status === 'downloaded' && (
+                  <Pressable onPress={async () => {
+                    await offlinePackService.deletePack(pack.code);
+                    setPacks(offlinePackService.getPacks());
+                  }}>
+                    <Text style={[styles.storageActionText, { color: colors.stateError }]}>🗑</Text>
+                  </Pressable>
+                )}
                 {pack.status === 'downloading' && (
-                  <View style={styles.packProgress}>
-                    <View style={[styles.packProgressFill, { width: `${pack.progress * 100}%` }]} />
-                  </View>
+                  <Pressable onPress={async () => {
+                    await offlinePackService.cancelDownload(pack.code);
+                    setPacks(offlinePackService.getPacks());
+                  }}>
+                    <Text style={styles.storageActionText}>✕</Text>
+                  </Pressable>
+                )}
+                {pack.status === 'error' && (
+                  <Pressable onPress={async () => {
+                    await offlinePackService.downloadPack(pack.code);
+                    setPacks(offlinePackService.getPacks());
+                  }}>
+                    <Text style={styles.storageActionText}>🔄</Text>
+                  </Pressable>
                 )}
               </View>
-              {pack.status === 'available' && (
-                <Pressable onPress={async () => {
-                  await offlinePackService.downloadPack(pack.code);
-                  setPacks(offlinePackService.getPacks());
-                }}>
-                  <Text style={styles.storageActionText}>⬇️</Text>
-                </Pressable>
-              )}
-              {pack.status === 'downloaded' && (
-                <Pressable onPress={async () => {
-                  await offlinePackService.deletePack(pack.code);
-                  setPacks(offlinePackService.getPacks());
-                }}>
-                  <Text style={[styles.storageActionText, { color: colors.stateError }]}>🗑</Text>
-                </Pressable>
-              )}
-              {pack.status === 'downloading' && (
-                <Pressable onPress={async () => {
-                  await offlinePackService.cancelDownload(pack.code);
-                  setPacks(offlinePackService.getPacks());
-                }}>
-                  <Text style={styles.storageActionText}>✕</Text>
-                </Pressable>
-              )}
-              {pack.status === 'error' && (
-                <Pressable onPress={async () => {
-                  await offlinePackService.downloadPack(pack.code);
-                  setPacks(offlinePackService.getPacks());
-                }}>
-                  <Text style={styles.storageActionText}>🔄</Text>
-                </Pressable>
-              )}
-            </View>
-          ))}
-        </SettingsSection>
+            ))}
+          </SettingsSection>
 
-        {/* Clone */}
-        <SettingsSection title="Voice Clone">
-          <SettingsToggle label="Track clone progress" subtitle="Silently accumulate voice data" value={settings.cloneTrackingEnabled} onToggle={settings.setCloneTrackingEnabled} />
-          <SettingsRow
-            label="Progress"
-            value={`${cloneHours.toFixed(1)} of 10 hours (${Math.round(cloneReadiness)}%)`}
-            valueColor={cloneReadiness >= 100 ? colors.accent : colors.textSecondary}
-          />
-        </SettingsSection>
+          {/* Clone */}
+          <SettingsSection title="Voice Clone">
+            <SettingsToggle label="Track clone progress" subtitle="Silently accumulate voice data" value={settings.cloneTrackingEnabled} onToggle={settings.setCloneTrackingEnabled} />
+            <SettingsRow
+              label="Progress"
+              value={`${cloneHours.toFixed(1)} of 10 hours (${Math.round(cloneReadiness)}%)`}
+              valueColor={cloneReadiness >= 100 ? colors.accent : colors.textSecondary}
+            />
+          </SettingsSection>
 
-        {/* About */}
-        <SettingsSection title="About">
-          <Pressable style={styles.navRow} onPress={() => router.push('/appstore')}>
-            <Text style={styles.navRowLabel}>🌪️ About Windy Pro</Text>
-            <Text style={styles.chevron}>›</Text>
-          </Pressable>
-          <SettingsRow label="Version" value={`${appVersion} (Build ${buildNumber})`} />
-          <SettingsRow label="SDK" value={`Expo SDK ${Constants.expoConfig?.sdkVersion || '52'}`} />
-          <Pressable style={styles.navRow} onPress={() => router.push('/legal/privacy')}>
-            <Text style={styles.navRowLabel}>Privacy Policy</Text>
-            <Text style={styles.chevron}>›</Text>
-          </Pressable>
-          <Pressable style={styles.navRow} onPress={() => router.push('/legal/terms')}>
-            <Text style={styles.navRowLabel}>Terms of Service</Text>
-            <Text style={styles.chevron}>›</Text>
-          </Pressable>
-        </SettingsSection>
-
-        {/* Account Management */}
-        <SettingsSection title="Account">
-          <SettingsRow
-            label="Subscription"
-            value={settings.licenseTier === 'free' ? 'Free' : formatTier(settings.licenseTier)}
-            valueColor={settings.licenseTier === 'free' ? colors.textTertiary : colors.accent}
-          />
-          {settings.licenseKey && (
-            <SettingsRow label="License Key" value={`${settings.licenseKey.slice(0, 8)}...`} />
-          )}
-          {settings.licenseTier !== 'free' && (
-            <Pressable style={styles.navRow} onPress={() => router.push('/subscription')}>
-              <Text style={styles.navRowLabel}>💳 Manage Subscription</Text>
+          {/* About */}
+          <SettingsSection title="About">
+            <Pressable style={styles.navRow} onPress={() => router.push('/appstore')}>
+              <Text style={styles.navRowLabel}>🌪️ About Windy Pro</Text>
               <Text style={styles.chevron}>›</Text>
             </Pressable>
-          )}
-          <Pressable
-            style={styles.navRow}
-            onPress={() => {
-              Alert.alert('Log Out', 'Are you sure you want to log out?', [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Log Out',
-                  style: 'destructive',
-                  onPress: () => {
-                    settings.setLicense('free', null);
-                    feedbackService.success();
-                    Alert.alert('Logged Out', 'You have been logged out.');
+            <SettingsRow label="Version" value={`${appVersion} (Build ${buildNumber})`} />
+            <SettingsRow label="SDK" value={`Expo SDK ${Constants.expoConfig?.sdkVersion || '52'}`} />
+            <Pressable style={styles.navRow} onPress={() => router.push('/legal/privacy')}>
+              <Text style={styles.navRowLabel}>Privacy Policy</Text>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+            <Pressable style={styles.navRow} onPress={() => router.push('/legal/terms')}>
+              <Text style={styles.navRowLabel}>Terms of Service</Text>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+          </SettingsSection>
+
+          {/* Account Management */}
+          <SettingsSection title="Account">
+            <SettingsRow
+              label="Subscription"
+              value={settings.licenseTier === 'free' ? 'Free' : formatTier(settings.licenseTier)}
+              valueColor={settings.licenseTier === 'free' ? colors.textTertiary : colors.accent}
+            />
+            {settings.licenseKey && (
+              <SettingsRow label="License Key" value={`${settings.licenseKey.slice(0, 8)}...`} />
+            )}
+            {settings.licenseTier !== 'free' && (
+              <Pressable style={styles.navRow} onPress={() => router.push('/subscription')}>
+                <Text style={styles.navRowLabel}>💳 Manage Subscription</Text>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
+            )}
+            <Pressable
+              style={styles.navRow}
+              onPress={() => {
+                Alert.alert('Log Out', 'Are you sure you want to log out?', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Log Out',
+                    style: 'destructive',
+                    onPress: () => {
+                      settings.setLicense('free', null);
+                      feedbackService.success();
+                      Alert.alert('Logged Out', 'You have been logged out.');
+                    },
                   },
-                },
-              ]);
-            }}
-          >
-            <Text style={[styles.navRowLabel, { color: colors.stateError }]}>🚪 Log Out</Text>
-          </Pressable>
-        </SettingsSection>
+                ]);
+              }}
+            >
+              <Text style={[styles.navRowLabel, { color: colors.stateError }]}>🚪 Log Out</Text>
+            </Pressable>
+          </SettingsSection>
 
-        {/* Danger Zone */}
-        <SettingsSection title="Danger Zone">
-          <Pressable style={styles.dangerRow} onPress={handleDeleteAccount}
-            accessibilityLabel="Delete account and all data"
-            accessibilityRole="button"
-            accessibilityHint="Permanently removes your account, recordings, and settings"
-          >
-            <Text style={styles.dangerText}>🗑 Delete Account & Data</Text>
-          </Pressable>
-        </SettingsSection>
+          {/* Danger Zone */}
+          <SettingsSection title="Danger Zone">
+            <Pressable style={styles.dangerRow} onPress={handleDeleteAccount}
+              accessibilityLabel="Delete account and all data"
+              accessibilityRole="button"
+              accessibilityHint="Permanently removes your account, recordings, and settings"
+            >
+              <Text style={styles.dangerText}>🗑 Delete Account & Data</Text>
+            </Pressable>
+          </SettingsSection>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Made with 🌪️ by Windy Pro</Text>
-          <Text style={styles.footerVersion}>v{appVersion} · {Platform.OS}</Text>
-        </View>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Made with 🌪️ by Windy Pro</Text>
+            <Text style={styles.footerVersion}>v{appVersion} · {Platform.OS}</Text>
+          </View>
 
-        <EnginePickerSheet visible={enginePickerVisible} onClose={() => setEnginePickerVisible(false)} />
-        <LanguagePickerSheet visible={languagePickerVisible} onClose={() => setLanguagePickerVisible(false)} />
-        {targetLangPickerVisible && (
-          <LanguagePickerSheet
-            visible={targetLangPickerVisible}
-            onClose={() => setTargetLangPickerVisible(false)}
-          />
-        )}
-      </ScrollView>
-    </SafeAreaView>
+          <EnginePickerSheet visible={enginePickerVisible} onClose={() => setEnginePickerVisible(false)} />
+          <LanguagePickerSheet visible={languagePickerVisible} onClose={() => setLanguagePickerVisible(false)} />
+          {targetLangPickerVisible && (
+            <LanguagePickerSheet
+              visible={targetLangPickerVisible}
+              onClose={() => setTargetLangPickerVisible(false)}
+            />
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </ScreenErrorBoundary>
   );
 }
 

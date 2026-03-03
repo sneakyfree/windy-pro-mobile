@@ -14,6 +14,7 @@ import { localStorageService } from '@/services/storage-local';
 import { feedbackService } from '@/services/feedback';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import type { SessionSummary, StorageUsage } from '@/types';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 const HISTORY_API = 'https://windypro.thewindstorm.uk/user/history';
 const FAVORITES_API = 'https://windypro.thewindstorm.uk/user/favorites';
@@ -357,150 +358,152 @@ export default function HistoryScreen() {
   const storageColor = storagePct > 80 ? colors.stateError : storagePct > 50 ? '#eab308' : colors.accent;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Storage Usage Indicator */}
-      {storage && (
-        <View style={styles.storageCard}>
-          <View style={styles.storageHeader}>
-            <Text style={styles.storageTitle}>💾 Storage</Text>
-            <Text style={styles.storageValue}>
-              {formatBytes(storage.totalBytes)} of {STORAGE_LIMIT_MB} MB
-            </Text>
+    <ScreenErrorBoundary screenName="History">
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Storage Usage Indicator */}
+        {storage && (
+          <View style={styles.storageCard}>
+            <View style={styles.storageHeader}>
+              <Text style={styles.storageTitle}>💾 Storage</Text>
+              <Text style={styles.storageValue}>
+                {formatBytes(storage.totalBytes)} of {STORAGE_LIMIT_MB} MB
+              </Text>
+            </View>
+            <View style={styles.storageBarBg}>
+              <Animated.View
+                style={[styles.storageBarFill, {
+                  backgroundColor: storageColor,
+                  width: storageBarAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%'],
+                  }),
+                }]}
+              />
+            </View>
+            <View style={styles.storageBreakdown}>
+              <Text style={styles.storageStat}>🎤 {formatBytes(storage.audioBytes)}</Text>
+              <Text style={styles.storageStat}>📹 {formatBytes(storage.videoBytes)}</Text>
+              <Text style={styles.storageStat}>🧠 {formatBytes(storage.engineBytes)}</Text>
+              <Text style={styles.storageStat}>{storage.sessionCount} sessions</Text>
+            </View>
           </View>
-          <View style={styles.storageBarBg}>
-            <Animated.View
-              style={[styles.storageBarFill, {
-                backgroundColor: storageColor,
-                width: storageBarAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '100%'],
-                }),
-              }]}
-            />
-          </View>
-          <View style={styles.storageBreakdown}>
-            <Text style={styles.storageStat}>🎤 {formatBytes(storage.audioBytes)}</Text>
-            <Text style={styles.storageStat}>📹 {formatBytes(storage.videoBytes)}</Text>
-            <Text style={styles.storageStat}>🧠 {formatBytes(storage.engineBytes)}</Text>
-            <Text style={styles.storageStat}>{storage.sessionCount} sessions</Text>
-          </View>
+        )}
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search transcripts..."
+            placeholderTextColor={colors.textTertiary}
+            value={searchQuery}
+            onChangeText={handleSearch}
+            returnKeyType="search"
+            accessibilityLabel="Search transcripts"
+            accessibilityHint="Type to filter recording history"
+          />
         </View>
-      )}
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search transcripts..."
-          placeholderTextColor={colors.textTertiary}
-          value={searchQuery}
-          onChangeText={handleSearch}
-          returnKeyType="search"
-          accessibilityLabel="Search transcripts"
-          accessibilityHint="Type to filter recording history"
-        />
-      </View>
-
-      {/* Sort Controls */}
-      <View style={styles.sortRow}>
-        {(['date', 'duration', 'quality'] as SortBy[]).map((field) => (
-          <Pressable
-            key={field}
-            style={[styles.sortBtn, sortBy === field && styles.sortBtnActive]}
-            onPress={() => toggleSort(field)}
-            accessibilityLabel={`Sort by ${field}${sortBy === field ? `, ${sortDir === 'desc' ? 'descending' : 'ascending'}` : ''}`}
-            accessibilityRole="button"
-          >
-            <Text style={[styles.sortBtnText, sortBy === field && styles.sortBtnTextActive]}>
-              {field === 'date' ? '📅' : field === 'duration' ? '⏱' : '⭐'}{' '}
-              {field.charAt(0).toUpperCase() + field.slice(1)}
-              {sortBy === field && (sortDir === 'desc' ? ' ↓' : ' ↑')}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {/* Language Pair Filter */}
-      {langPairs.length > 1 && (
-        <View style={styles.filterRow}>
-          <Pressable
-            style={[styles.filterChip, !langFilter && styles.filterChipActive]}
-            onPress={() => setLangFilter(null)}
-            accessibilityLabel="Show all languages"
-            accessibilityRole="button"
-            accessibilityState={{ selected: !langFilter }}
-          >
-            <Text style={[styles.filterChipText, !langFilter && styles.filterChipTextActive]}>All</Text>
-          </Pressable>
-          {langPairs.map(pair => (
+        {/* Sort Controls */}
+        <View style={styles.sortRow}>
+          {(['date', 'duration', 'quality'] as SortBy[]).map((field) => (
             <Pressable
-              key={pair}
-              style={[styles.filterChip, langFilter === pair && styles.filterChipActive]}
-              onPress={() => setLangFilter(langFilter === pair ? null : pair)}
-              accessibilityLabel={`Filter by ${pair.toUpperCase()}`}
+              key={field}
+              style={[styles.sortBtn, sortBy === field && styles.sortBtnActive]}
+              onPress={() => toggleSort(field)}
+              accessibilityLabel={`Sort by ${field}${sortBy === field ? `, ${sortDir === 'desc' ? 'descending' : 'ascending'}` : ''}`}
               accessibilityRole="button"
-              accessibilityState={{ selected: langFilter === pair }}
             >
-              <Text style={[styles.filterChipText, langFilter === pair && styles.filterChipTextActive]}>
-                {translationService.getFlag(pair)} {pair.toUpperCase()}
+              <Text style={[styles.sortBtnText, sortBy === field && styles.sortBtnTextActive]}>
+                {field === 'date' ? '📅' : field === 'duration' ? '⏱' : '⭐'}{' '}
+                {field.charAt(0).toUpperCase() + field.slice(1)}
+                {sortBy === field && (sortDir === 'desc' ? ' ↓' : ' ↑')}
               </Text>
             </Pressable>
           ))}
-          {/* CSV export button */}
-          <Pressable style={styles.csvExportBtn} onPress={handleExportCsv} accessibilityLabel="Export history as CSV" accessibilityRole="button">
-            <Text style={styles.csvExportText}>💾 CSV</Text>
-          </Pressable>
         </View>
-      )}
 
-      {/* Select / Batch Delete Header */}
-      <View style={styles.selectHeader}>
-        <Pressable onPress={() => { setSelectMode(!selectMode); setSelected(new Set()); }} accessibilityLabel={selectMode ? 'Exit selection mode' : 'Enter selection mode'} accessibilityRole="button">
-          <Text style={styles.selectBtn}>
-            {selectMode ? '✅ Done' : '☑️ Select'}
-          </Text>
-        </Pressable>
-        {selectMode && (
-          <View style={styles.selectActions}>
-            <Pressable onPress={handleSelectAll} accessibilityLabel={selected.size === sessions.length ? 'Deselect all' : 'Select all'} accessibilityRole="button">
-              <Text style={styles.selectAllBtn}>
-                {selected.size === sessions.length ? 'Deselect All' : 'Select All'}
-              </Text>
+        {/* Language Pair Filter */}
+        {langPairs.length > 1 && (
+          <View style={styles.filterRow}>
+            <Pressable
+              style={[styles.filterChip, !langFilter && styles.filterChipActive]}
+              onPress={() => setLangFilter(null)}
+              accessibilityLabel="Show all languages"
+              accessibilityRole="button"
+              accessibilityState={{ selected: !langFilter }}
+            >
+              <Text style={[styles.filterChipText, !langFilter && styles.filterChipTextActive]}>All</Text>
             </Pressable>
-            {selected.size > 0 && (
-              <Pressable onPress={handleBatchDelete} accessibilityLabel={`Delete ${selected.size} selected recordings`} accessibilityRole="button">
-                <Text style={styles.batchDeleteBtn}>🗑️ Delete ({selected.size})</Text>
+            {langPairs.map(pair => (
+              <Pressable
+                key={pair}
+                style={[styles.filterChip, langFilter === pair && styles.filterChipActive]}
+                onPress={() => setLangFilter(langFilter === pair ? null : pair)}
+                accessibilityLabel={`Filter by ${pair.toUpperCase()}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: langFilter === pair }}
+              >
+                <Text style={[styles.filterChipText, langFilter === pair && styles.filterChipTextActive]}>
+                  {translationService.getFlag(pair)} {pair.toUpperCase()}
+                </Text>
               </Pressable>
-            )}
+            ))}
+            {/* CSV export button */}
+            <Pressable style={styles.csvExportBtn} onPress={handleExportCsv} accessibilityLabel="Export history as CSV" accessibilityRole="button">
+              <Text style={styles.csvExportText}>💾 CSV</Text>
+            </Pressable>
           </View>
         )}
-      </View>
 
-      {sessions.length === 0 && !loading ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>🌪️</Text>
-          <Text style={styles.emptyTitle}>
-            {searchQuery ? 'No results' : 'No recordings yet'}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {searchQuery
-              ? 'Try a different search term'
-              : 'Tap the record button to capture your first session'}
-          </Text>
+        {/* Select / Batch Delete Header */}
+        <View style={styles.selectHeader}>
+          <Pressable onPress={() => { setSelectMode(!selectMode); setSelected(new Set()); }} accessibilityLabel={selectMode ? 'Exit selection mode' : 'Enter selection mode'} accessibilityRole="button">
+            <Text style={styles.selectBtn}>
+              {selectMode ? '✅ Done' : '☑️ Select'}
+            </Text>
+          </Pressable>
+          {selectMode && (
+            <View style={styles.selectActions}>
+              <Pressable onPress={handleSelectAll} accessibilityLabel={selected.size === sessions.length ? 'Deselect all' : 'Select all'} accessibilityRole="button">
+                <Text style={styles.selectAllBtn}>
+                  {selected.size === sessions.length ? 'Deselect All' : 'Select All'}
+                </Text>
+              </Pressable>
+              {selected.size > 0 && (
+                <Pressable onPress={handleBatchDelete} accessibilityLabel={`Delete ${selected.size} selected recordings`} accessibilityRole="button">
+                  <Text style={styles.batchDeleteBtn}>🗑️ Delete ({selected.size})</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
-      ) : (
-        <FlatList
-          data={filteredSessions}
-          renderItem={renderSession}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          refreshing={loading}
-          onRefresh={() => { loadSessions(); loadStorage(); }}
-          keyboardDismissMode="on-drag"
-        />
-      )}
-    </SafeAreaView>
+
+        {sessions.length === 0 && !loading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>🌪️</Text>
+            <Text style={styles.emptyTitle}>
+              {searchQuery ? 'No results' : 'No recordings yet'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {searchQuery
+                ? 'Try a different search term'
+                : 'Tap the record button to capture your first session'}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredSessions}
+            renderItem={renderSession}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            refreshing={loading}
+            onRefresh={() => { loadSessions(); loadStorage(); }}
+            keyboardDismissMode="on-drag"
+          />
+        )}
+      </SafeAreaView>
+    </ScreenErrorBoundary>
   );
 }
 

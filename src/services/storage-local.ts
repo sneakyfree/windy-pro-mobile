@@ -85,7 +85,7 @@ class LocalStorageService {
             }
 
             this.initialized = true;
-            console.log('[Storage] Database initialized');
+            // console.log('[Storage] Database initialized');
         } catch (error) {
             console.error('[Storage] Failed to initialize:', error);
             throw error;
@@ -169,7 +169,7 @@ class LocalStorageService {
             );
         }
 
-        console.log('[Storage] Session saved:', session.id);
+        // console.log('[Storage] Session saved:', session.id);
     }
 
     /**
@@ -296,7 +296,7 @@ class LocalStorageService {
         await db.runAsync('DELETE FROM sessions WHERE id = ?', id);
         await db.runAsync('DELETE FROM sync_queue WHERE session_id = ?', id);
 
-        console.log('[Storage] Session deleted:', id);
+        // console.log('[Storage] Session deleted:', id);
     }
 
     /**

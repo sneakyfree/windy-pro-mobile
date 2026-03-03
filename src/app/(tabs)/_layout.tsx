@@ -7,16 +7,6 @@ import { Tabs } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 import { colors } from '@/theme';
 
-// Simple text-based icons (will be replaced with proper icons later)
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const icons: Record<string, string> = {
-    index: '🎤',
-    history: '📋',
-    settings: '⚙️',
-  };
-  return null; // Icons handled by tabBarIcon option text
-}
-
 export default function TabLayout() {
   return (
     <Tabs
@@ -57,7 +47,6 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '🎤 Record',
-          tabBarAccessibilityLabel: 'Record tab. Tap to record voice to text.',
         }}
       />
       <Tabs.Screen
@@ -67,7 +56,6 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '📷 Camera',
-          tabBarAccessibilityLabel: 'Camera tab. Translate text using your camera.',
         }}
       />
       <Tabs.Screen
@@ -76,7 +64,6 @@ export default function TabLayout() {
           title: 'History',
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '📋 History',
-          tabBarAccessibilityLabel: 'History tab. View past recordings and translations.',
         }}
       />
       <Tabs.Screen
@@ -85,7 +72,6 @@ export default function TabLayout() {
           title: 'Settings',
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '⚙️ Settings',
-          tabBarAccessibilityLabel: 'Settings tab. Configure your preferences.',
         }}
       />
     </Tabs>

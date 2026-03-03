@@ -62,7 +62,7 @@ class TranscriptionService {
         uri: string,
         engine: EngineId
     ): Promise<TranscriptSegment[]> {
-        console.log(`[Transcription] Local transcription with ${engine}: ${uri}`);
+        // console.log(`[Transcription] Local transcription with ${engine}: ${uri}`);
 
         try {
             // Use WhisperManager for model loading + transcription
@@ -146,7 +146,7 @@ class TranscriptionService {
 
                         // Send stop signal
                         this.ws?.send(JSON.stringify({ type: 'stop' }));
-                        console.log('[Transcription] Audio sent, waiting for transcription...');
+                        // console.log('[Transcription] Audio sent, waiting for transcription...');
                     } catch (err) {
                         if (!resolved) {
                             resolved = true;
@@ -214,7 +214,7 @@ class TranscriptionService {
     /** Switch to cloud processing (fallback) */
     async switchToCloud(): Promise<void> {
         this.activeEngine = 'cloud-standard';
-        console.log('[Transcription] Switched to cloud processing');
+        // console.log('[Transcription] Switched to cloud processing');
     }
 
     /** Switch to a local engine */
@@ -224,7 +224,7 @@ class TranscriptionService {
             throw new Error(`${engine} is not an on-device engine`);
         }
         this.activeEngine = engine;
-        console.log(`[Transcription] Switched to local engine: ${engine}`);
+        // console.log(`[Transcription] Switched to local engine: ${engine}`);
     }
 
     /** Cancel active transcription */

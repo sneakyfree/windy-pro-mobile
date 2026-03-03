@@ -85,7 +85,7 @@ class CloneTracker {
             if (!milestone.reached && this.weightedHours >= milestone.threshold) {
                 milestone.reached = true;
                 milestone.reachedAt = now;
-                console.log(`[Clone] 🎉 Milestone reached: ${milestone.label} (${milestone.emoji})`);
+                // console.log(`[Clone] 🎉 Milestone reached: ${milestone.label} (${milestone.emoji})`);
 
                 // Haptic celebration
                 try {

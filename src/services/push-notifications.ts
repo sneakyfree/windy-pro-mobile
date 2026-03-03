@@ -42,7 +42,7 @@ class PushNotificationService {
     async initialize(): Promise<string | null> {
         // Only works on physical devices
         if (!Device.isDevice) {
-            console.log('[Push] Not a physical device, skipping');
+            // console.log('[Push] Not a physical device, skipping');
             return null;
         }
 
@@ -76,7 +76,7 @@ class PushNotificationService {
             // Register with backend
             await this.registerTokenWithBackend(this.token);
 
-            console.log('[Push] Token registered:', this.token.substring(0, 20) + '...');
+            // console.log('[Push] Token registered:', this.token.substring(0, 20) + '...');
             return this.token;
         } catch (err) {
             console.error('[Push] Init failed:', err);

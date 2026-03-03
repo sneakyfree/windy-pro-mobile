@@ -26,6 +26,9 @@ import { useAccessibility } from '@/hooks/useAccessibility';
 import { SpeechWaveform } from '@/components/SpeechWaveform';
 import { SpeechTranslationError, SPEECH_ERROR_MESSAGES } from '@/services/speech-translation';
 import { networkMonitor, type NetworkStatus } from '@/services/network-monitor';
+import { analyticsService } from '@/services/analytics';
+import { ratingPromptService } from '@/services/rating-prompt';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import type { TranscriptSegment } from '@/types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -262,6 +265,10 @@ export default function TranslateScreen() {
             haptic.success();
             announce(`Translation complete. ${result.translated}`);
 
+            // Track analytics + rating prompt
+            analyticsService.trackTranslation(fromLang, toLang);
+            ratingPromptService.recordTranslation();
+
             // TTS: speak the translation aloud
             if (ttsEnabled) {
                 await translationService.speak(result.translated, toLang);
@@ -335,398 +342,402 @@ export default function TranslateScreen() {
 
     if (mode === 'split-screen') {
         return (
-            <View style={styles.container}>
-                {/* Speaker B (top, rotated 180°) */}
-                <View style={[styles.splitHalf, styles.splitTop]}>
-                    <View style={{ transform: [{ rotate: '180deg' }], flex: 1 }}>
+            <ScreenErrorBoundary screenName="Translate">
+                <View style={styles.container}>
+                    {/* Speaker B (top, rotated 180°) */}
+                    <View style={[styles.splitHalf, styles.splitTop]}>
+                        <View style={{ transform: [{ rotate: '180deg' }], flex: 1 }}>
+                            <SplitSpeakerPanel
+                                speaker="B"
+                                lang={targetLang}
+                                otherLang={sourceLang}
+                                turns={turns}
+                                isActive={activeSpeaker === 'B'}
+                                isRecording={isRecording}
+                                processing={processing}
+                                onPressIn={() => { setActiveSpeaker('B'); handlePressIn(); }}
+                                onPressOut={handlePressOut}
+                                scrollRef={scrollRefB}
+                                getFlag={getFlag}
+                                getName={getName}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Divider */}
+                    <View style={styles.splitDivider}>
+                        <Text style={styles.splitDividerText}>{getFlag(sourceLang)} ⇄ {getFlag(targetLang)}</Text>
+                        <Pressable
+                            onPress={() => setMode('manual')}
+                            style={styles.splitExitBtn}
+                        >
+                            <Text style={styles.splitExitText}>✕ Exit Split</Text>
+                        </Pressable>
+                    </View>
+
+                    {/* Speaker A (bottom) */}
+                    <View style={[styles.splitHalf, styles.splitBottom]}>
                         <SplitSpeakerPanel
-                            speaker="B"
-                            lang={targetLang}
-                            otherLang={sourceLang}
+                            speaker="A"
+                            lang={sourceLang}
+                            otherLang={targetLang}
                             turns={turns}
-                            isActive={activeSpeaker === 'B'}
+                            isActive={activeSpeaker === 'A'}
                             isRecording={isRecording}
                             processing={processing}
-                            onPressIn={() => { setActiveSpeaker('B'); handlePressIn(); }}
+                            onPressIn={() => { setActiveSpeaker('A'); handlePressIn(); }}
                             onPressOut={handlePressOut}
-                            scrollRef={scrollRefB}
+                            scrollRef={scrollRefA}
                             getFlag={getFlag}
                             getName={getName}
                         />
                     </View>
                 </View>
-
-                {/* Divider */}
-                <View style={styles.splitDivider}>
-                    <Text style={styles.splitDividerText}>{getFlag(sourceLang)} ⇄ {getFlag(targetLang)}</Text>
-                    <Pressable
-                        onPress={() => setMode('manual')}
-                        style={styles.splitExitBtn}
-                    >
-                        <Text style={styles.splitExitText}>✕ Exit Split</Text>
-                    </Pressable>
-                </View>
-
-                {/* Speaker A (bottom) */}
-                <View style={[styles.splitHalf, styles.splitBottom]}>
-                    <SplitSpeakerPanel
-                        speaker="A"
-                        lang={sourceLang}
-                        otherLang={targetLang}
-                        turns={turns}
-                        isActive={activeSpeaker === 'A'}
-                        isRecording={isRecording}
-                        processing={processing}
-                        onPressIn={() => { setActiveSpeaker('A'); handlePressIn(); }}
-                        onPressOut={handlePressOut}
-                        scrollRef={scrollRefA}
-                        getFlag={getFlag}
-                        getName={getName}
-                    />
-                </View>
-            </View>
+            </ScreenErrorBoundary>
         );
     }
 
     // ─── Normal Layout (Manual / Auto) ─────────────────────────
 
     return (
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backBtn}>
-                    <Text style={styles.backText}>← Back</Text>
-                </Pressable>
-                <Text style={styles.title}>Windy Translate</Text>
-                {networkStatus === 'offline' && (
-                    <View style={styles.offlineBadge}>
-                        <Text style={styles.offlineBadgeText}>📡 Offline</Text>
-                    </View>
-                )}
-                {queueSize > 0 && (
-                    <View style={styles.queueBadge}>
-                        <Text style={styles.queueBadgeText}>⏳ {queueSize}</Text>
-                    </View>
-                )}
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Pressable style={styles.iconBtn} onPress={() => router.push('/ocr')}>
-                        <Text style={styles.iconBtnText}>📷</Text>
+        <ScreenErrorBoundary screenName="Translate">
+            <View style={styles.container}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                        <Text style={styles.backText}>← Back</Text>
                     </Pressable>
-                    {turns.length > 0 && (
-                        <Pressable style={styles.iconBtn} onPress={() => setShowExportMenu(true)}>
-                            <Text style={styles.iconBtnText}>📤</Text>
-                        </Pressable>
+                    <Text style={styles.title}>Windy Translate</Text>
+                    {networkStatus === 'offline' && (
+                        <View style={styles.offlineBadge}>
+                            <Text style={styles.offlineBadgeText}>📡 Offline</Text>
+                        </View>
                     )}
-                    <Pressable style={styles.iconBtn} onPress={() => setShowModeMenu(true)}>
-                        <Text style={styles.iconBtnText}>⚙️</Text>
+                    {queueSize > 0 && (
+                        <View style={styles.queueBadge}>
+                            <Text style={styles.queueBadgeText}>⏳ {queueSize}</Text>
+                        </View>
+                    )}
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <Pressable style={styles.iconBtn} onPress={() => router.push('/ocr')}>
+                            <Text style={styles.iconBtnText}>📷</Text>
+                        </Pressable>
+                        {turns.length > 0 && (
+                            <Pressable style={styles.iconBtn} onPress={() => setShowExportMenu(true)}>
+                                <Text style={styles.iconBtnText}>📤</Text>
+                            </Pressable>
+                        )}
+                        <Pressable style={styles.iconBtn} onPress={() => setShowModeMenu(true)}>
+                            <Text style={styles.iconBtnText}>⚙️</Text>
+                        </Pressable>
+                    </View>
+                </View>
+
+                {/* Mode Indicator */}
+                <View style={styles.modeRow}>
+                    {(['manual', 'auto', 'split-screen'] as ConversationMode[]).map((m) => (
+                        <Pressable
+                            key={m}
+                            style={[styles.modeChip, mode === m && styles.modeChipActive]}
+                            onPress={() => { setMode(m); feedbackService.tap(); }}
+                        >
+                            <Text style={[styles.modeChipText, mode === m && styles.modeChipTextActive]}>
+                                {m === 'manual' ? '👆 Manual' : m === 'auto' ? '🤖 Auto' : '📱 Split'}
+                            </Text>
+                        </Pressable>
+                    ))}
+                </View>
+
+                {/* Language Selector */}
+                <View style={styles.langRow}>
+                    <Pressable
+                        style={styles.langButton}
+                        onPress={() => setShowLangPicker('source')}
+                    >
+                        <Text style={styles.langFlag}>{getFlag(sourceLang)}</Text>
+                        <Text style={styles.langName}>{getName(sourceLang)}</Text>
+                    </Pressable>
+
+                    <Pressable style={styles.swapButton} onPress={swapLanguages}>
+                        <Text style={styles.swapText}>⇄</Text>
+                    </Pressable>
+
+                    <Pressable
+                        style={styles.langButton}
+                        onPress={() => setShowLangPicker('target')}
+                    >
+                        <Text style={styles.langFlag}>{getFlag(targetLang)}</Text>
+                        <Text style={styles.langName}>{getName(targetLang)}</Text>
                     </Pressable>
                 </View>
-            </View>
 
-            {/* Mode Indicator */}
-            <View style={styles.modeRow}>
-                {(['manual', 'auto', 'split-screen'] as ConversationMode[]).map((m) => (
-                    <Pressable
-                        key={m}
-                        style={[styles.modeChip, mode === m && styles.modeChipActive]}
-                        onPress={() => { setMode(m); feedbackService.tap(); }}
-                    >
-                        <Text style={[styles.modeChipText, mode === m && styles.modeChipTextActive]}>
-                            {m === 'manual' ? '👆 Manual' : m === 'auto' ? '🤖 Auto' : '📱 Split'}
-                        </Text>
-                    </Pressable>
-                ))}
-            </View>
-
-            {/* Language Selector */}
-            <View style={styles.langRow}>
-                <Pressable
-                    style={styles.langButton}
-                    onPress={() => setShowLangPicker('source')}
+                {/* Conversation */}
+                <ScrollView
+                    ref={scrollRefA}
+                    style={styles.conversation}
+                    contentContainerStyle={styles.conversationContent}
+                    keyboardDismissMode="on-drag"
                 >
-                    <Text style={styles.langFlag}>{getFlag(sourceLang)}</Text>
-                    <Text style={styles.langName}>{getName(sourceLang)}</Text>
-                </Pressable>
-
-                <Pressable style={styles.swapButton} onPress={swapLanguages}>
-                    <Text style={styles.swapText}>⇄</Text>
-                </Pressable>
-
-                <Pressable
-                    style={styles.langButton}
-                    onPress={() => setShowLangPicker('target')}
-                >
-                    <Text style={styles.langFlag}>{getFlag(targetLang)}</Text>
-                    <Text style={styles.langName}>{getName(targetLang)}</Text>
-                </Pressable>
-            </View>
-
-            {/* Conversation */}
-            <ScrollView
-                ref={scrollRefA}
-                style={styles.conversation}
-                contentContainerStyle={styles.conversationContent}
-                keyboardDismissMode="on-drag"
-            >
-                {turns.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <Text style={styles.emptyEmoji}>🌪️</Text>
-                        <Text style={styles.emptyTitle}>
-                            {mode === 'auto' ? 'Start speaking in any language'
-                                : 'Select a speaker, then record'}
-                        </Text>
-                        <Text style={styles.emptySubtitle}>
-                            Windy translates your speech in real-time
-                        </Text>
-                    </View>
-                ) : (
-                    turns.map((turn) => (
-                        <Pressable
-                            key={turn.id}
-                            style={[
-                                styles.bubble,
-                                turn.speaker === 'A' ? styles.bubbleLeft : styles.bubbleRight,
-                                turn.favorite && styles.bubbleFavorite,
-                            ]}
-                            onPress={() => {
-                                translationService.speak(turn.translated, turn.toLang);
-                            }}
-                            onLongPress={() => handleCopyTurn(turn)}
-                        >
-                            <View style={styles.bubbleTopRow}>
-                                <Text style={styles.bubbleSpeaker}>
-                                    {getFlag(turn.fromLang)} Speaker {turn.speaker}
-                                </Text>
-                                <View style={styles.bubbleActions}>
-                                    {turn.confidence !== undefined && (
-                                        <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(turn.confidence) }]}>
-                                            <Text style={styles.confidenceText}>{Math.round(turn.confidence * 100)}%</Text>
-                                        </View>
-                                    )}
-                                    <Pressable onPress={() => handleToggleFavorite(turn.id)} hitSlop={8} accessibilityLabel={turn.favorite ? 'Remove from favorites' : 'Add to favorites'} accessibilityRole="button">
-                                        <Text style={styles.favoriteBtn}>{turn.favorite ? '⭐' : '☆'}</Text>
-                                    </Pressable>
-                                    <Pressable onPress={() => handleCopyTurn(turn)} hitSlop={8} accessibilityLabel="Copy translation" accessibilityRole="button">
-                                        <Text style={styles.copyBtn}>📋</Text>
-                                    </Pressable>
-                                    <Pressable onPress={() => handleShareTurn(turn)} hitSlop={8} accessibilityLabel="Share translation" accessibilityRole="button">
-                                        <Text style={styles.copyBtn}>📤</Text>
-                                    </Pressable>
+                    {turns.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyEmoji}>🌪️</Text>
+                            <Text style={styles.emptyTitle}>
+                                {mode === 'auto' ? 'Start speaking in any language'
+                                    : 'Select a speaker, then record'}
+                            </Text>
+                            <Text style={styles.emptySubtitle}>
+                                Windy translates your speech in real-time
+                            </Text>
+                        </View>
+                    ) : (
+                        turns.map((turn) => (
+                            <Pressable
+                                key={turn.id}
+                                style={[
+                                    styles.bubble,
+                                    turn.speaker === 'A' ? styles.bubbleLeft : styles.bubbleRight,
+                                    turn.favorite && styles.bubbleFavorite,
+                                ]}
+                                onPress={() => {
+                                    translationService.speak(turn.translated, turn.toLang);
+                                }}
+                                onLongPress={() => handleCopyTurn(turn)}
+                            >
+                                <View style={styles.bubbleTopRow}>
+                                    <Text style={styles.bubbleSpeaker}>
+                                        {getFlag(turn.fromLang)} Speaker {turn.speaker}
+                                    </Text>
+                                    <View style={styles.bubbleActions}>
+                                        {turn.confidence !== undefined && (
+                                            <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(turn.confidence) }]}>
+                                                <Text style={styles.confidenceText}>{Math.round(turn.confidence * 100)}%</Text>
+                                            </View>
+                                        )}
+                                        <Pressable onPress={() => handleToggleFavorite(turn.id)} hitSlop={8} accessibilityLabel={turn.favorite ? 'Remove from favorites' : 'Add to favorites'} accessibilityRole="button">
+                                            <Text style={styles.favoriteBtn}>{turn.favorite ? '⭐' : '☆'}</Text>
+                                        </Pressable>
+                                        <Pressable onPress={() => handleCopyTurn(turn)} hitSlop={8} accessibilityLabel="Copy translation" accessibilityRole="button">
+                                            <Text style={styles.copyBtn}>📋</Text>
+                                        </Pressable>
+                                        <Pressable onPress={() => handleShareTurn(turn)} hitSlop={8} accessibilityLabel="Share translation" accessibilityRole="button">
+                                            <Text style={styles.copyBtn}>📤</Text>
+                                        </Pressable>
+                                    </View>
                                 </View>
-                            </View>
-                            {turn.detectedLang && (
-                                <Text style={styles.detectedLangHint}>
-                                    🔍 Detected: {getName(turn.detectedLang)}
+                                {turn.detectedLang && (
+                                    <Text style={styles.detectedLangHint}>
+                                        🔍 Detected: {getName(turn.detectedLang)}
+                                    </Text>
+                                )}
+                                <Text style={styles.bubbleOriginal}>{turn.original}</Text>
+                                <View style={styles.bubbleDivider} />
+                                <View style={styles.bubbleTransRow}>
+                                    <Text style={styles.bubbleTranslated}>
+                                        {getFlag(turn.toLang)} {turn.translated}
+                                    </Text>
+                                    <Text style={styles.bubbleTtsHint}>🔊</Text>
+                                </View>
+                            </Pressable>
+                        ))
+                    )}
+                </ScrollView>
+
+                {/* Controls */}
+                <View style={styles.controls}>
+                    {/* Speaker Toggle (hidden in auto mode) */}
+                    {mode === 'manual' && (
+                        <View style={styles.speakerRow}>
+                            <Pressable
+                                style={[styles.speakerBtn, activeSpeaker === 'A' && styles.speakerActive]}
+                                onPress={() => { setActiveSpeaker('A'); feedbackService.tap(); }}
+                            >
+                                <Text style={styles.speakerText}>
+                                    {getFlag(sourceLang)} Speaker A
                                 </Text>
+                            </Pressable>
+                            <Pressable
+                                style={[styles.speakerBtn, activeSpeaker === 'B' && styles.speakerActive]}
+                                onPress={() => { setActiveSpeaker('B'); feedbackService.tap(); }}
+                            >
+                                <Text style={styles.speakerText}>
+                                    {getFlag(targetLang)} Speaker B
+                                </Text>
+                            </Pressable>
+                        </View>
+                    )}
+
+                    {mode === 'auto' && (
+                        <View style={styles.autoDetectRow}>
+                            <Text style={styles.autoHint}>
+                                🤖 Language auto-detected — just speak naturally
+                            </Text>
+                            {detectedLangInfo && (
+                                <View style={[
+                                    styles.confidencePill,
+                                    { backgroundColor: getConfidenceColor(detectedLangInfo.confidence) },
+                                ]}>
+                                    <Text style={styles.confidencePillText}>
+                                        {getFlag(detectedLangInfo.lang)} {getName(detectedLangInfo.lang)} · {Math.round(detectedLangInfo.confidence * 100)}% confidence
+                                    </Text>
+                                </View>
                             )}
-                            <Text style={styles.bubbleOriginal}>{turn.original}</Text>
-                            <View style={styles.bubbleDivider} />
-                            <View style={styles.bubbleTransRow}>
-                                <Text style={styles.bubbleTranslated}>
-                                    {getFlag(turn.toLang)} {turn.translated}
-                                </Text>
-                                <Text style={styles.bubbleTtsHint}>🔊</Text>
-                            </View>
-                        </Pressable>
-                    ))
-                )}
-            </ScrollView>
+                        </View>
+                    )}
 
-            {/* Controls */}
-            <View style={styles.controls}>
-                {/* Speaker Toggle (hidden in auto mode) */}
-                {mode === 'manual' && (
-                    <View style={styles.speakerRow}>
+                    {/* Waveform Visualizer */}
+                    {(isRecording || processing) && (
+                        <SpeechWaveform
+                            isActive={isRecording}
+                            level={audioLevel}
+                            color={isRecording ? colors.accent : colors.stateProcessing}
+                            height={48}
+                        />
+                    )}
+
+                    {/* Record + TTS Toggle */}
+                    <View style={styles.recordRow}>
                         <Pressable
-                            style={[styles.speakerBtn, activeSpeaker === 'A' && styles.speakerActive]}
-                            onPress={() => { setActiveSpeaker('A'); feedbackService.tap(); }}
-                        >
-                            <Text style={styles.speakerText}>
-                                {getFlag(sourceLang)} Speaker A
-                            </Text>
-                        </Pressable>
-                        <Pressable
-                            style={[styles.speakerBtn, activeSpeaker === 'B' && styles.speakerActive]}
-                            onPress={() => { setActiveSpeaker('B'); feedbackService.tap(); }}
-                        >
-                            <Text style={styles.speakerText}>
-                                {getFlag(targetLang)} Speaker B
-                            </Text>
-                        </Pressable>
-                    </View>
-                )}
-
-                {mode === 'auto' && (
-                    <View style={styles.autoDetectRow}>
-                        <Text style={styles.autoHint}>
-                            🤖 Language auto-detected — just speak naturally
-                        </Text>
-                        {detectedLangInfo && (
-                            <View style={[
-                                styles.confidencePill,
-                                { backgroundColor: getConfidenceColor(detectedLangInfo.confidence) },
-                            ]}>
-                                <Text style={styles.confidencePillText}>
-                                    {getFlag(detectedLangInfo.lang)} {getName(detectedLangInfo.lang)} · {Math.round(detectedLangInfo.confidence * 100)}% confidence
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                )}
-
-                {/* Waveform Visualizer */}
-                {(isRecording || processing) && (
-                    <SpeechWaveform
-                        isActive={isRecording}
-                        level={audioLevel}
-                        color={isRecording ? colors.accent : colors.stateProcessing}
-                        height={48}
-                    />
-                )}
-
-                {/* Record + TTS Toggle */}
-                <View style={styles.recordRow}>
-                    <Pressable
-                        style={[styles.ttsBtn, ttsEnabled && styles.ttsBtnActive]}
-                        onPress={() => {
-                            setTtsEnabled(!ttsEnabled);
-                            translationService.setTtsEnabled(!ttsEnabled);
-                            haptic.selection();
-                        }}
-                        accessibilityLabel={ttsEnabled ? 'Disable text-to-speech' : 'Enable text-to-speech'}
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.ttsBtnText}>{ttsEnabled ? '🔊' : '🔇'}</Text>
-                    </Pressable>
-
-                    <Pressable
-                        style={[
-                            styles.recordBtn,
-                            isRecording && styles.recordBtnActive,
-                            processing && styles.recordBtnProcessing,
-                        ]}
-                        onPressIn={handlePressIn}
-                        onPressOut={handlePressOut}
-                        disabled={processing}
-                        accessibilityLabel={processing ? 'Translating speech' : isRecording ? 'Release to translate' : 'Hold to record'}
-                        accessibilityRole="button"
-                        accessibilityHint="Press and hold to record your voice, release to translate"
-                    >
-                        <Text style={styles.recordBtnEmoji}>
-                            {processing ? '⏳' : isRecording ? '🔴' : '🎤'}
-                        </Text>
-                        <Text style={styles.recordBtnText}>
-                            {processing ? 'Translating...' : isRecording ? 'Release to Translate' : 'Hold to Speak'}
-                        </Text>
-                    </Pressable>
-
-                    {turns.length > 0 && (
-                        <Pressable
-                            style={styles.clearMiniBtn}
-                            onPress={() => Alert.alert('Clear?', 'Remove all messages?', [
-                                { text: 'Cancel', style: 'cancel' },
-                                { text: 'Clear', style: 'destructive', onPress: () => setTurns([]) },
-                            ])}
-                            accessibilityLabel="Clear conversation"
+                            style={[styles.ttsBtn, ttsEnabled && styles.ttsBtnActive]}
+                            onPress={() => {
+                                setTtsEnabled(!ttsEnabled);
+                                translationService.setTtsEnabled(!ttsEnabled);
+                                haptic.selection();
+                            }}
+                            accessibilityLabel={ttsEnabled ? 'Disable text-to-speech' : 'Enable text-to-speech'}
                             accessibilityRole="button"
                         >
-                            <Text style={styles.ttsBtnText}>🗑</Text>
+                            <Text style={styles.ttsBtnText}>{ttsEnabled ? '🔊' : '🔇'}</Text>
                         </Pressable>
-                    )}
-                </View>
-            </View>
 
-            {/* Language Picker Modal */}
-            <Modal visible={showLangPicker !== null} transparent animationType="slide">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>
-                                {showLangPicker === 'source' ? 'Source Language' : 'Target Language'}
+                        <Pressable
+                            style={[
+                                styles.recordBtn,
+                                isRecording && styles.recordBtnActive,
+                                processing && styles.recordBtnProcessing,
+                            ]}
+                            onPressIn={handlePressIn}
+                            onPressOut={handlePressOut}
+                            disabled={processing}
+                            accessibilityLabel={processing ? 'Translating speech' : isRecording ? 'Release to translate' : 'Hold to record'}
+                            accessibilityRole="button"
+                            accessibilityHint="Press and hold to record your voice, release to translate"
+                        >
+                            <Text style={styles.recordBtnEmoji}>
+                                {processing ? '⏳' : isRecording ? '🔴' : '🎤'}
                             </Text>
-                            <Pressable onPress={() => setShowLangPicker(null)}>
-                                <Text style={styles.modalClose}>✕</Text>
+                            <Text style={styles.recordBtnText}>
+                                {processing ? 'Translating...' : isRecording ? 'Release to Translate' : 'Hold to Speak'}
+                            </Text>
+                        </Pressable>
+
+                        {turns.length > 0 && (
+                            <Pressable
+                                style={styles.clearMiniBtn}
+                                onPress={() => Alert.alert('Clear?', 'Remove all messages?', [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { text: 'Clear', style: 'destructive', onPress: () => setTurns([]) },
+                                ])}
+                                accessibilityLabel="Clear conversation"
+                                accessibilityRole="button"
+                            >
+                                <Text style={styles.ttsBtnText}>🗑</Text>
                             </Pressable>
-                        </View>
-                        <FlatList
-                            data={TIER_1_LANGUAGES}
-                            keyExtractor={(item) => item.code}
-                            renderItem={({ item }) => {
-                                const isSelected = showLangPicker === 'source'
-                                    ? item.code === sourceLang
-                                    : item.code === targetLang;
-                                return (
-                                    <Pressable
-                                        style={[styles.langPickerRow, isSelected && styles.langPickerSelected]}
-                                        onPress={() => {
-                                            if (showLangPicker === 'source') setSourceLang(item.code);
-                                            else setTargetLang(item.code);
-                                            setShowLangPicker(null);
-                                            feedbackService.tap();
-                                        }}
-                                    >
-                                        <Text style={styles.langPickerFlag}>{item.flag}</Text>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={styles.langPickerName}>{item.name}</Text>
-                                            <Text style={styles.langPickerNative}>{item.nativeName}</Text>
-                                        </View>
-                                        {isSelected && <Text style={styles.langPickerCheck}>✓</Text>}
-                                    </Pressable>
-                                );
-                            }}
-                        />
+                        )}
                     </View>
                 </View>
-            </Modal>
 
-            {/* Export Modal */}
-            <Modal visible={showExportMenu} transparent animationType="fade">
-                <Pressable style={styles.modalOverlay} onPress={() => setShowExportMenu(false)}>
-                    <View style={styles.exportSheet}>
-                        <Text style={styles.exportTitle}>Export Conversation</Text>
-                        <Pressable style={styles.exportOption} onPress={() => handleExport('txt')}>
-                            <Text style={styles.exportOptionEmoji}>📄</Text>
-                            <Text style={styles.exportOptionText}>Plain Text (.txt)</Text>
-                        </Pressable>
-                        <Pressable style={styles.exportOption} onPress={() => handleExport('md')}>
-                            <Text style={styles.exportOptionEmoji}>📝</Text>
-                            <Text style={styles.exportOptionText}>Markdown (.md)</Text>
-                        </Pressable>
-                        <Pressable style={styles.exportOption} onPress={() => handleExport('srt')}>
-                            <Text style={styles.exportOptionEmoji}>🎬</Text>
-                            <Text style={styles.exportOptionText}>Subtitles (.srt)</Text>
-                        </Pressable>
-                        <Pressable style={[styles.exportOption, { marginTop: 8 }]} onPress={() => setShowExportMenu(false)}>
-                            <Text style={[styles.exportOptionText, { color: colors.textTertiary }]}>Cancel</Text>
-                        </Pressable>
-                    </View>
-                </Pressable>
-            </Modal>
-
-            {/* Mode Menu Modal */}
-            <Modal visible={showModeMenu} transparent animationType="fade">
-                <Pressable style={styles.modalOverlay} onPress={() => setShowModeMenu(false)}>
-                    <View style={styles.exportSheet}>
-                        <Text style={styles.exportTitle}>Settings</Text>
-                        <View style={styles.settingsRow}>
-                            <Text style={styles.settingsLabel}>TTS Playback</Text>
-                            <Pressable
-                                style={[styles.settingsToggle, ttsEnabled && styles.settingsToggleOn]}
-                                onPress={() => {
-                                    setTtsEnabled(!ttsEnabled);
-                                    translationService.setTtsEnabled(!ttsEnabled);
+                {/* Language Picker Modal */}
+                <Modal visible={showLangPicker !== null} transparent animationType="slide">
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>
+                                    {showLangPicker === 'source' ? 'Source Language' : 'Target Language'}
+                                </Text>
+                                <Pressable onPress={() => setShowLangPicker(null)}>
+                                    <Text style={styles.modalClose}>✕</Text>
+                                </Pressable>
+                            </View>
+                            <FlatList
+                                data={TIER_1_LANGUAGES}
+                                keyExtractor={(item) => item.code}
+                                renderItem={({ item }) => {
+                                    const isSelected = showLangPicker === 'source'
+                                        ? item.code === sourceLang
+                                        : item.code === targetLang;
+                                    return (
+                                        <Pressable
+                                            style={[styles.langPickerRow, isSelected && styles.langPickerSelected]}
+                                            onPress={() => {
+                                                if (showLangPicker === 'source') setSourceLang(item.code);
+                                                else setTargetLang(item.code);
+                                                setShowLangPicker(null);
+                                                feedbackService.tap();
+                                            }}
+                                        >
+                                            <Text style={styles.langPickerFlag}>{item.flag}</Text>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.langPickerName}>{item.name}</Text>
+                                                <Text style={styles.langPickerNative}>{item.nativeName}</Text>
+                                            </View>
+                                            {isSelected && <Text style={styles.langPickerCheck}>✓</Text>}
+                                        </Pressable>
+                                    );
                                 }}
-                            >
-                                <Text style={styles.settingsToggleText}>{ttsEnabled ? 'ON' : 'OFF'}</Text>
+                            />
+                        </View>
+                    </View>
+                </Modal>
+
+                {/* Export Modal */}
+                <Modal visible={showExportMenu} transparent animationType="fade">
+                    <Pressable style={styles.modalOverlay} onPress={() => setShowExportMenu(false)}>
+                        <View style={styles.exportSheet}>
+                            <Text style={styles.exportTitle}>Export Conversation</Text>
+                            <Pressable style={styles.exportOption} onPress={() => handleExport('txt')}>
+                                <Text style={styles.exportOptionEmoji}>📄</Text>
+                                <Text style={styles.exportOptionText}>Plain Text (.txt)</Text>
+                            </Pressable>
+                            <Pressable style={styles.exportOption} onPress={() => handleExport('md')}>
+                                <Text style={styles.exportOptionEmoji}>📝</Text>
+                                <Text style={styles.exportOptionText}>Markdown (.md)</Text>
+                            </Pressable>
+                            <Pressable style={styles.exportOption} onPress={() => handleExport('srt')}>
+                                <Text style={styles.exportOptionEmoji}>🎬</Text>
+                                <Text style={styles.exportOptionText}>Subtitles (.srt)</Text>
+                            </Pressable>
+                            <Pressable style={[styles.exportOption, { marginTop: 8 }]} onPress={() => setShowExportMenu(false)}>
+                                <Text style={[styles.exportOptionText, { color: colors.textTertiary }]}>Cancel</Text>
                             </Pressable>
                         </View>
-                        <Pressable style={[styles.exportOption, { marginTop: 8 }]} onPress={() => setShowModeMenu(false)}>
-                            <Text style={[styles.exportOptionText, { color: colors.textTertiary }]}>Done</Text>
-                        </Pressable>
-                    </View>
-                </Pressable>
-            </Modal>
-        </View>
+                    </Pressable>
+                </Modal>
+
+                {/* Mode Menu Modal */}
+                <Modal visible={showModeMenu} transparent animationType="fade">
+                    <Pressable style={styles.modalOverlay} onPress={() => setShowModeMenu(false)}>
+                        <View style={styles.exportSheet}>
+                            <Text style={styles.exportTitle}>Settings</Text>
+                            <View style={styles.settingsRow}>
+                                <Text style={styles.settingsLabel}>TTS Playback</Text>
+                                <Pressable
+                                    style={[styles.settingsToggle, ttsEnabled && styles.settingsToggleOn]}
+                                    onPress={() => {
+                                        setTtsEnabled(!ttsEnabled);
+                                        translationService.setTtsEnabled(!ttsEnabled);
+                                    }}
+                                >
+                                    <Text style={styles.settingsToggleText}>{ttsEnabled ? 'ON' : 'OFF'}</Text>
+                                </Pressable>
+                            </View>
+                            <Pressable style={[styles.exportOption, { marginTop: 8 }]} onPress={() => setShowModeMenu(false)}>
+                                <Text style={[styles.exportOptionText, { color: colors.textTertiary }]}>Done</Text>
+                            </Pressable>
+                        </View>
+                    </Pressable>
+                </Modal>
+            </View>
+        </ScreenErrorBoundary>
     );
 }
 

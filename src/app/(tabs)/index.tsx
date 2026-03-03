@@ -29,6 +29,8 @@ import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import type { Session } from '@/types';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { analyticsService } from '@/services/analytics';
 
 const WAVEFORM_BARS = 40;
 
@@ -281,7 +283,7 @@ export default function RecordScreen() {
                 avgLevelRef.current,
                 peakLevelRef.current
             );
-            console.log(`[Record] Quality: ${quality.score}/100 (${quality.label})`);
+            // console.log(`[Record] Quality: ${quality.score}/100 (${quality.label})`);
 
             // RP-2.3: Transcribe the recording
             transcriptionService.onSegment = (segment) => {
@@ -480,249 +482,251 @@ export default function RecordScreen() {
     const playbackPct = playbackDuration > 0 ? (playbackPosition / playbackDuration) * 100 : 0;
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <StatusBar style="light" />
+        <ScreenErrorBoundary screenName="Record">
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <StatusBar style="light" />
 
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.title}>Windy Pro</Text>
-                <Text style={styles.subtitle}>Voice to Text, Your Way</Text>
-            </View>
-
-            {/* Media Toggles */}
-            <View style={styles.toggleRow}>
-                <Pressable
-                    style={[styles.toggle, mediaCapture.audio && styles.toggleActive]}
-                    onPress={async () => { await feedbackService.tap(); toggleMedia('audio'); }}
-                    accessibilityLabel={`Audio capture ${mediaCapture.audio ? 'on' : 'off'}`}
-                    accessibilityRole="switch"
-                >
-                    <Text style={styles.toggleEmoji}>🎤</Text>
-                    <Text style={[styles.toggleLabel, mediaCapture.audio && styles.toggleLabelActive]}>
-                        Audio
-                    </Text>
-                </Pressable>
-                <Pressable
-                    style={[styles.toggle, mediaCapture.video && styles.toggleActive]}
-                    onPress={async () => {
-                        if (!requireFeature('video-capture', 'Video Capture')) return;
-                        await feedbackService.tap(); toggleMedia('video');
-                    }}
-                    accessibilityLabel={`Video capture ${mediaCapture.video ? 'on' : 'off'}`}
-                    accessibilityRole="switch"
-                >
-                    <Text style={styles.toggleEmoji}>📹</Text>
-                    <Text style={[styles.toggleLabel, mediaCapture.video && styles.toggleLabelActive]}>
-                        Video
-                    </Text>
-                </Pressable>
-                <Pressable
-                    style={[styles.toggle, mediaCapture.text && styles.toggleActive]}
-                    onPress={async () => { await feedbackService.tap(); toggleMedia('text'); }}
-                    accessibilityLabel={`Text transcription ${mediaCapture.text ? 'on' : 'off'}`}
-                    accessibilityRole="switch"
-                >
-                    <Text style={styles.toggleEmoji}>📝</Text>
-                    <Text style={[styles.toggleLabel, mediaCapture.text && styles.toggleLabelActive]}>
-                        Text
-                    </Text>
-                </Pressable>
-            </View>
-
-            {/* Rolling Waveform Visualization */}
-            {state === 'recording' && (
-                <View style={styles.waveformContainer}>
-                    {waveformSnapshot.map((level, i) => {
-                        // Bars ordered: oldest first, newest at right
-                        const idx = (waveformIndex.current + i) % WAVEFORM_BARS;
-                        const l = waveformSnapshot[idx] || 0;
-                        const age = 1 - (i / WAVEFORM_BARS) * 0.6; // Oldest dimmer
-                        return (
-                            <View
-                                key={i}
-                                style={[
-                                    styles.waveformBar,
-                                    {
-                                        height: Math.max(4, l * 64),
-                                        backgroundColor: colors.stateRecording,
-                                        opacity: 0.3 + l * 0.5 * age,
-                                    },
-                                ]}
-                            />
-                        );
-                    })}
+                {/* Header */}
+                <View style={styles.header}>
+                    <Text style={styles.title}>Windy Pro</Text>
+                    <Text style={styles.subtitle}>Voice to Text, Your Way</Text>
                 </View>
-            )}
 
-            {/* Camera Preview — shows when video toggle is ON and not recording */}
-            {mediaCapture.video && state !== 'recording' && (
-                <View style={styles.cameraContainer}>
-                    <CameraView
-                        ref={(ref: any) => videoCaptureService.setCameraRef(ref)}
-                        style={styles.cameraPreview}
-                        facing="front"
-                    />
-                    <Text style={styles.cameraLabel}>📹 Front Camera Ready</Text>
+                {/* Media Toggles */}
+                <View style={styles.toggleRow}>
+                    <Pressable
+                        style={[styles.toggle, mediaCapture.audio && styles.toggleActive]}
+                        onPress={async () => { await feedbackService.tap(); toggleMedia('audio'); }}
+                        accessibilityLabel={`Audio capture ${mediaCapture.audio ? 'on' : 'off'}`}
+                        accessibilityRole="switch"
+                    >
+                        <Text style={styles.toggleEmoji}>🎤</Text>
+                        <Text style={[styles.toggleLabel, mediaCapture.audio && styles.toggleLabelActive]}>
+                            Audio
+                        </Text>
+                    </Pressable>
+                    <Pressable
+                        style={[styles.toggle, mediaCapture.video && styles.toggleActive]}
+                        onPress={async () => {
+                            if (!requireFeature('video-capture', 'Video Capture')) return;
+                            await feedbackService.tap(); toggleMedia('video');
+                        }}
+                        accessibilityLabel={`Video capture ${mediaCapture.video ? 'on' : 'off'}`}
+                        accessibilityRole="switch"
+                    >
+                        <Text style={styles.toggleEmoji}>📹</Text>
+                        <Text style={[styles.toggleLabel, mediaCapture.video && styles.toggleLabelActive]}>
+                            Video
+                        </Text>
+                    </Pressable>
+                    <Pressable
+                        style={[styles.toggle, mediaCapture.text && styles.toggleActive]}
+                        onPress={async () => { await feedbackService.tap(); toggleMedia('text'); }}
+                        accessibilityLabel={`Text transcription ${mediaCapture.text ? 'on' : 'off'}`}
+                        accessibilityRole="switch"
+                    >
+                        <Text style={styles.toggleEmoji}>📝</Text>
+                        <Text style={[styles.toggleLabel, mediaCapture.text && styles.toggleLabelActive]}>
+                            Text
+                        </Text>
+                    </Pressable>
                 </View>
-            )}
 
-            {/* Processing indicator */}
-            {state === 'processing' && (
-                <View style={styles.processingBanner}>
-                    <Text style={styles.processingText}>🔄 Transcribing audio...</Text>
-                </View>
-            )}
-
-            {/* The Big Record Button */}
-            <View style={styles.buttonContainer}>
-                {/* Strobe glow ring */}
-                {state !== 'idle' && (
-                    <View
-                        style={[
-                            styles.strobeRing,
-                            { borderColor: getStrobeColor(), shadowColor: getStrobeColor() },
-                        ]}
-                    />
-                )}
-                <Pressable
-                    style={[
-                        styles.recordButton,
-                        state === 'recording' && styles.recordButtonActive,
-                        state === 'processing' && styles.recordButtonProcessing,
-                    ]}
-                    onPress={handleRecordPress}
-                    accessibilityLabel={state === 'recording' ? 'Stop recording' : state === 'processing' ? 'Processing audio' : 'Start recording'}
-                    accessibilityRole="button"
-                    accessibilityHint="Double tap to start or stop recording your voice"
-                    accessibilityState={{ busy: state === 'processing' }}
-                >
-                    {state === 'recording' ? (
-                        <View style={styles.stopSquare} />
-                    ) : state === 'processing' ? (
-                        <Text style={styles.buttonEmoji}>⏳</Text>
-                    ) : (
-                        <Text style={styles.buttonEmoji}>🌪️</Text>
-                    )}
-                </Pressable>
-            </View>
-
-            {/* Duration + Recording Info Row */}
-            <View style={styles.durationRow}>
+                {/* Rolling Waveform Visualization */}
                 {state === 'recording' && (
-                    <Animated.View style={[styles.recordingDot, { opacity: pulseAnim }]} />
+                    <View style={styles.waveformContainer}>
+                        {waveformSnapshot.map((level, i) => {
+                            // Bars ordered: oldest first, newest at right
+                            const idx = (waveformIndex.current + i) % WAVEFORM_BARS;
+                            const l = waveformSnapshot[idx] || 0;
+                            const age = 1 - (i / WAVEFORM_BARS) * 0.6; // Oldest dimmer
+                            return (
+                                <View
+                                    key={i}
+                                    style={[
+                                        styles.waveformBar,
+                                        {
+                                            height: Math.max(4, l * 64),
+                                            backgroundColor: colors.stateRecording,
+                                            opacity: 0.3 + l * 0.5 * age,
+                                        },
+                                    ]}
+                                />
+                            );
+                        })}
+                    </View>
                 )}
-                <Text style={styles.duration}>
-                    {state === 'recording' || state === 'processing'
-                        ? formatDuration(duration)
-                        : '00:00'}
-                </Text>
-            </View>
 
-            {/* File Size Indicator */}
-            {(state === 'recording' || recordingFileSize > 0) && (
-                <View style={styles.fileSizeRow}>
-                    <Text style={styles.fileSizeText}>
-                        💾 {formatFileSize(recordingFileSize)}
-                    </Text>
-                    {state === 'recording' && (
-                        <Text style={styles.fileSizeSeparator}>•</Text>
+                {/* Camera Preview — shows when video toggle is ON and not recording */}
+                {mediaCapture.video && state !== 'recording' && (
+                    <View style={styles.cameraContainer}>
+                        <CameraView
+                            ref={(ref: any) => videoCaptureService.setCameraRef(ref)}
+                            style={styles.cameraPreview}
+                            facing="front"
+                        />
+                        <Text style={styles.cameraLabel}>📹 Front Camera Ready</Text>
+                    </View>
+                )}
+
+                {/* Processing indicator */}
+                {state === 'processing' && (
+                    <View style={styles.processingBanner}>
+                        <Text style={styles.processingText}>🔄 Transcribing audio...</Text>
+                    </View>
+                )}
+
+                {/* The Big Record Button */}
+                <View style={styles.buttonContainer}>
+                    {/* Strobe glow ring */}
+                    {state !== 'idle' && (
+                        <View
+                            style={[
+                                styles.strobeRing,
+                                { borderColor: getStrobeColor(), shadowColor: getStrobeColor() },
+                            ]}
+                        />
                     )}
+                    <Pressable
+                        style={[
+                            styles.recordButton,
+                            state === 'recording' && styles.recordButtonActive,
+                            state === 'processing' && styles.recordButtonProcessing,
+                        ]}
+                        onPress={handleRecordPress}
+                        accessibilityLabel={state === 'recording' ? 'Stop recording' : state === 'processing' ? 'Processing audio' : 'Start recording'}
+                        accessibilityRole="button"
+                        accessibilityHint="Double tap to start or stop recording your voice"
+                        accessibilityState={{ busy: state === 'processing' }}
+                    >
+                        {state === 'recording' ? (
+                            <View style={styles.stopSquare} />
+                        ) : state === 'processing' ? (
+                            <Text style={styles.buttonEmoji}>⏳</Text>
+                        ) : (
+                            <Text style={styles.buttonEmoji}>🌪️</Text>
+                        )}
+                    </Pressable>
+                </View>
+
+                {/* Duration + Recording Info Row */}
+                <View style={styles.durationRow}>
                     {state === 'recording' && (
+                        <Animated.View style={[styles.recordingDot, { opacity: pulseAnim }]} />
+                    )}
+                    <Text style={styles.duration}>
+                        {state === 'recording' || state === 'processing'
+                            ? formatDuration(duration)
+                            : '00:00'}
+                    </Text>
+                </View>
+
+                {/* File Size Indicator */}
+                {(state === 'recording' || recordingFileSize > 0) && (
+                    <View style={styles.fileSizeRow}>
                         <Text style={styles.fileSizeText}>
-                            44.1kHz · 16-bit · Mono
+                            💾 {formatFileSize(recordingFileSize)}
+                        </Text>
+                        {state === 'recording' && (
+                            <Text style={styles.fileSizeSeparator}>•</Text>
+                        )}
+                        {state === 'recording' && (
+                            <Text style={styles.fileSizeText}>
+                                44.1kHz · 16-bit · Mono
+                            </Text>
+                        )}
+                    </View>
+                )}
+
+                {/* Status */}
+                <Text style={[styles.statusText, { color: getStrobeColor() }]}>
+                    {getStatusText()}
+                </Text>
+
+                {/* Playback Progress Bar */}
+                {playbackUri && state === 'idle' && (
+                    <View style={styles.playbackContainer}>
+                        <Pressable style={styles.playPauseBtn} onPress={handlePlayPause}
+                            accessibilityLabel={isPlaying ? 'Pause playback' : 'Play recording'}
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.playPauseEmoji}>
+                                {isPlaying ? '⏸️' : '▶️'}
+                            </Text>
+                        </Pressable>
+                        <Pressable
+                            style={styles.playbackBarOuter}
+                            onLayout={(e) => { playbackBarWidth.current = e.nativeEvent.layout.width; }}
+                            onPress={(e) => handleScrub(e.nativeEvent.locationX)}
+                        >
+                            <View style={styles.playbackBarBg}>
+                                <View
+                                    style={[
+                                        styles.playbackBarFill,
+                                        { width: `${Math.min(100, playbackPct)}%` },
+                                    ]}
+                                />
+                                <View
+                                    style={[
+                                        styles.playbackThumb,
+                                        { left: `${Math.min(100, playbackPct)}%` },
+                                    ]}
+                                />
+                            </View>
+                        </Pressable>
+                        <Text style={styles.playbackTime}>
+                            {formatDuration(playbackPosition / 1000)}
+                        </Text>
+                    </View>
+                )}
+
+                {/* Transcript Preview */}
+                <ScrollView
+                    style={styles.transcriptContainer}
+                    contentContainerStyle={styles.transcriptContent}
+                >
+                    {fullText ? (
+                        <Text style={styles.transcriptText} selectable>{fullText}</Text>
+                    ) : (
+                        <Text style={styles.transcriptPlaceholder}>
+                            {state === 'idle'
+                                ? 'Your transcript will appear here...'
+                                : state === 'recording'
+                                    ? 'Listening...'
+                                    : 'Processing your speech...'}
                         </Text>
                     )}
-                </View>
-            )}
+                </ScrollView>
 
-            {/* Status */}
-            <Text style={[styles.statusText, { color: getStrobeColor() }]}>
-                {getStatusText()}
-            </Text>
-
-            {/* Playback Progress Bar */}
-            {playbackUri && state === 'idle' && (
-                <View style={styles.playbackContainer}>
-                    <Pressable style={styles.playPauseBtn} onPress={handlePlayPause}
-                        accessibilityLabel={isPlaying ? 'Pause playback' : 'Play recording'}
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.playPauseEmoji}>
-                            {isPlaying ? '⏸️' : '▶️'}
-                        </Text>
-                    </Pressable>
-                    <Pressable
-                        style={styles.playbackBarOuter}
-                        onLayout={(e) => { playbackBarWidth.current = e.nativeEvent.layout.width; }}
-                        onPress={(e) => handleScrub(e.nativeEvent.locationX)}
-                    >
-                        <View style={styles.playbackBarBg}>
-                            <View
-                                style={[
-                                    styles.playbackBarFill,
-                                    { width: `${Math.min(100, playbackPct)}%` },
-                                ]}
-                            />
-                            <View
-                                style={[
-                                    styles.playbackThumb,
-                                    { left: `${Math.min(100, playbackPct)}%` },
-                                ]}
-                            />
-                        </View>
-                    </Pressable>
-                    <Text style={styles.playbackTime}>
-                        {formatDuration(playbackPosition / 1000)}
-                    </Text>
-                </View>
-            )}
-
-            {/* Transcript Preview */}
-            <ScrollView
-                style={styles.transcriptContainer}
-                contentContainerStyle={styles.transcriptContent}
-            >
-                {fullText ? (
-                    <Text style={styles.transcriptText} selectable>{fullText}</Text>
-                ) : (
-                    <Text style={styles.transcriptPlaceholder}>
-                        {state === 'idle'
-                            ? 'Your transcript will appear here...'
-                            : state === 'recording'
-                                ? 'Listening...'
-                                : 'Processing your speech...'}
-                    </Text>
+                {/* Action Buttons (visible when transcript exists) */}
+                {fullText.length > 0 && state === 'idle' && (
+                    <View style={styles.actionRow}>
+                        <Pressable style={styles.actionButton} onPress={handleCopy}
+                            accessibilityLabel="Copy transcript to clipboard"
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.actionButtonText}>📋 Copy</Text>
+                        </Pressable>
+                        <Pressable style={styles.actionButton} onPress={handleShare}
+                            accessibilityLabel="Share transcript"
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.actionButtonText}>📤 Share</Text>
+                        </Pressable>
+                        <Pressable
+                            style={[styles.actionButton, styles.actionButtonPrimary]}
+                            onPress={handleSave}
+                            accessibilityLabel="Save recording to history"
+                            accessibilityRole="button"
+                        >
+                            <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
+                                📌 Save
+                            </Text>
+                        </Pressable>
+                    </View>
                 )}
-            </ScrollView>
-
-            {/* Action Buttons (visible when transcript exists) */}
-            {fullText.length > 0 && state === 'idle' && (
-                <View style={styles.actionRow}>
-                    <Pressable style={styles.actionButton} onPress={handleCopy}
-                        accessibilityLabel="Copy transcript to clipboard"
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.actionButtonText}>📋 Copy</Text>
-                    </Pressable>
-                    <Pressable style={styles.actionButton} onPress={handleShare}
-                        accessibilityLabel="Share transcript"
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.actionButtonText}>📤 Share</Text>
-                    </Pressable>
-                    <Pressable
-                        style={[styles.actionButton, styles.actionButtonPrimary]}
-                        onPress={handleSave}
-                        accessibilityLabel="Save recording to history"
-                        accessibilityRole="button"
-                    >
-                        <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
-                            📌 Save
-                        </Text>
-                    </Pressable>
-                </View>
-            )}
-        </SafeAreaView>
+            </SafeAreaView>
+        </ScreenErrorBoundary>
     );
 }
 

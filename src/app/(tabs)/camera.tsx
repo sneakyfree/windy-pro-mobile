@@ -14,6 +14,7 @@ import { ocrService, type OcrTranslation } from '@/services/ocr';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { feedbackService } from '@/services/feedback';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -235,211 +236,213 @@ export default function CameraTab() {
     // ─── Main Camera View ──────────────────────────────────────
 
     return (
-        <View style={styles.container}>
-            {/* Camera */}
-            <CameraView ref={cameraRef} style={styles.camera} facing="back">
-                {/* Camera Overlay */}
-                <View style={styles.cameraOverlay}>
-                    {/* Top bar */}
-                    <View style={styles.topBar}>
-                        <Pressable
-                            style={styles.historyBtn}
-                            onPress={() => setShowHistory(true)}
-                            accessibilityLabel={`View translation history, ${history.length} items`}
-                            accessibilityRole="button"
-                        >
-                            <Text style={styles.historyBtnText}>
-                                📋 {history.length}
-                            </Text>
-                        </Pressable>
-                        <Text style={styles.topTitle}>📷 Camera Translate</Text>
-                        <View style={{ width: 44 }} />
-                    </View>
-
-                    {/* Crosshair targeting box */}
-                    <View style={styles.crosshair}>
-                        <View style={[styles.corner, styles.cornerTL]} />
-                        <View style={[styles.corner, styles.cornerTR]} />
-                        <View style={[styles.corner, styles.cornerBL]} />
-                        <View style={[styles.corner, styles.cornerBR]} />
-                        {capturing && (
-                            <View style={styles.scanningOverlay}>
-                                <ActivityIndicator size="large" color={colors.accent} />
-                                <Text style={styles.scanningText}>Scanning...</Text>
-                            </View>
-                        )}
-                    </View>
-
-                    {/* Live scan bounding box overlays */}
-                    {liveMode && liveResult && !frozen && liveResult.original.boundingBoxes.length > 0 && (
-                        <View style={styles.boundingBoxContainer}>
-                            {liveResult.original.boundingBoxes.slice(0, 10).map((box, i) => (
-                                <View
-                                    key={`bb-${i}`}
-                                    style={[
-                                        styles.boundingBox,
-                                        {
-                                            left: (box.x / 1000) * SCREEN_WIDTH,
-                                            top: (box.y / 1000) * 200,
-                                            width: Math.max(40, (box.width / 1000) * SCREEN_WIDTH),
-                                        },
-                                    ]}
-                                >
-                                    <Text style={styles.boundingBoxText} numberOfLines={1}>
-                                        {box.text}
-                                    </Text>
-                                </View>
-                            ))}
+        <ScreenErrorBoundary screenName="Camera">
+            <View style={styles.container}>
+                {/* Camera */}
+                <CameraView ref={cameraRef} style={styles.camera} facing="back">
+                    {/* Camera Overlay */}
+                    <View style={styles.cameraOverlay}>
+                        {/* Top bar */}
+                        <View style={styles.topBar}>
+                            <Pressable
+                                style={styles.historyBtn}
+                                onPress={() => setShowHistory(true)}
+                                accessibilityLabel={`View translation history, ${history.length} items`}
+                                accessibilityRole="button"
+                            >
+                                <Text style={styles.historyBtnText}>
+                                    📋 {history.length}
+                                </Text>
+                            </Pressable>
+                            <Text style={styles.topTitle}>📷 Camera Translate</Text>
+                            <View style={{ width: 44 }} />
                         </View>
-                    )}
 
-                    {/* Detected language + live mode badge */}
-                    {liveMode && (
-                        <View style={styles.liveBadgeRow}>
-                            <View style={styles.liveBadge}>
-                                <Text style={styles.liveBadgeText}>🟢 LIVE</Text>
-                            </View>
-                            {detectedLang && (
-                                <View style={styles.detectedLangBadge}>
-                                    <Text style={styles.detectedLangText}>
-                                        {getFlag(detectedLang)} {getName(detectedLang)}
-                                    </Text>
+                        {/* Crosshair targeting box */}
+                        <View style={styles.crosshair}>
+                            <View style={[styles.corner, styles.cornerTL]} />
+                            <View style={[styles.corner, styles.cornerTR]} />
+                            <View style={[styles.corner, styles.cornerBL]} />
+                            <View style={[styles.corner, styles.cornerBR]} />
+                            {capturing && (
+                                <View style={styles.scanningOverlay}>
+                                    <ActivityIndicator size="large" color={colors.accent} />
+                                    <Text style={styles.scanningText}>Scanning...</Text>
                                 </View>
                             )}
                         </View>
-                    )}
 
-                    {/* Instruction / error */}
-                    {error ? (
-                        <View style={styles.errorBanner}>
-                            <Text style={styles.errorText}>⚠️ {error}</Text>
-                            <Pressable onPress={() => setError(null)} accessibilityLabel="Dismiss error" accessibilityRole="button">
-                                <Text style={styles.errorDismiss}>✕</Text>
+                        {/* Live scan bounding box overlays */}
+                        {liveMode && liveResult && !frozen && liveResult.original.boundingBoxes.length > 0 && (
+                            <View style={styles.boundingBoxContainer}>
+                                {liveResult.original.boundingBoxes.slice(0, 10).map((box, i) => (
+                                    <View
+                                        key={`bb-${i}`}
+                                        style={[
+                                            styles.boundingBox,
+                                            {
+                                                left: (box.x / 1000) * SCREEN_WIDTH,
+                                                top: (box.y / 1000) * 200,
+                                                width: Math.max(40, (box.width / 1000) * SCREEN_WIDTH),
+                                            },
+                                        ]}
+                                    >
+                                        <Text style={styles.boundingBoxText} numberOfLines={1}>
+                                            {box.text}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
+                        {/* Detected language + live mode badge */}
+                        {liveMode && (
+                            <View style={styles.liveBadgeRow}>
+                                <View style={styles.liveBadge}>
+                                    <Text style={styles.liveBadgeText}>🟢 LIVE</Text>
+                                </View>
+                                {detectedLang && (
+                                    <View style={styles.detectedLangBadge}>
+                                        <Text style={styles.detectedLangText}>
+                                            {getFlag(detectedLang)} {getName(detectedLang)}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        {/* Instruction / error */}
+                        {error ? (
+                            <View style={styles.errorBanner}>
+                                <Text style={styles.errorText}>⚠️ {error}</Text>
+                                <Pressable onPress={() => setError(null)} accessibilityLabel="Dismiss error" accessibilityRole="button">
+                                    <Text style={styles.errorDismiss}>✕</Text>
+                                </Pressable>
+                            </View>
+                        ) : !result && !liveMode ? (
+                            <Text style={styles.hint}>Point at text and tap the button below</Text>
+                        ) : null}
+                    </View>
+
+                    {/* Translation Overlay */}
+                    {result && (
+                        <Animated.View style={[styles.translationOverlay, { opacity: overlayOpacity }]}>
+                            <Pressable style={styles.overlayCard} onPress={dismissResult} accessibilityLabel="Translation result. Tap to dismiss" accessibilityRole="button">
+                                {/* Original */}
+                                <View style={styles.overlaySection}>
+                                    <Text style={styles.overlayLabel}>
+                                        {getFlag(result.fromLang)} Detected • {Math.round(result.original.confidence * 100)}%
+                                    </Text>
+                                    <Text style={styles.overlayOriginal} numberOfLines={3}>
+                                        {result.original.text}
+                                    </Text>
+                                </View>
+
+                                <View style={styles.overlayDivider} />
+
+                                {/* Translation */}
+                                <View style={styles.overlaySection}>
+                                    <Text style={styles.overlayLabel}>
+                                        {getFlag(result.toLang)} Translation
+                                    </Text>
+                                    <Text style={styles.overlayTranslated}>
+                                        {result.translated}
+                                    </Text>
+                                </View>
+
+                                {/* TTS + dismiss */}
+                                <View style={styles.overlayActions}>
+                                    <Pressable
+                                        style={styles.overlayActionBtn}
+                                        onPress={() => translationService.speak(result.translated, result.toLang)}
+                                        accessibilityLabel="Listen to translation"
+                                        accessibilityRole="button"
+                                    >
+                                        <Text style={styles.overlayActionText}>🔊 Listen</Text>
+                                    </Pressable>
+                                    <Pressable style={styles.overlayActionBtn} onPress={dismissResult} accessibilityLabel="Dismiss translation" accessibilityRole="button">
+                                        <Text style={styles.overlayActionText}>✕ Dismiss</Text>
+                                    </Pressable>
+                                </View>
                             </Pressable>
-                        </View>
-                    ) : !result && !liveMode ? (
-                        <Text style={styles.hint}>Point at text and tap the button below</Text>
-                    ) : null}
-                </View>
+                        </Animated.View>
+                    )}
+                </CameraView>
 
-                {/* Translation Overlay */}
-                {result && (
-                    <Animated.View style={[styles.translationOverlay, { opacity: overlayOpacity }]}>
-                        <Pressable style={styles.overlayCard} onPress={dismissResult} accessibilityLabel="Translation result. Tap to dismiss" accessibilityRole="button">
-                            {/* Original */}
-                            <View style={styles.overlaySection}>
-                                <Text style={styles.overlayLabel}>
-                                    {getFlag(result.fromLang)} Detected • {Math.round(result.original.confidence * 100)}%
+                {/* Bottom Controls */}
+                <View style={styles.bottomBar}>
+                    {/* Language chips */}
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.langChipRow}
+                    >
+                        {CAMERA_LANGUAGES.map((lang) => (
+                            <Pressable
+                                key={lang.code}
+                                style={[styles.langChip, targetLang === lang.code && styles.langChipActive]}
+                                onPress={() => {
+                                    setTargetLang(lang.code);
+                                    setResult(null);
+                                    feedbackService.tap();
+                                }}
+                                accessibilityLabel={`Translate to ${lang.name}`}
+                                accessibilityRole="button"
+                                accessibilityState={{ selected: targetLang === lang.code }}
+                            >
+                                <Text style={styles.langChipFlag}>{lang.flag}</Text>
+                                <Text style={[
+                                    styles.langChipName,
+                                    targetLang === lang.code && styles.langChipNameActive,
+                                ]}>
+                                    {lang.name}
                                 </Text>
-                                <Text style={styles.overlayOriginal} numberOfLines={3}>
-                                    {result.original.text}
-                                </Text>
-                            </View>
+                            </Pressable>
+                        ))}
+                    </ScrollView>
 
-                            <View style={styles.overlayDivider} />
-
-                            {/* Translation */}
-                            <View style={styles.overlaySection}>
-                                <Text style={styles.overlayLabel}>
-                                    {getFlag(result.toLang)} Translation
-                                </Text>
-                                <Text style={styles.overlayTranslated}>
-                                    {result.translated}
-                                </Text>
-                            </View>
-
-                            {/* TTS + dismiss */}
-                            <View style={styles.overlayActions}>
-                                <Pressable
-                                    style={styles.overlayActionBtn}
-                                    onPress={() => translationService.speak(result.translated, result.toLang)}
-                                    accessibilityLabel="Listen to translation"
-                                    accessibilityRole="button"
-                                >
-                                    <Text style={styles.overlayActionText}>🔊 Listen</Text>
-                                </Pressable>
-                                <Pressable style={styles.overlayActionBtn} onPress={dismissResult} accessibilityLabel="Dismiss translation" accessibilityRole="button">
-                                    <Text style={styles.overlayActionText}>✕ Dismiss</Text>
-                                </Pressable>
-                            </View>
-                        </Pressable>
-                    </Animated.View>
-                )}
-            </CameraView>
-
-            {/* Bottom Controls */}
-            <View style={styles.bottomBar}>
-                {/* Language chips */}
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.langChipRow}
-                >
-                    {CAMERA_LANGUAGES.map((lang) => (
+                    {/* Capture button */}
+                    <View style={styles.captureRow}>
                         <Pressable
-                            key={lang.code}
-                            style={[styles.langChip, targetLang === lang.code && styles.langChipActive]}
-                            onPress={() => {
-                                setTargetLang(lang.code);
-                                setResult(null);
-                                feedbackService.tap();
-                            }}
-                            accessibilityLabel={`Translate to ${lang.name}`}
+                            style={[styles.captureBtn, capturing && styles.captureBtnDisabled]}
+                            onPress={handleCapture}
+                            disabled={capturing || liveMode}
+                            accessibilityLabel={capturing ? 'Processing photo' : 'Capture text for translation'}
                             accessibilityRole="button"
-                            accessibilityState={{ selected: targetLang === lang.code }}
+                            accessibilityState={{ disabled: capturing || liveMode }}
                         >
-                            <Text style={styles.langChipFlag}>{lang.flag}</Text>
-                            <Text style={[
-                                styles.langChipName,
-                                targetLang === lang.code && styles.langChipNameActive,
-                            ]}>
-                                {lang.name}
+                            {capturing ? (
+                                <ActivityIndicator size="small" color={colors.background} />
+                            ) : (
+                                <Text style={styles.captureBtnEmoji}>📸</Text>
+                            )}
+                            <Text style={styles.captureBtnText}>
+                                {capturing ? 'Processing...' : 'Capture'}
                             </Text>
                         </Pressable>
-                    ))}
-                </ScrollView>
 
-                {/* Capture button */}
-                <View style={styles.captureRow}>
-                    <Pressable
-                        style={[styles.captureBtn, capturing && styles.captureBtnDisabled]}
-                        onPress={handleCapture}
-                        disabled={capturing || liveMode}
-                        accessibilityLabel={capturing ? 'Processing photo' : 'Capture text for translation'}
-                        accessibilityRole="button"
-                        accessibilityState={{ disabled: capturing || liveMode }}
-                    >
-                        {capturing ? (
-                            <ActivityIndicator size="small" color={colors.background} />
-                        ) : (
-                            <Text style={styles.captureBtnEmoji}>📸</Text>
-                        )}
-                        <Text style={styles.captureBtnText}>
-                            {capturing ? 'Processing...' : 'Capture'}
-                        </Text>
-                    </Pressable>
-
-                    {/* Live scan toggle */}
-                    <Pressable
-                        style={[styles.liveBtn, liveMode && styles.liveBtnActive]}
-                        onPress={() => liveMode ? stopLiveScan() : startLiveScan()}
-                        accessibilityLabel={liveMode ? 'Stop live scanning' : 'Start live scanning'}
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.liveBtnText}>
-                            {liveMode ? '⏹ Stop Live' : '🟢 Live Scan'}
-                        </Text>
-                    </Pressable>
-
-                    {/* Freeze button (visible in live mode) */}
-                    {liveMode && liveResult && !frozen && (
-                        <Pressable style={styles.freezeBtn} onPress={freezeFrame} accessibilityLabel="Freeze current translation" accessibilityRole="button">
-                            <Text style={styles.freezeBtnText}>❄️ Freeze</Text>
+                        {/* Live scan toggle */}
+                        <Pressable
+                            style={[styles.liveBtn, liveMode && styles.liveBtnActive]}
+                            onPress={() => liveMode ? stopLiveScan() : startLiveScan()}
+                            accessibilityLabel={liveMode ? 'Stop live scanning' : 'Start live scanning'}
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.liveBtnText}>
+                                {liveMode ? '⏹ Stop Live' : '🟢 Live Scan'}
+                            </Text>
                         </Pressable>
-                    )}
+
+                        {/* Freeze button (visible in live mode) */}
+                        {liveMode && liveResult && !frozen && (
+                            <Pressable style={styles.freezeBtn} onPress={freezeFrame} accessibilityLabel="Freeze current translation" accessibilityRole="button">
+                                <Text style={styles.freezeBtnText}>❄️ Freeze</Text>
+                            </Pressable>
+                        )}
+                    </View>
                 </View>
             </View>
-        </View>
+        </ScreenErrorBoundary>
     );
 }
 

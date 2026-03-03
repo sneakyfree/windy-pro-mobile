@@ -234,7 +234,7 @@ class SpeechTranslationService {
                 // Exponential backoff
                 const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
                 await new Promise(resolve => setTimeout(resolve, delay));
-                console.log(`[SpeechTranslation] Retrying (attempt ${attempt + 1}/${MAX_RETRIES})`);
+                // console.log(`[SpeechTranslation] Retrying (attempt ${attempt + 1}/${MAX_RETRIES})`);
             }
         }
 

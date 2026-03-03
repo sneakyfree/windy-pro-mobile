@@ -265,7 +265,7 @@ class TranslationService {
                 language: voice,
                 rate: this.ttsRate,
                 pitch: 1.0,
-                onDone: () => console.log('[TTS] Done speaking'),
+                onDone: () => { /* done */ },
                 onError: (err) => console.warn('[TTS] Error:', err),
             });
         } catch (err) {

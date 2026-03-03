@@ -64,7 +64,7 @@ class SubscriptionService {
 
             await Purchases.configure({ apiKey });
             this.initialized = true;
-            console.log('[Subscription] RevenueCat initialized');
+            // console.log('[Subscription] RevenueCat initialized');
         } catch (error) {
             console.warn('[Subscription] Failed to initialize RevenueCat:', error);
         }
@@ -111,7 +111,7 @@ class SubscriptionService {
             return this.getTierFromCustomerInfo(customerInfo);
         } catch (error: any) {
             if (error.userCancelled) {
-                console.log('[Subscription] User cancelled purchase');
+                // console.log('[Subscription] User cancelled purchase');
                 return null;
             }
             console.warn('[Subscription] Purchase failed:', error);

@@ -50,7 +50,7 @@ class VideoCaptureService {
 
         try {
             // Note: recordAsync is called but result is collected on stop
-            console.log('[Video] Started capture for session:', sessionId);
+            // console.log('[Video] Started capture for session:', sessionId);
         } catch (err) {
             this.isRecording = false;
             throw err;
@@ -90,7 +90,7 @@ class VideoCaptureService {
             const info = await FileSystem.getInfoAsync(destPath);
             const size = info.exists && 'size' in info ? (info as any).size : 0;
 
-            console.log('[Video] Capture saved:', destPath, `(${size} bytes)`);
+            // console.log('[Video] Capture saved:', destPath, `(${size} bytes)`);
 
             return { uri: destPath, size };
         } catch (err) {
