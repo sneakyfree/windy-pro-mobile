@@ -300,6 +300,13 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="ocr/index"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
               name="subscription/index"
               options={{
                 presentation: 'modal',

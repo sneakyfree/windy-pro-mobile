@@ -69,8 +69,7 @@ export default function TranslateScreen() {
         }
         loadHistory();
 
-        // Start network monitoring
-        networkMonitor.start();
+        // Subscribe to network status (monitor started in _layout.tsx)
         const unsubStatus = networkMonitor.onStatusChange((status) => {
             setNetworkStatus(status);
             setQueueSize(networkMonitor.getQueueSize());
@@ -78,7 +77,13 @@ export default function TranslateScreen() {
 
         return () => {
             unsubStatus();
-            networkMonitor.stop();
+            // Clean up any active recording on unmount
+            if (recordingRef.current) {
+                recordingRef.current.stopAndUnloadAsync()
+                    .then(() => Audio.setAudioModeAsync({ allowsRecordingIOS: false }))
+                    .catch(() => { });
+                recordingRef.current = null;
+            }
         };
     }, []);
 
