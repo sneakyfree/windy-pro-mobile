@@ -33,9 +33,15 @@ export default function SessionDetailScreen() {
     const loadSession = async () => {
         if (!id) return;
         setLoading(true);
-        const data = await localStorageService.getSession(id);
-        setSession(data);
-        setLoading(false);
+        try {
+            const data = await localStorageService.getSession(id);
+            setSession(data);
+        } catch (err) {
+            console.error('[Session] Load failed:', err);
+            Alert.alert('Load Error', 'Could not load this session.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handlePlayPause = async () => {
@@ -53,7 +59,7 @@ export default function SessionDetailScreen() {
                 { shouldPlay: true },
                 (status) => {
                     if (status.isLoaded) {
-                        setPlaybackPosition(status.positionMillis / 1000);
+                        setPlaybackPosition((status.positionMillis ?? 0) / 1000);
                         if (status.didJustFinish) {
                             setIsPlaying(false);
                             setPlaybackPosition(0);
@@ -68,23 +74,31 @@ export default function SessionDetailScreen() {
 
     const handleCopy = async () => {
         if (!session) return;
-        await Clipboard.setStringAsync(session.transcript);
-        await feedbackService.success();
-        Alert.alert('Copied', 'Transcript copied to clipboard');
+        try {
+            await Clipboard.setStringAsync(session.transcript);
+            feedbackService.success().catch(() => { });
+            Alert.alert('Copied', 'Transcript copied to clipboard');
+        } catch {
+            Alert.alert('Error', 'Could not copy to clipboard.');
+        }
     };
 
     const handleShare = async () => {
         if (!session) return;
-        await feedbackService.tap();
-        await Share.share({
-            message: session.transcript,
-            title: `Windy Pro — ${new Date(session.createdAt).toLocaleDateString()}`,
-        });
+        feedbackService.tap().catch(() => { });
+        try {
+            await Share.share({
+                message: session.transcript,
+                title: `Windy Pro — ${new Date(session.createdAt).toLocaleDateString()}`,
+            });
+        } catch {
+            Alert.alert('Error', 'Could not open share sheet.');
+        }
     };
 
     const handleExport = async () => {
         if (!session) return;
-        await feedbackService.tap();
+        feedbackService.tap().catch(() => { });
         const exportData = {
             id: session.id,
             date: session.createdAt,
@@ -95,7 +109,7 @@ export default function SessionDetailScreen() {
                 start: s.startTime,
                 end: s.endTime,
             })),
-            quality: session.quality.score,
+            quality: session.quality?.score ?? 0,
             engine: session.engineUsed,
         };
         await Share.share({
@@ -112,9 +126,13 @@ export default function SessionDetailScreen() {
                 text: 'Delete',
                 style: 'destructive',
                 onPress: async () => {
-                    await localStorageService.deleteSession(session.id);
-                    await feedbackService.success();
-                    router.back();
+                    try {
+                        await localStorageService.deleteSession(session.id);
+                        feedbackService.success().catch(() => { });
+                        router.back();
+                    } catch {
+                        Alert.alert('Error', 'Could not delete session.');
+                    }
                 },
             },
         ]);
@@ -159,7 +177,7 @@ export default function SessionDetailScreen() {
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
             {/* Header */}
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.closeButton}>
+                <Pressable onPress={() => router.back()} style={styles.closeButton} accessibilityLabel="Close session" accessibilityRole="button">
                     <Text style={styles.closeText}>✕</Text>
                 </Pressable>
                 <Text style={styles.headerDate}>
@@ -181,8 +199,8 @@ export default function SessionDetailScreen() {
                     <Text style={styles.statLabel}>Duration</Text>
                 </View>
                 <View style={styles.stat}>
-                    <Text style={[styles.statValue, { color: getQualityColor(session.quality.score) }]}>
-                        {session.quality.score}
+                    <Text style={[styles.statValue, { color: getQualityColor(session.quality?.score ?? 0) }]}>
+                        {session.quality?.score ?? '—'}
                     </Text>
                     <Text style={styles.statLabel}>Quality</Text>
                 </View>
@@ -228,16 +246,16 @@ export default function SessionDetailScreen() {
 
             {/* Action Buttons */}
             <View style={styles.actionRow}>
-                <Pressable style={styles.actionBtn} onPress={handleCopy}>
+                <Pressable style={styles.actionBtn} onPress={handleCopy} accessibilityLabel="Copy transcript" accessibilityRole="button">
                     <Text style={styles.actionBtnText}>📋 Copy</Text>
                 </Pressable>
-                <Pressable style={styles.actionBtn} onPress={handleShare}>
+                <Pressable style={styles.actionBtn} onPress={handleShare} accessibilityLabel="Share transcript" accessibilityRole="button">
                     <Text style={styles.actionBtnText}>📤 Share</Text>
                 </Pressable>
-                <Pressable style={styles.actionBtn} onPress={handleExport}>
+                <Pressable style={styles.actionBtn} onPress={handleExport} accessibilityLabel="Export session data" accessibilityRole="button">
                     <Text style={styles.actionBtnText}>📋 Export</Text>
                 </Pressable>
-                <Pressable style={[styles.actionBtn, styles.deleteBtn]} onPress={handleDelete}>
+                <Pressable style={[styles.actionBtn, styles.deleteBtn]} onPress={handleDelete} accessibilityLabel="Delete session" accessibilityRole="button">
                     <Text style={[styles.actionBtnText, styles.deleteBtnText]}>🗑 Delete</Text>
                 </Pressable>
             </View>

@@ -106,7 +106,7 @@ export default function HistoryScreen() {
         case 'duration':
           return b.duration - a.duration;
         case 'quality':
-          return b.quality.score - a.quality.score;
+          return (b.quality?.score ?? 0) - (a.quality?.score ?? 0);
         default:
           return 0;
       }
@@ -147,7 +147,7 @@ export default function HistoryScreen() {
       isFav ? next.delete(id) : next.add(id);
       return next;
     });
-    await feedbackService.tap();
+    feedbackService.tap().catch(() => { });
   };
 
   // CSV export
@@ -155,7 +155,7 @@ export default function HistoryScreen() {
     try {
       const header = 'ID,Date,Duration,Quality,Source,Preview\n';
       const rows = filteredSessions.map(s =>
-        `"${s.id}","${s.createdAt}",${s.duration},${s.quality.score},"${s.source || ''}","${(s.previewText || '').replace(/"/g, '""')}"`
+        `"${s.id}","${s.createdAt}",${s.duration},${s.quality?.score ?? 0},"${s.source || ''}","${(s.previewText || '').replace(/"/g, '""')}"`
       ).join('\n');
       const csv = header + rows;
 
@@ -339,8 +339,8 @@ export default function HistoryScreen() {
           {item.previewText || 'No transcript'}
         </Text>
         <View style={styles.cardFooter}>
-          <View style={[styles.qualityDot, { backgroundColor: getQualityColor(item.quality.score) }]} />
-          <Text style={styles.qualityText}>{item.quality.score}</Text>
+          <View style={[styles.qualityDot, { backgroundColor: getQualityColor(item.quality?.score ?? 0) }]} />
+          <Text style={styles.qualityText}>{item.quality?.score ?? '—'}</Text>
           <Text style={styles.cardSource}>{item.source}</Text>
           {!selectMode && (
             <Pressable style={styles.exportBtn} onPress={() => handleExportSession(item)} accessibilityLabel="Export this recording" accessibilityRole="button">
