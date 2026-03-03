@@ -6,7 +6,7 @@
 - [x] Bundle ID: `uk.thewindstorm.windypro`
 - [x] Deployment target: iOS 16.0
 - [x] Typecheck: 0 errors
-- [x] Tests: 145/145
+- [x] Tests: 157/157
 - [x] Simulator build: succeeded (0 errors)
 - [x] Info.plist: 9 privacy descriptions + `ITSAppUsesNonExemptEncryption: false`
 - [x] VoiceOver accessibility: all screens labeled (Record, Translate, Camera, History, Settings, Subscription, Quick-Translate, Tabs)
