@@ -6,7 +6,7 @@
  */
 import {
     View, Text, StyleSheet, Pressable, ScrollView, Platform,
-    Alert, Modal, FlatList, Dimensions, Animated, KeyboardAvoidingView, Share,
+    Alert, Modal, FlatList, Dimensions, Animated, KeyboardAvoidingView, Share, Linking,
 } from 'react-native';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
@@ -181,9 +181,28 @@ export default function TranslateScreen() {
             haptic.medium();
             feedbackService.recordStart();
             announce('Recording started. Speak now.');
-        } catch (err) {
+        } catch (err: any) {
             console.error('[Translate] Start recording failed:', err);
             haptic.error();
+            const isPermission = err?.message?.includes('permission') || err?.message?.includes('not granted');
+            if (isPermission) {
+                Alert.alert(
+                    'Microphone Access Required',
+                    'Windy Pro needs microphone access to translate speech. Please enable it in Settings.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                            text: 'Open Settings', onPress: () => {
+                                if (Platform.OS === 'ios') {
+                                    Linking.openSettings();
+                                }
+                            }
+                        },
+                    ]
+                );
+            } else {
+                Alert.alert('Recording Error', 'Could not start recording. Please try again.');
+            }
         }
     }, [processing, haptic]);
 
@@ -404,30 +423,30 @@ export default function TranslateScreen() {
             <View style={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                    <Pressable onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
                         <Text style={styles.backText}>← Back</Text>
                     </Pressable>
                     <Text style={styles.title}>Windy Translate</Text>
                     {networkStatus === 'offline' && (
-                        <View style={styles.offlineBadge}>
+                        <View style={styles.offlineBadge} accessibilityLabel="Currently offline" accessibilityRole="text">
                             <Text style={styles.offlineBadgeText}>📡 Offline</Text>
                         </View>
                     )}
                     {queueSize > 0 && (
-                        <View style={styles.queueBadge}>
+                        <View style={styles.queueBadge} accessibilityLabel={`${queueSize} translations queued`} accessibilityRole="text">
                             <Text style={styles.queueBadgeText}>⏳ {queueSize}</Text>
                         </View>
                     )}
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <Pressable style={styles.iconBtn} onPress={() => router.push('/ocr')}>
+                        <Pressable style={styles.iconBtn} onPress={() => router.push('/ocr')} accessibilityLabel="Open camera OCR" accessibilityRole="button">
                             <Text style={styles.iconBtnText}>📷</Text>
                         </Pressable>
                         {turns.length > 0 && (
-                            <Pressable style={styles.iconBtn} onPress={() => setShowExportMenu(true)}>
+                            <Pressable style={styles.iconBtn} onPress={() => setShowExportMenu(true)} accessibilityLabel="Export conversation" accessibilityRole="button">
                                 <Text style={styles.iconBtnText}>📤</Text>
                             </Pressable>
                         )}
-                        <Pressable style={styles.iconBtn} onPress={() => setShowModeMenu(true)}>
+                        <Pressable style={styles.iconBtn} onPress={() => setShowModeMenu(true)} accessibilityLabel="Translation settings" accessibilityRole="button">
                             <Text style={styles.iconBtnText}>⚙️</Text>
                         </Pressable>
                     </View>
@@ -440,6 +459,8 @@ export default function TranslateScreen() {
                             key={m}
                             style={[styles.modeChip, mode === m && styles.modeChipActive]}
                             onPress={() => { setMode(m); feedbackService.tap(); }}
+                            accessibilityLabel={`${m === 'manual' ? 'Manual' : m === 'auto' ? 'Auto detect' : 'Split screen'} mode`}
+                            accessibilityRole="button"
                         >
                             <Text style={[styles.modeChipText, mode === m && styles.modeChipTextActive]}>
                                 {m === 'manual' ? '👆 Manual' : m === 'auto' ? '🤖 Auto' : '📱 Split'}
@@ -453,18 +474,22 @@ export default function TranslateScreen() {
                     <Pressable
                         style={styles.langButton}
                         onPress={() => setShowLangPicker('source')}
+                        accessibilityLabel={`Source language: ${getName(sourceLang)}`}
+                        accessibilityRole="button"
                     >
                         <Text style={styles.langFlag}>{getFlag(sourceLang)}</Text>
                         <Text style={styles.langName}>{getName(sourceLang)}</Text>
                     </Pressable>
 
-                    <Pressable style={styles.swapButton} onPress={swapLanguages}>
+                    <Pressable style={styles.swapButton} onPress={swapLanguages} accessibilityLabel="Swap languages" accessibilityRole="button">
                         <Text style={styles.swapText}>⇄</Text>
                     </Pressable>
 
                     <Pressable
                         style={styles.langButton}
                         onPress={() => setShowLangPicker('target')}
+                        accessibilityLabel={`Target language: ${getName(targetLang)}`}
+                        accessibilityRole="button"
                     >
                         <Text style={styles.langFlag}>{getFlag(targetLang)}</Text>
                         <Text style={styles.langName}>{getName(targetLang)}</Text>

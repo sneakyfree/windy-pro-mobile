@@ -1,4 +1,4 @@
-# 🚀 Windy Pro iOS — TestFlight Submission Checklist
+# 🚀 Windy Pro iOS — TestFlight Release Checklist
 
 ## Pre-Submission (Automated — Done ✅)
 
@@ -9,104 +9,103 @@
 - [x] Tests: 145/145
 - [x] Simulator build: succeeded (0 errors)
 - [x] Info.plist: 9 privacy descriptions + `ITSAppUsesNonExemptEncryption: false`
-- [x] VoiceOver accessibility: all 7 screens labeled
+- [x] VoiceOver accessibility: all screens labeled (Record, Translate, Camera, History, Settings, Subscription, Quick-Translate, Tabs)
 - [x] RevenueCat SDK linked: `RNPurchases` / `PurchasesHybridCommon 5.59.2`
 - [x] Associated Domains: `applinks:` + `appclips:windypro.thewindstorm.uk`
 - [x] RC1 tag: `v1.0.0-rc.1`
-- [x] Stability hardening: permission checks, error Alerts, deep link validation
+- [x] Stability hardening: permission checks, error Alerts, deep link validation, offline handling
 - [x] CHANGELOG.md generated
 
 ---
 
-## TestFlight Submission Steps
-
-### 1. Configure Apple Credentials
+## Step 1: Configure Apple Credentials
 
 Replace placeholders in `eas.json` → `submit.production.ios`:
 
 ```json
 {
-  "ascAppId": "<Your App Store Connect App ID>",
+  "ascAppId": "<Your App Store Connect Apple ID (numeric)>",
   "appleId": "<your-apple-id@email.com>",
   "appleTeamId": "<Your 10-character Team ID>"
 }
 ```
 
-Find your **ascAppId** in [App Store Connect](https://appstoreconnect.apple.com) → My Apps → Windy Pro → General → App Information → Apple ID.
+Find values:
+- **ascAppId**: App Store Connect → My Apps → Windy Pro → General → Apple ID
+- **appleTeamId**: developer.apple.com → Account → Membership → Team ID
 
-### 2. Build for Production
+## Step 2: Build for Production
 
 ```bash
-export PATH="/usr/local/lib/ruby/gems/4.0.0/bin:/usr/local/opt/ruby/bin:$PATH"
-export SSL_CERT_FILE=/etc/ssl/cert.pem
-
 npx eas build --platform ios --profile production
 ```
 
-EAS will prompt to configure iOS signing on first run:
-- Select **"Let Expo handle it"** for Distribution Certificate + Provisioning Profile
-- Or provide existing cert/profile if you have one
+EAS prompts for signing on first run → select "Let Expo handle it".
+Build takes ~15-25 minutes on EAS cloud.
 
-### 3. Submit to TestFlight
+### Rollback
+```bash
+# If build fails, check logs:
+npx eas build:list --platform ios --status errored
+
+# Revert to RC1 if needed:
+git checkout v1.0.0-rc.1
+npx eas build --platform ios --profile production
+```
+
+## Step 3: Submit to TestFlight
 
 ```bash
 npx eas submit --platform ios --profile production
 ```
 
-This uploads the `.ipa` to App Store Connect and creates a TestFlight build.
+### Rollback
+```bash
+# To submit a previous build instead:
+npx eas submit --platform ios --profile production --id <BUILD_ID>
+```
 
-### 4. TestFlight Review
+## Step 4: TestFlight Review
 
-In App Store Connect:
-1. Go to **TestFlight** → Builds → iOS
-2. Wait for **Processing** to complete (~5-15 min)
-3. If prompted for **Export Compliance**, confirm:
-   - "Does your app use encryption?" → **No** (we set `ITSAppUsesNonExemptEncryption: false`)
-4. Add **test groups** or **individual testers**
-5. Fill in **Test Details**: What to test, email, phone, notes
+1. App Store Connect → TestFlight → Builds → iOS
+2. Wait for **Processing** (~5-15 min)
+3. Export Compliance → "No" (we set `ITSAppUsesNonExemptEncryption: false`)
+4. Add test groups / individual testers
+5. Fill Test Details: what to test, contact email
+
+## Step 5: Verify on Device
+
+- [ ] Install from TestFlight on physical device
+- [ ] Record → transcribe → save to history
+- [ ] Translate → press-and-hold → speech translation
+- [ ] Camera OCR → point at text → translate
+- [ ] Deep link: `windypro://translate?from=en&to=es&text=hello`
+- [ ] RevenueCat purchase flow (sandbox)
+- [ ] VoiceOver through all tabs
+- [ ] Haptic feedback confirmed
+- [ ] Offline error messages appear correctly
 
 ---
 
 ## Known Caveats
 
 > [!WARNING]
-> **Apple credential placeholders**: `eas.json` submit config has `REPLACE_WITH_*` placeholders.
-> You MUST fill these in before running `eas submit`.
+> **Apple credential placeholders** must be filled in `eas.json` before Step 2.
 
 > [!IMPORTANT]
-> **RevenueCat sandbox**: In-app purchases will use Apple's sandbox environment on TestFlight.
-> Configure sandbox testers in App Store Connect → Users and Access → Sandbox.
+> **RevenueCat sandbox**: Configure sandbox testers in App Store Connect → Users & Access → Sandbox.
 
 > [!NOTE]
-> **App Clip**: The `appclips:` associated domain is configured but the App Clip target is not yet
-> created in Xcode. This is optional for initial TestFlight and can be added later.
-
-> [!NOTE]
-> **CocoaPods toolchain**: EAS cloud builds handle Ruby/CocoaPods automatically.
-> The local toolchain fix (`SSL_CERT_FILE`, Homebrew Ruby) is only needed for local builds.
+> **App Clip target**: Associated domain configured but native Xcode App Clip target not yet created. Optional for initial TestFlight.
 
 > [!TIP]
-> **Auto-increment**: `eas.json` has `"autoIncrement": true` in the production profile.
-> Each `eas build` will auto-bump the buildNumber, so you don't need to manually edit `app.json`.
-
----
-
-## Post-Submission Checklist
-
-- [ ] Verify TestFlight build appears in App Store Connect
-- [ ] Install from TestFlight on physical device
-- [ ] Test microphone recording flow
-- [ ] Test camera OCR translation
-- [ ] Test RevenueCat purchase flow (sandbox)
-- [ ] Verify deep link: `windypro://translate?from=en&to=es&text=hello`
-- [ ] Run VoiceOver through all tabs
-- [ ] Confirm haptic feedback works on device
+> **Auto-increment**: `eas.json` has `autoIncrement: true`. Each `eas build` auto-bumps buildNumber.
 
 ---
 
 ## App Store Submission Assets
 
-- [ ] Screenshots captured (see `APP_STORE_SCREENSHOTS.md` for shot list)
-- [ ] App Store metadata entered in App Store Connect (see `APP_STORE_METADATA.md`)
-- [ ] Privacy Policy URL live: https://windypro.thewindstorm.uk/privacy
-- [ ] Support URL live: https://windypro.thewindstorm.uk/support
+- [ ] Screenshots captured (see `APP_STORE_SCREENSHOTS.md`)
+- [ ] Metadata entered in App Store Connect (see `APP_STORE_METADATA.md`)
+- [ ] Privacy Policy live: `https://windypro.thewindstorm.uk/privacy`
+- [ ] Support URL live: `https://windypro.thewindstorm.uk/support`
