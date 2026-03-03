@@ -96,7 +96,7 @@ export default function VideoRecordScreen() {
     const handleStartRecording = async () => {
         try {
             const sessionId = `video-${Date.now()}`;
-            feedbackService.recordStart().catch(() => {});
+            feedbackService.recordStart().catch(() => { });
 
             // Reset state
             setRecordedVideoUri(null);
@@ -143,7 +143,7 @@ export default function VideoRecordScreen() {
         } catch (err: any) {
             console.error('[Video] Start failed:', err);
             setError();
-            feedbackService.error().catch(() => {});
+            feedbackService.error().catch(() => { });
             Alert.alert('Recording Error', err.message || 'Could not start recording.');
         }
     };
@@ -154,7 +154,7 @@ export default function VideoRecordScreen() {
             durationInterval.current = null;
         }
 
-        feedbackService.recordStop().catch(() => {});
+        feedbackService.recordStop().catch(() => { });
         setRecordingStopped();
 
         try {
@@ -221,7 +221,7 @@ export default function VideoRecordScreen() {
             }
         } catch (err: any) {
             console.error('[Video] Stop failed:', err);
-            feedbackService.error().catch(() => {});
+            feedbackService.error().catch(() => { });
         }
 
         reset();
@@ -269,202 +269,204 @@ export default function VideoRecordScreen() {
     const playbackPct = playbackDuration > 0 ? (playbackPosition / playbackDuration) * 100 : 0;
 
     return (
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backBtn}>
-                    <Text style={styles.backText}>← Back</Text>
-                </Pressable>
-                <Text style={styles.title}>Video Recorder</Text>
-                <View style={styles.headerRight} />
-            </View>
+        <ScreenErrorBoundary screenName="Video">
+            <View style={styles.container}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                        <Text style={styles.backText}>← Back</Text>
+                    </Pressable>
+                    <Text style={styles.title}>Video Recorder</Text>
+                    <View style={styles.headerRight} />
+                </View>
 
-            {/* Mode Toggle */}
-            <View style={styles.modeToggle}>
-                <Pressable
-                    style={[styles.modeBtn, mode === 'audio-only' && styles.modeBtnActive]}
-                    onPress={() => { setMode('audio-only'); feedbackService.tap(); }}
-                >
-                    <Text style={styles.modeBtnEmoji}>🎤</Text>
-                    <Text style={[styles.modeBtnText, mode === 'audio-only' && styles.modeBtnTextActive]}>
-                        Audio Only
-                    </Text>
-                </Pressable>
-                <Pressable
-                    style={[styles.modeBtn, mode === 'video' && styles.modeBtnActive]}
-                    onPress={() => { setMode('video'); feedbackService.tap(); }}
-                >
-                    <Text style={styles.modeBtnEmoji}>📹</Text>
-                    <Text style={[styles.modeBtnText, mode === 'video' && styles.modeBtnTextActive]}>
-                        Video
-                    </Text>
-                </Pressable>
-            </View>
+                {/* Mode Toggle */}
+                <View style={styles.modeToggle}>
+                    <Pressable
+                        style={[styles.modeBtn, mode === 'audio-only' && styles.modeBtnActive]}
+                        onPress={() => { setMode('audio-only'); feedbackService.tap(); }}
+                    >
+                        <Text style={styles.modeBtnEmoji}>🎤</Text>
+                        <Text style={[styles.modeBtnText, mode === 'audio-only' && styles.modeBtnTextActive]}>
+                            Audio Only
+                        </Text>
+                    </Pressable>
+                    <Pressable
+                        style={[styles.modeBtn, mode === 'video' && styles.modeBtnActive]}
+                        onPress={() => { setMode('video'); feedbackService.tap(); }}
+                    >
+                        <Text style={styles.modeBtnEmoji}>📹</Text>
+                        <Text style={[styles.modeBtnText, mode === 'video' && styles.modeBtnTextActive]}>
+                            Video
+                        </Text>
+                    </Pressable>
+                </View>
 
-            {/* Camera Preview / Video Playback */}
-            <View style={styles.previewContainer}>
-                {recordedVideoUri && state === 'idle' ? (
-                    // Playback of recorded video
-                    <View style={styles.videoPlayback}>
-                        <Video
-                            ref={videoRef}
-                            source={{ uri: recordedVideoUri }}
-                            style={styles.videoPlayer}
-                            resizeMode={ResizeMode.CONTAIN}
-                            shouldPlay={false}
-                            isLooping={false}
-                            onPlaybackStatusUpdate={(status) => {
-                                if (status.isLoaded) {
-                                    setPlaybackPosition(status.positionMillis || 0);
-                                    setPlaybackDuration(status.durationMillis || 1);
-                                    if (status.didJustFinish) {
-                                        setIsPlaying(false);
+                {/* Camera Preview / Video Playback */}
+                <View style={styles.previewContainer}>
+                    {recordedVideoUri && state === 'idle' ? (
+                        // Playback of recorded video
+                        <View style={styles.videoPlayback}>
+                            <Video
+                                ref={videoRef}
+                                source={{ uri: recordedVideoUri }}
+                                style={styles.videoPlayer}
+                                resizeMode={ResizeMode.CONTAIN}
+                                shouldPlay={false}
+                                isLooping={false}
+                                onPlaybackStatusUpdate={(status) => {
+                                    if (status.isLoaded) {
+                                        setPlaybackPosition(status.positionMillis || 0);
+                                        setPlaybackDuration(status.durationMillis || 1);
+                                        if (status.didJustFinish) {
+                                            setIsPlaying(false);
+                                        }
                                     }
-                                }
-                            }}
-                        />
-                        {/* Playback overlay */}
-                        <Pressable style={styles.playOverlay} onPress={handlePlayback}>
-                            {!isPlaying && (
-                                <View style={styles.playCircle}>
-                                    <Text style={styles.playIcon}>▶</Text>
+                                }}
+                            />
+                            {/* Playback overlay */}
+                            <Pressable style={styles.playOverlay} onPress={handlePlayback}>
+                                {!isPlaying && (
+                                    <View style={styles.playCircle}>
+                                        <Text style={styles.playIcon}>▶</Text>
+                                    </View>
+                                )}
+                            </Pressable>
+                            {/* Progress bar */}
+                            <View style={styles.progressBarContainer}>
+                                <View style={styles.progressBarBg}>
+                                    <View style={[styles.progressBarFill, { width: `${playbackPct}%` }]} />
+                                </View>
+                                <Text style={styles.progressTime}>
+                                    {formatDuration(playbackPosition / 1000)} / {formatDuration(playbackDuration / 1000)}
+                                </Text>
+                            </View>
+                        </View>
+                    ) : mode === 'video' && hasCameraPermission ? (
+                        // Live camera preview
+                        <View style={styles.cameraPreview}>
+                            <CameraView
+                                ref={(ref: any) => videoCaptureService.setCameraRef(ref)}
+                                style={styles.camera}
+                                facing={facing}
+                            />
+                            {state === 'recording' && (
+                                <View style={styles.recordingOverlay}>
+                                    <Animated.View style={[styles.recordDot, { opacity: pulseAnim }]} />
+                                    <Text style={styles.recordingLabel}>REC</Text>
                                 </View>
                             )}
-                        </Pressable>
-                        {/* Progress bar */}
-                        <View style={styles.progressBarContainer}>
-                            <View style={styles.progressBarBg}>
-                                <View style={[styles.progressBarFill, { width: `${playbackPct}%` }]} />
-                            </View>
-                            <Text style={styles.progressTime}>
-                                {formatDuration(playbackPosition / 1000)} / {formatDuration(playbackDuration / 1000)}
-                            </Text>
+                            {state !== 'recording' && (
+                                <Pressable style={styles.flipButton} onPress={toggleCamera}>
+                                    <Text style={styles.flipEmoji}>🔄</Text>
+                                </Pressable>
+                            )}
                         </View>
-                    </View>
-                ) : mode === 'video' && hasCameraPermission ? (
-                    // Live camera preview
-                    <View style={styles.cameraPreview}>
-                        <CameraView
-                            ref={(ref: any) => videoCaptureService.setCameraRef(ref)}
-                            style={styles.camera}
-                            facing={facing}
-                        />
-                        {state === 'recording' && (
-                            <View style={styles.recordingOverlay}>
-                                <Animated.View style={[styles.recordDot, { opacity: pulseAnim }]} />
-                                <Text style={styles.recordingLabel}>REC</Text>
-                            </View>
-                        )}
-                        {state !== 'recording' && (
-                            <Pressable style={styles.flipButton} onPress={toggleCamera}>
-                                <Text style={styles.flipEmoji}>🔄</Text>
-                            </Pressable>
-                        )}
-                    </View>
-                ) : (
-                    // Audio-only mode placeholder
-                    <View style={styles.audioOnlyPreview}>
-                        <Text style={styles.audioOnlyEmoji}>🎤</Text>
-                        <Text style={styles.audioOnlyText}>Audio Only Mode</Text>
-                        <Text style={styles.audioOnlySubtext}>No camera — just microphone</Text>
-                        {state === 'recording' && (
-                            <View style={styles.audioLevelContainer}>
-                                {Array.from({ length: 20 }).map((_, i) => (
-                                    <View
-                                        key={i}
-                                        style={[
-                                            styles.audioLevelBar,
-                                            {
-                                                height: Math.max(4, audioLevel * 60 * Math.random()),
-                                                backgroundColor: audioLevel > 0.5
-                                                    ? colors.stateRecording
-                                                    : colors.accent,
-                                                opacity: 0.4 + audioLevel * 0.6,
-                                            },
-                                        ]}
-                                    />
-                                ))}
-                            </View>
-                        )}
-                    </View>
-                )}
-            </View>
-
-            {/* Thumbnail + File Info */}
-            {(recordedVideoUri || recordedAudioUri) && state === 'idle' && (
-                <View style={styles.fileInfoRow}>
-                    {thumbnailUri ? (
-                        <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} />
                     ) : (
-                        <View style={styles.thumbnailPlaceholder}>
-                            <Text style={styles.thumbnailEmoji}>
-                                {recordedVideoUri ? '🎬' : '🎵'}
-                            </Text>
+                        // Audio-only mode placeholder
+                        <View style={styles.audioOnlyPreview}>
+                            <Text style={styles.audioOnlyEmoji}>🎤</Text>
+                            <Text style={styles.audioOnlyText}>Audio Only Mode</Text>
+                            <Text style={styles.audioOnlySubtext}>No camera — just microphone</Text>
+                            {state === 'recording' && (
+                                <View style={styles.audioLevelContainer}>
+                                    {Array.from({ length: 20 }).map((_, i) => (
+                                        <View
+                                            key={i}
+                                            style={[
+                                                styles.audioLevelBar,
+                                                {
+                                                    height: Math.max(4, audioLevel * 60 * Math.random()),
+                                                    backgroundColor: audioLevel > 0.5
+                                                        ? colors.stateRecording
+                                                        : colors.accent,
+                                                    opacity: 0.4 + audioLevel * 0.6,
+                                                },
+                                            ]}
+                                        />
+                                    ))}
+                                </View>
+                            )}
                         </View>
                     )}
-                    <View style={styles.fileInfoText}>
-                        <Text style={styles.fileInfoTitle}>
-                            {recordedVideoUri ? 'Video Recording' : 'Audio Recording'}
-                        </Text>
-                        <Text style={styles.fileInfoMeta}>
-                            📐 {formatDuration(videoDuration)} · 💾 {formatFileSize(fileSize)}
-                        </Text>
-                        <Text style={styles.fileInfoMeta}>
-                            {recordedVideoUri ? '720p · MP4' : 'WAV · 44.1kHz'}
-                        </Text>
-                    </View>
                 </View>
-            )}
 
-            {/* Duration Display */}
-            <View style={styles.durationRow}>
-                {state === 'recording' && (
-                    <Animated.View style={[styles.pulseDot, { opacity: pulseAnim }]} />
+                {/* Thumbnail + File Info */}
+                {(recordedVideoUri || recordedAudioUri) && state === 'idle' && (
+                    <View style={styles.fileInfoRow}>
+                        {thumbnailUri ? (
+                            <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} />
+                        ) : (
+                            <View style={styles.thumbnailPlaceholder}>
+                                <Text style={styles.thumbnailEmoji}>
+                                    {recordedVideoUri ? '🎬' : '🎵'}
+                                </Text>
+                            </View>
+                        )}
+                        <View style={styles.fileInfoText}>
+                            <Text style={styles.fileInfoTitle}>
+                                {recordedVideoUri ? 'Video Recording' : 'Audio Recording'}
+                            </Text>
+                            <Text style={styles.fileInfoMeta}>
+                                📐 {formatDuration(videoDuration)} · 💾 {formatFileSize(fileSize)}
+                            </Text>
+                            <Text style={styles.fileInfoMeta}>
+                                {recordedVideoUri ? '720p · MP4' : 'WAV · 44.1kHz'}
+                            </Text>
+                        </View>
+                    </View>
                 )}
-                <Text style={styles.durationText}>
-                    {state === 'recording' ? formatDuration(duration) : '00:00'}
-                </Text>
-            </View>
 
-            {/* File Size (during recording) */}
-            {state === 'recording' && (
-                <Text style={styles.liveSizeText}>
-                    💾 ~{formatFileSize(fileSize)} · {mode === 'video' ? '720p + Audio' : '44.1kHz Mono'}
-                </Text>
-            )}
-
-            {/* Record Button */}
-            <View style={styles.buttonContainer}>
-                <Pressable
-                    style={[
-                        styles.recordButton,
-                        state === 'recording' && styles.recordButtonActive,
-                    ]}
-                    onPress={handleRecordPress}
-                >
-                    {state === 'recording' ? (
-                        <View style={styles.stopSquare} />
-                    ) : (
-                        <Text style={styles.recordEmoji}>
-                            {mode === 'video' ? '📹' : '🎤'}
-                        </Text>
+                {/* Duration Display */}
+                <View style={styles.durationRow}>
+                    {state === 'recording' && (
+                        <Animated.View style={[styles.pulseDot, { opacity: pulseAnim }]} />
                     )}
-                </Pressable>
-            </View>
+                    <Text style={styles.durationText}>
+                        {state === 'recording' ? formatDuration(duration) : '00:00'}
+                    </Text>
+                </View>
 
-            {/* Status */}
-            <Text style={[styles.statusText, {
-                color: state === 'recording' ? colors.stateRecording
-                    : state === 'processing' ? colors.stateProcessing
-                        : colors.textTertiary,
-            }]}>
-                {state === 'recording'
-                    ? 'Tap to stop recording'
-                    : state === 'processing'
-                        ? 'Processing...'
-                        : 'Tap to start recording'}
-            </Text>
-        </View>
+                {/* File Size (during recording) */}
+                {state === 'recording' && (
+                    <Text style={styles.liveSizeText}>
+                        💾 ~{formatFileSize(fileSize)} · {mode === 'video' ? '720p + Audio' : '44.1kHz Mono'}
+                    </Text>
+                )}
+
+                {/* Record Button */}
+                <View style={styles.buttonContainer}>
+                    <Pressable
+                        style={[
+                            styles.recordButton,
+                            state === 'recording' && styles.recordButtonActive,
+                        ]}
+                        onPress={handleRecordPress}
+                    >
+                        {state === 'recording' ? (
+                            <View style={styles.stopSquare} />
+                        ) : (
+                            <Text style={styles.recordEmoji}>
+                                {mode === 'video' ? '📹' : '🎤'}
+                            </Text>
+                        )}
+                    </Pressable>
+                </View>
+
+                {/* Status */}
+                <Text style={[styles.statusText, {
+                    color: state === 'recording' ? colors.stateRecording
+                        : state === 'processing' ? colors.stateProcessing
+                            : colors.textTertiary,
+                }]}>
+                    {state === 'recording'
+                        ? 'Tap to stop recording'
+                        : state === 'processing'
+                            ? 'Processing...'
+                            : 'Tap to start recording'}
+                </Text>
+            </View>
+        </ScreenErrorBoundary>
     );
 }
 

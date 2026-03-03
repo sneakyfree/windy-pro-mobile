@@ -52,7 +52,7 @@ export default function OcrTranslateScreen() {
 
         setCapturing(true);
         setError(null);
-        feedbackService.tap().catch(() => {});
+        feedbackService.tap().catch(() => { });
 
         try {
             const photo = await cameraRef.current.takePictureAsync({
@@ -70,12 +70,12 @@ export default function OcrTranslateScreen() {
 
             if (!result.original.text.trim()) {
                 Alert.alert('No Text Found', 'Point the camera at text and try again.');
-                feedbackService.error().catch(() => {});
+                feedbackService.error().catch(() => { });
                 return;
             }
 
             setResults((prev) => [result, ...prev]);
-            feedbackService.success().catch(() => {});
+            feedbackService.success().catch(() => { });
         } catch (err) {
             console.error('[OCR] Error:', err);
             const message = err instanceof Error ? err.message : String(err);
@@ -85,7 +85,7 @@ export default function OcrTranslateScreen() {
                 ? 'Connection lost during OCR. Check your network and retry.'
                 : 'OCR processing failed. Try a clearer image or different angle.'
             );
-            feedbackService.error().catch(() => {});
+            feedbackService.error().catch(() => { });
         } finally {
             setCapturing(false);
         }
@@ -113,107 +113,109 @@ export default function OcrTranslateScreen() {
     }
 
     return (
-        <View style={styles.container}>
-            {/* Camera Preview */}
-            <View style={styles.cameraContainer}>
-                <CameraView
-                    ref={cameraRef}
-                    style={styles.camera}
-                    facing="back"
-                >
-                    {/* Overlay: crosshair + language badge */}
-                    <View style={styles.overlay}>
-                        <Pressable onPress={() => router.back()} style={styles.overlayBack}>
-                            <Text style={styles.overlayBackText}>← Back</Text>
-                        </Pressable>
-
-                        <View style={styles.crosshair}>
-                            <View style={[styles.crosshairCorner, styles.cornerTL]} />
-                            <View style={[styles.crosshairCorner, styles.cornerTR]} />
-                            <View style={[styles.crosshairCorner, styles.cornerBL]} />
-                            <View style={[styles.crosshairCorner, styles.cornerBR]} />
-                        </View>
-
-                        <Text style={styles.hint}>Point at text and tap 📸</Text>
-                    </View>
-                </CameraView>
-            </View>
-
-            {/* Controls */}
-            <View style={styles.controls}>
-                {/* Language Selector */}
-                <Pressable
-                    style={styles.langSelector}
-                    onPress={() => setShowLangPicker(!showLangPicker)}
-                >
-                    <Text style={styles.langSelectorText}>
-                        Translate to: {getFlag(targetLang)} {getName(targetLang)}
-                    </Text>
-                    <Text style={styles.langSelectorArrow}>▾</Text>
-                </Pressable>
-
-                {showLangPicker && (
-                    <ScrollView style={styles.langList} horizontal showsHorizontalScrollIndicator={false}>
-                        {TIER_1_LANGUAGES.map((lang) => (
-                            <Pressable
-                                key={lang.code}
-                                style={[styles.langChip, targetLang === lang.code && styles.langChipActive]}
-                                onPress={() => { setTargetLang(lang.code); setShowLangPicker(false); feedbackService.tap(); }}
-                            >
-                                <Text style={styles.langChipFlag}>{lang.flag}</Text>
-                                <Text style={[styles.langChipName, targetLang === lang.code && styles.langChipNameActive]}>
-                                    {lang.name}
-                                </Text>
+        <ScreenErrorBoundary screenName="OCR">
+            <View style={styles.container}>
+                {/* Camera Preview */}
+                <View style={styles.cameraContainer}>
+                    <CameraView
+                        ref={cameraRef}
+                        style={styles.camera}
+                        facing="back"
+                    >
+                        {/* Overlay: crosshair + language badge */}
+                        <View style={styles.overlay}>
+                            <Pressable onPress={() => router.back()} style={styles.overlayBack}>
+                                <Text style={styles.overlayBackText}>← Back</Text>
                             </Pressable>
+
+                            <View style={styles.crosshair}>
+                                <View style={[styles.crosshairCorner, styles.cornerTL]} />
+                                <View style={[styles.crosshairCorner, styles.cornerTR]} />
+                                <View style={[styles.crosshairCorner, styles.cornerBL]} />
+                                <View style={[styles.crosshairCorner, styles.cornerBR]} />
+                            </View>
+
+                            <Text style={styles.hint}>Point at text and tap 📸</Text>
+                        </View>
+                    </CameraView>
+                </View>
+
+                {/* Controls */}
+                <View style={styles.controls}>
+                    {/* Language Selector */}
+                    <Pressable
+                        style={styles.langSelector}
+                        onPress={() => setShowLangPicker(!showLangPicker)}
+                    >
+                        <Text style={styles.langSelectorText}>
+                            Translate to: {getFlag(targetLang)} {getName(targetLang)}
+                        </Text>
+                        <Text style={styles.langSelectorArrow}>▾</Text>
+                    </Pressable>
+
+                    {showLangPicker && (
+                        <ScrollView style={styles.langList} horizontal showsHorizontalScrollIndicator={false}>
+                            {TIER_1_LANGUAGES.map((lang) => (
+                                <Pressable
+                                    key={lang.code}
+                                    style={[styles.langChip, targetLang === lang.code && styles.langChipActive]}
+                                    onPress={() => { setTargetLang(lang.code); setShowLangPicker(false); feedbackService.tap(); }}
+                                >
+                                    <Text style={styles.langChipFlag}>{lang.flag}</Text>
+                                    <Text style={[styles.langChipName, targetLang === lang.code && styles.langChipNameActive]}>
+                                        {lang.name}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </ScrollView>
+                    )}
+
+                    {/* Error Banner */}
+                    {error && (
+                        <View style={styles.errorBanner}>
+                            <Text style={styles.errorText}>⚠️ {error}</Text>
+                            <Pressable onPress={() => setError(null)} style={styles.errorDismiss}>
+                                <Text style={styles.errorDismissText}>✕</Text>
+                            </Pressable>
+                        </View>
+                    )}
+
+                    {/* Capture Button */}
+                    <Pressable
+                        style={[styles.captureBtn, capturing && styles.captureBtnActive]}
+                        onPress={handleCapture}
+                        disabled={capturing}
+                    >
+                        <Text style={styles.captureBtnEmoji}>{capturing ? '⏳' : '📸'}</Text>
+                        <Text style={styles.captureBtnText}>
+                            {capturing ? 'Processing...' : 'Capture & Translate'}
+                        </Text>
+                    </Pressable>
+                </View>
+
+                {/* Results */}
+                {results.length > 0 && (
+                    <ScrollView style={styles.results} contentContainerStyle={styles.resultsContent}>
+                        {results.map((r, i) => (
+                            <View key={`ocr-${i}`} style={styles.resultCard}>
+                                <View style={styles.resultRow}>
+                                    <Text style={styles.resultLabel}>Detected ({r.fromLang})</Text>
+                                    <Text style={styles.resultConfidence}>
+                                        {Math.round(r.original.confidence * 100)}% conf
+                                    </Text>
+                                </View>
+                                <Text style={styles.resultOriginal}>{r.original.text}</Text>
+                                <View style={styles.resultDivider} />
+                                <Text style={styles.resultLabel}>
+                                    {getFlag(r.toLang)} Translation
+                                </Text>
+                                <Text style={styles.resultTranslated}>{r.translated}</Text>
+                            </View>
                         ))}
                     </ScrollView>
                 )}
-
-                {/* Error Banner */}
-                {error && (
-                    <View style={styles.errorBanner}>
-                        <Text style={styles.errorText}>⚠️ {error}</Text>
-                        <Pressable onPress={() => setError(null)} style={styles.errorDismiss}>
-                            <Text style={styles.errorDismissText}>✕</Text>
-                        </Pressable>
-                    </View>
-                )}
-
-                {/* Capture Button */}
-                <Pressable
-                    style={[styles.captureBtn, capturing && styles.captureBtnActive]}
-                    onPress={handleCapture}
-                    disabled={capturing}
-                >
-                    <Text style={styles.captureBtnEmoji}>{capturing ? '⏳' : '📸'}</Text>
-                    <Text style={styles.captureBtnText}>
-                        {capturing ? 'Processing...' : 'Capture & Translate'}
-                    </Text>
-                </Pressable>
             </View>
-
-            {/* Results */}
-            {results.length > 0 && (
-                <ScrollView style={styles.results} contentContainerStyle={styles.resultsContent}>
-                    {results.map((r, i) => (
-                        <View key={`ocr-${i}`} style={styles.resultCard}>
-                            <View style={styles.resultRow}>
-                                <Text style={styles.resultLabel}>Detected ({r.fromLang})</Text>
-                                <Text style={styles.resultConfidence}>
-                                    {Math.round(r.original.confidence * 100)}% conf
-                                </Text>
-                            </View>
-                            <Text style={styles.resultOriginal}>{r.original.text}</Text>
-                            <View style={styles.resultDivider} />
-                            <Text style={styles.resultLabel}>
-                                {getFlag(r.toLang)} Translation
-                            </Text>
-                            <Text style={styles.resultTranslated}>{r.translated}</Text>
-                        </View>
-                    ))}
-                </ScrollView>
-            )}
-        </View>
+        </ScreenErrorBoundary >
     );
 }
 

@@ -112,7 +112,7 @@ export default function CloneDashboardScreen() {
                     try {
                         await localStorageService.deleteSession(id);
                         setSamples(prev => prev.filter(s => s.id !== id));
-                        feedbackService.tap().catch(() => {});
+                        feedbackService.tap().catch(() => { });
                     } catch (err) {
                         console.warn('[Clone] Delete failed:', err);
                     }
@@ -161,7 +161,7 @@ export default function CloneDashboardScreen() {
                 });
             }, 1000);
 
-            feedbackService.tap().catch(() => {});
+            feedbackService.tap().catch(() => { });
         } catch (err) {
             console.error('[Clone] Recording start failed:', err);
             Alert.alert('Recording Error', 'Could not start recording. Please try again.');
@@ -226,7 +226,7 @@ export default function CloneDashboardScreen() {
                     await AsyncStorage.setItem(CLONE_VOICE_KEY, data.voice_id);
                     setCloneVoiceId(data.voice_id);
                     setCloneUploading(false);
-                    feedbackService.success().catch(() => {});
+                    feedbackService.success().catch(() => { });
                     Alert.alert('🎉 Clone Ready!', 'Your voice clone has been created and saved.');
                 } else if (data.job_id) {
                     // Need to poll for processing
@@ -258,7 +258,7 @@ export default function CloneDashboardScreen() {
                     await AsyncStorage.setItem(CLONE_VOICE_KEY, data.voice_id);
                     setCloneVoiceId(data.voice_id);
                     setCloneProcessing(false);
-                    feedbackService.success().catch(() => {});
+                    feedbackService.success().catch(() => { });
                     Alert.alert('🎉 Clone Ready!', 'Your voice clone has been processed and saved.');
                 } else if (data.status === 'failed') {
                     clearInterval(poll);
@@ -278,7 +278,7 @@ export default function CloneDashboardScreen() {
 
     const handleTestClone = async () => {
         setTestPlaying(true);
-        feedbackService.success().catch(() => {});
+        feedbackService.success().catch(() => { });
         // Simulate clone preview with a brief delay
         setTimeout(() => {
             setTestPlaying(false);
@@ -304,360 +304,362 @@ export default function CloneDashboardScreen() {
     const statusConfig = STATUS_CONFIG[status];
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backBtn}>
-                    <Text style={styles.backText}>← Back</Text>
-                </Pressable>
-                <Text style={styles.title}>Voice Clone</Text>
-                <View style={styles.headerRight}>
-                    {cloneVoiceId && (
-                        <View style={styles.cloneReadyBadge}>
-                            <Text style={styles.cloneReadyBadgeText}>✅ Clone Ready</Text>
-                        </View>
-                    )}
-                    <Text style={styles.headerStat}>{progress.sessionsCount} sessions</Text>
-                </View>
-            </View>
-
-            {/* Training Status Banner */}
-            <Animated.View style={[styles.statusBanner, { backgroundColor: statusConfig.bgColor, opacity: bannerPulse }]}>
-                <Text style={styles.statusEmoji}>{statusConfig.emoji}</Text>
-                <View style={styles.statusContent}>
-                    <Text style={[styles.statusLabel, { color: statusConfig.color }]}>
-                        {statusConfig.label}
-                    </Text>
-                    <Text style={styles.statusSubtext}>
-                        {status === 'collecting'
-                            ? `${Math.round(progress.cloneReadiness)}% complete — ${progress.estimatedTimeToReady.toFixed(1)}h remaining`
-                            : status === 'ready'
-                                ? 'Sufficient voice data collected for training'
-                                : 'Processing your voice model...'}
-                    </Text>
-                </View>
-            </Animated.View>
-
-            {/* Progress Ring */}
-            <View style={styles.circleContainer}>
-                <View style={[
-                    styles.circleOuter,
-                    progress.cloneReadiness >= 100 && styles.circleOuterReady,
-                ]}>
-                    <View style={styles.circleInner}>
-                        <Text style={[
-                            styles.circlePercent,
-                            progress.cloneReadiness >= 100 && styles.circlePercentReady,
-                        ]}>
-                            {Math.round(progress.cloneReadiness)}%
-                        </Text>
-                        <Text style={styles.circleLabel}>
-                            {progress.cloneReadiness >= 100 ? '🚀 Ready!' : 'Clone Readiness'}
-                        </Text>
-                    </View>
-                </View>
-
-                {/* Hours stats */}
-                <View style={styles.hoursRow}>
-                    <View style={styles.hoursStat}>
-                        <Text style={styles.hoursValue}>{progress.weightedHours.toFixed(1)}h</Text>
-                        <Text style={styles.hoursLabel}>Weighted</Text>
-                    </View>
-                    <View style={styles.hoursDivider} />
-                    <View style={styles.hoursStat}>
-                        <Text style={styles.hoursValue}>{progress.totalHours.toFixed(1)}h</Text>
-                        <Text style={styles.hoursLabel}>Total</Text>
-                    </View>
-                    <View style={styles.hoursDivider} />
-                    <View style={styles.hoursStat}>
-                        <Text style={styles.hoursValue}>{progress.averageQuality}</Text>
-                        <Text style={styles.hoursLabel}>Avg Quality</Text>
-                    </View>
-                </View>
-            </View>
-
-            {/* Quality Factor Breakdown */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Quality Score</Text>
-                <View style={styles.qualityCard}>
-                    <View style={styles.qualityScoreRow}>
-                        <Text style={styles.qualityScoreBig}>
-                            {progress.averageQuality}
-                        </Text>
-                        <Text style={styles.qualityScoreMax}>/100</Text>
-                    </View>
-                    <QualityRow label="Excellent" emoji="🟢" hours={progress.qualityDistribution.excellent} color={colors.qualityExcellent} total={progress.totalHours} weight="1.0×" />
-                    <QualityRow label="Good" emoji="🔵" hours={progress.qualityDistribution.good} color={colors.qualityGood} total={progress.totalHours} weight="0.8×" />
-                    <QualityRow label="Fair" emoji="🟡" hours={progress.qualityDistribution.fair} color={colors.qualityFair} total={progress.totalHours} weight="0.5×" />
-                    <QualityRow label="Poor" emoji="🔴" hours={progress.qualityDistribution.poor} color={colors.qualityPoor} total={progress.totalHours} weight="0.0×" />
-                </View>
-            </View>
-
-            {/* Milestones */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Milestones</Text>
-                <View style={styles.milestonesRow}>
-                    {progress.milestones.map((m) => (
-                        <Pressable
-                            key={m.threshold}
-                            style={[styles.milestone, m.reached && styles.milestoneReached]}
-                            onPress={() => {
-                                if (m.reached && m.reachedAt) {
-                                    Alert.alert(
-                                        `${m.emoji} ${m.label}`,
-                                        `Reached on ${new Date(m.reachedAt).toLocaleDateString()}`
-                                    );
-                                }
-                            }}
-                        >
-                            <Text style={styles.milestoneEmoji}>
-                                {m.reached ? m.emoji : '🔒'}
-                            </Text>
-                            <Text style={[styles.milestoneLabel, m.reached && styles.milestoneLabelReached]}>
-                                {m.label}
-                            </Text>
-                            <Text style={styles.milestoneTime}>
-                                {m.threshold}h
-                            </Text>
-                        </Pressable>
-                    ))}
-                </View>
-            </View>
-
-            {/* Voice Samples */}
-            <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Voice Samples</Text>
-                    <Text style={styles.sectionCount}>{samples.length} recordings</Text>
-                </View>
-                {samples.length === 0 ? (
-                    <View style={styles.emptyCard}>
-                        <Text style={styles.emptyEmoji}>🎤</Text>
-                        <Text style={styles.emptyText}>
-                            No voice samples yet. Start recording to build your clone data.
-                        </Text>
-                    </View>
-                ) : (
-                    <View style={styles.samplesCard}>
-                        {samples.map((sample) => (
-                            <View key={sample.id} style={styles.sampleRow}>
-                                <View style={styles.sampleQualityBadge}>
-                                    <Text style={styles.sampleQualityEmoji}>
-                                        {sample.quality.label === 'excellent' ? '🟢'
-                                            : sample.quality.label === 'good' ? '🔵'
-                                                : sample.quality.label === 'fair' ? '🟡' : '🔴'}
-                                    </Text>
-                                </View>
-                                <View style={styles.sampleInfo}>
-                                    <Text style={styles.samplePreview} numberOfLines={1}>
-                                        {sample.previewText || 'No transcript'}
-                                    </Text>
-                                    <Text style={styles.sampleMeta}>
-                                        {Math.round(sample.duration)}s · {sample.quality.score}/100 · {new Date(sample.createdAt).toLocaleDateString()}
-                                    </Text>
-                                </View>
-                                <Pressable
-                                    style={styles.sampleDeleteBtn}
-                                    onPress={() => handleDeleteSample(sample.id)}
-                                >
-                                    <Text style={styles.sampleDeleteText}>✕</Text>
-                                </Pressable>
+        <ScreenErrorBoundary screenName="Voice Clone">
+            <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                        <Text style={styles.backText}>← Back</Text>
+                    </Pressable>
+                    <Text style={styles.title}>Voice Clone</Text>
+                    <View style={styles.headerRight}>
+                        {cloneVoiceId && (
+                            <View style={styles.cloneReadyBadge}>
+                                <Text style={styles.cloneReadyBadgeText}>✅ Clone Ready</Text>
                             </View>
-                        ))}
+                        )}
+                        <Text style={styles.headerStat}>{progress.sessionsCount} sessions</Text>
                     </View>
-                )}
-            </View>
+                </View>
 
-            {/* Tips */}
-            {progress.tips.length > 0 && (
+                {/* Training Status Banner */}
+                <Animated.View style={[styles.statusBanner, { backgroundColor: statusConfig.bgColor, opacity: bannerPulse }]}>
+                    <Text style={styles.statusEmoji}>{statusConfig.emoji}</Text>
+                    <View style={styles.statusContent}>
+                        <Text style={[styles.statusLabel, { color: statusConfig.color }]}>
+                            {statusConfig.label}
+                        </Text>
+                        <Text style={styles.statusSubtext}>
+                            {status === 'collecting'
+                                ? `${Math.round(progress.cloneReadiness)}% complete — ${progress.estimatedTimeToReady.toFixed(1)}h remaining`
+                                : status === 'ready'
+                                    ? 'Sufficient voice data collected for training'
+                                    : 'Processing your voice model...'}
+                        </Text>
+                    </View>
+                </Animated.View>
+
+                {/* Progress Ring */}
+                <View style={styles.circleContainer}>
+                    <View style={[
+                        styles.circleOuter,
+                        progress.cloneReadiness >= 100 && styles.circleOuterReady,
+                    ]}>
+                        <View style={styles.circleInner}>
+                            <Text style={[
+                                styles.circlePercent,
+                                progress.cloneReadiness >= 100 && styles.circlePercentReady,
+                            ]}>
+                                {Math.round(progress.cloneReadiness)}%
+                            </Text>
+                            <Text style={styles.circleLabel}>
+                                {progress.cloneReadiness >= 100 ? '🚀 Ready!' : 'Clone Readiness'}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Hours stats */}
+                    <View style={styles.hoursRow}>
+                        <View style={styles.hoursStat}>
+                            <Text style={styles.hoursValue}>{progress.weightedHours.toFixed(1)}h</Text>
+                            <Text style={styles.hoursLabel}>Weighted</Text>
+                        </View>
+                        <View style={styles.hoursDivider} />
+                        <View style={styles.hoursStat}>
+                            <Text style={styles.hoursValue}>{progress.totalHours.toFixed(1)}h</Text>
+                            <Text style={styles.hoursLabel}>Total</Text>
+                        </View>
+                        <View style={styles.hoursDivider} />
+                        <View style={styles.hoursStat}>
+                            <Text style={styles.hoursValue}>{progress.averageQuality}</Text>
+                            <Text style={styles.hoursLabel}>Avg Quality</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Quality Factor Breakdown */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Tips</Text>
-                    <View style={styles.tipsCard}>
-                        {progress.tips.map((tip, i) => (
-                            <Text key={`tip-${i}`} style={styles.tipText}>{tip}</Text>
-                        ))}
+                    <Text style={styles.sectionTitle}>Quality Score</Text>
+                    <View style={styles.qualityCard}>
+                        <View style={styles.qualityScoreRow}>
+                            <Text style={styles.qualityScoreBig}>
+                                {progress.averageQuality}
+                            </Text>
+                            <Text style={styles.qualityScoreMax}>/100</Text>
+                        </View>
+                        <QualityRow label="Excellent" emoji="🟢" hours={progress.qualityDistribution.excellent} color={colors.qualityExcellent} total={progress.totalHours} weight="1.0×" />
+                        <QualityRow label="Good" emoji="🔵" hours={progress.qualityDistribution.good} color={colors.qualityGood} total={progress.totalHours} weight="0.8×" />
+                        <QualityRow label="Fair" emoji="🟡" hours={progress.qualityDistribution.fair} color={colors.qualityFair} total={progress.totalHours} weight="0.5×" />
+                        <QualityRow label="Poor" emoji="🔴" hours={progress.qualityDistribution.poor} color={colors.qualityPoor} total={progress.totalHours} weight="0.0×" />
                     </View>
                 </View>
-            )}
 
-            {/* ─── Record Voice Sample ───────────────────────────── */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Record Voice Sample</Text>
-                <View style={styles.recordCard}>
-                    {cloneRecording ? (
-                        /* Active Recording */
-                        <View style={styles.recordActive}>
-                            <View style={styles.countdownRing}>
-                                <Animated.View style={[
-                                    styles.countdownFill,
-                                    { transform: [{ scaleX: countdownAnim }] },
-                                ]} />
-                            </View>
-                            <Text style={styles.countdownText}>{cloneCountdown}s</Text>
-                            <Text style={styles.recordHint}>🔴 Recording... speak naturally</Text>
-                            <Pressable style={styles.recordStopBtn} onPress={finishCloneRecording}>
-                                <Text style={styles.recordStopText}>⏹ Stop Early</Text>
-                            </Pressable>
-                        </View>
-                    ) : cloneUploading ? (
-                        /* Upload Progress */
-                        <View style={styles.uploadActive}>
-                            <Text style={styles.uploadEmoji}>📤</Text>
-                            <Text style={styles.uploadText}>Uploading voice sample...</Text>
-                            <View style={styles.uploadBarBg}>
-                                <View style={[styles.uploadBarFill, { width: `${cloneUploadProgress}%` }]} />
-                            </View>
-                            <Text style={styles.uploadPercent}>{cloneUploadProgress}%</Text>
-                        </View>
-                    ) : cloneProcessing ? (
-                        /* Processing Status */
-                        <View style={styles.uploadActive}>
-                            <Text style={styles.uploadEmoji}>⚙️</Text>
-                            <Text style={styles.uploadText}>Processing your voice clone...</Text>
-                            <Text style={styles.processingHint}>This may take a few minutes</Text>
-                        </View>
-                    ) : (
-                        /* Ready to Record */
-                        <View style={styles.recordReady}>
-                            <Text style={styles.recordReadyEmoji}>🎙️</Text>
-                            <Text style={styles.recordReadyTitle}>
-                                {cloneVoiceId ? 'Re-record Voice Sample' : 'Record Voice Sample'}
-                            </Text>
-                            <Text style={styles.recordReadyDesc}>
-                                Record a 30-second voice sample. Speak naturally — read aloud or talk about your day.
-                            </Text>
-                            <Pressable style={styles.recordStartBtn} onPress={startCloneRecording}>
-                                <Text style={styles.recordStartText}>
-                                    {cloneVoiceId ? '🔄 Record New Sample' : '🎙️ Start Recording'}
+                {/* Milestones */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Milestones</Text>
+                    <View style={styles.milestonesRow}>
+                        {progress.milestones.map((m) => (
+                            <Pressable
+                                key={m.threshold}
+                                style={[styles.milestone, m.reached && styles.milestoneReached]}
+                                onPress={() => {
+                                    if (m.reached && m.reachedAt) {
+                                        Alert.alert(
+                                            `${m.emoji} ${m.label}`,
+                                            `Reached on ${new Date(m.reachedAt).toLocaleDateString()}`
+                                        );
+                                    }
+                                }}
+                            >
+                                <Text style={styles.milestoneEmoji}>
+                                    {m.reached ? m.emoji : '🔒'}
+                                </Text>
+                                <Text style={[styles.milestoneLabel, m.reached && styles.milestoneLabelReached]}>
+                                    {m.label}
+                                </Text>
+                                <Text style={styles.milestoneTime}>
+                                    {m.threshold}h
                                 </Text>
                             </Pressable>
+                        ))}
+                    </View>
+                </View>
+
+                {/* Voice Samples */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Voice Samples</Text>
+                        <Text style={styles.sectionCount}>{samples.length} recordings</Text>
+                    </View>
+                    {samples.length === 0 ? (
+                        <View style={styles.emptyCard}>
+                            <Text style={styles.emptyEmoji}>🎤</Text>
+                            <Text style={styles.emptyText}>
+                                No voice samples yet. Start recording to build your clone data.
+                            </Text>
+                        </View>
+                    ) : (
+                        <View style={styles.samplesCard}>
+                            {samples.map((sample) => (
+                                <View key={sample.id} style={styles.sampleRow}>
+                                    <View style={styles.sampleQualityBadge}>
+                                        <Text style={styles.sampleQualityEmoji}>
+                                            {sample.quality.label === 'excellent' ? '🟢'
+                                                : sample.quality.label === 'good' ? '🔵'
+                                                    : sample.quality.label === 'fair' ? '🟡' : '🔴'}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.sampleInfo}>
+                                        <Text style={styles.samplePreview} numberOfLines={1}>
+                                            {sample.previewText || 'No transcript'}
+                                        </Text>
+                                        <Text style={styles.sampleMeta}>
+                                            {Math.round(sample.duration)}s · {sample.quality.score}/100 · {new Date(sample.createdAt).toLocaleDateString()}
+                                        </Text>
+                                    </View>
+                                    <Pressable
+                                        style={styles.sampleDeleteBtn}
+                                        onPress={() => handleDeleteSample(sample.id)}
+                                    >
+                                        <Text style={styles.sampleDeleteText}>✕</Text>
+                                    </Pressable>
+                                </View>
+                            ))}
                         </View>
                     )}
                 </View>
-            </View>
 
-            {/* Test My Clone / Start Clone CTA */}
-            <View style={styles.section}>
-                <Pressable
-                    style={[
-                        styles.cloneCta,
-                        !cloneVoiceId && progress.cloneReadiness < 100 && styles.cloneCtaDisabled,
-                    ]}
-                    onPress={async () => {
-                        if (!cloneVoiceId && progress.cloneReadiness < 100) {
-                            Alert.alert(
-                                '🔒 More Data Needed',
-                                `Your clone is ${Math.round(progress.cloneReadiness)}% ready. Record a voice sample or keep using the app to unlock this feature.`
-                            );
-                            return;
-                        }
-                        setShowTestModal(true);
-                        feedbackService.success().catch(() => {});
-                    }}
-                >
-                    <Text style={styles.cloneCtaEmoji}>🎙️</Text>
-                    <View style={styles.cloneCtaContent}>
-                        <Text style={styles.cloneCtaText}>Test My Clone</Text>
-                        <Text style={styles.cloneCtaSubtext}>
-                            {cloneVoiceId
-                                ? 'Preview how your AI voice sounds'
-                                : progress.cloneReadiness >= 100
+                {/* Tips */}
+                {progress.tips.length > 0 && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Tips</Text>
+                        <View style={styles.tipsCard}>
+                            {progress.tips.map((tip, i) => (
+                                <Text key={`tip-${i}`} style={styles.tipText}>{tip}</Text>
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {/* ─── Record Voice Sample ───────────────────────────── */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Record Voice Sample</Text>
+                    <View style={styles.recordCard}>
+                        {cloneRecording ? (
+                            /* Active Recording */
+                            <View style={styles.recordActive}>
+                                <View style={styles.countdownRing}>
+                                    <Animated.View style={[
+                                        styles.countdownFill,
+                                        { transform: [{ scaleX: countdownAnim }] },
+                                    ]} />
+                                </View>
+                                <Text style={styles.countdownText}>{cloneCountdown}s</Text>
+                                <Text style={styles.recordHint}>🔴 Recording... speak naturally</Text>
+                                <Pressable style={styles.recordStopBtn} onPress={finishCloneRecording}>
+                                    <Text style={styles.recordStopText}>⏹ Stop Early</Text>
+                                </Pressable>
+                            </View>
+                        ) : cloneUploading ? (
+                            /* Upload Progress */
+                            <View style={styles.uploadActive}>
+                                <Text style={styles.uploadEmoji}>📤</Text>
+                                <Text style={styles.uploadText}>Uploading voice sample...</Text>
+                                <View style={styles.uploadBarBg}>
+                                    <View style={[styles.uploadBarFill, { width: `${cloneUploadProgress}%` }]} />
+                                </View>
+                                <Text style={styles.uploadPercent}>{cloneUploadProgress}%</Text>
+                            </View>
+                        ) : cloneProcessing ? (
+                            /* Processing Status */
+                            <View style={styles.uploadActive}>
+                                <Text style={styles.uploadEmoji}>⚙️</Text>
+                                <Text style={styles.uploadText}>Processing your voice clone...</Text>
+                                <Text style={styles.processingHint}>This may take a few minutes</Text>
+                            </View>
+                        ) : (
+                            /* Ready to Record */
+                            <View style={styles.recordReady}>
+                                <Text style={styles.recordReadyEmoji}>🎙️</Text>
+                                <Text style={styles.recordReadyTitle}>
+                                    {cloneVoiceId ? 'Re-record Voice Sample' : 'Record Voice Sample'}
+                                </Text>
+                                <Text style={styles.recordReadyDesc}>
+                                    Record a 30-second voice sample. Speak naturally — read aloud or talk about your day.
+                                </Text>
+                                <Pressable style={styles.recordStartBtn} onPress={startCloneRecording}>
+                                    <Text style={styles.recordStartText}>
+                                        {cloneVoiceId ? '🔄 Record New Sample' : '🎙️ Start Recording'}
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        )}
+                    </View>
+                </View>
+
+                {/* Test My Clone / Start Clone CTA */}
+                <View style={styles.section}>
+                    <Pressable
+                        style={[
+                            styles.cloneCta,
+                            !cloneVoiceId && progress.cloneReadiness < 100 && styles.cloneCtaDisabled,
+                        ]}
+                        onPress={async () => {
+                            if (!cloneVoiceId && progress.cloneReadiness < 100) {
+                                Alert.alert(
+                                    '🔒 More Data Needed',
+                                    `Your clone is ${Math.round(progress.cloneReadiness)}% ready. Record a voice sample or keep using the app to unlock this feature.`
+                                );
+                                return;
+                            }
+                            setShowTestModal(true);
+                            feedbackService.success().catch(() => { });
+                        }}
+                    >
+                        <Text style={styles.cloneCtaEmoji}>🎙️</Text>
+                        <View style={styles.cloneCtaContent}>
+                            <Text style={styles.cloneCtaText}>Test My Clone</Text>
+                            <Text style={styles.cloneCtaSubtext}>
+                                {cloneVoiceId
                                     ? 'Preview how your AI voice sounds'
-                                    : `Unlocks at 100% (${Math.round(progress.cloneReadiness)}% now)`}
-                        </Text>
-                    </View>
-                </Pressable>
-            </View>
+                                    : progress.cloneReadiness >= 100
+                                        ? 'Preview how your AI voice sounds'
+                                        : `Unlocks at 100% (${Math.round(progress.cloneReadiness)}% now)`}
+                            </Text>
+                        </View>
+                    </Pressable>
+                </View>
 
-            {/* How It Works */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>How It Works</Text>
-                <View style={styles.infoCard}>
-                    <View style={styles.infoStep}>
-                        <Text style={styles.infoStepEmoji}>🎙️</Text>
-                        <View style={styles.infoStepContent}>
-                            <Text style={styles.infoStepTitle}>Record Naturally</Text>
-                            <Text style={styles.infoText}>
-                                Use Windy Pro as you normally would — transcribe, translate, take notes.
-                            </Text>
+                {/* How It Works */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>How It Works</Text>
+                    <View style={styles.infoCard}>
+                        <View style={styles.infoStep}>
+                            <Text style={styles.infoStepEmoji}>🎙️</Text>
+                            <View style={styles.infoStepContent}>
+                                <Text style={styles.infoStepTitle}>Record Naturally</Text>
+                                <Text style={styles.infoText}>
+                                    Use Windy Pro as you normally would — transcribe, translate, take notes.
+                                </Text>
+                            </View>
                         </View>
-                    </View>
-                    <View style={styles.infoStep}>
-                        <Text style={styles.infoStepEmoji}>🧬</Text>
-                        <View style={styles.infoStepContent}>
-                            <Text style={styles.infoStepTitle}>Data Accumulates</Text>
-                            <Text style={styles.infoText}>
-                                Each session silently contributes quality-weighted hours toward your clone.
-                            </Text>
+                        <View style={styles.infoStep}>
+                            <Text style={styles.infoStepEmoji}>🧬</Text>
+                            <View style={styles.infoStepContent}>
+                                <Text style={styles.infoStepTitle}>Data Accumulates</Text>
+                                <Text style={styles.infoText}>
+                                    Each session silently contributes quality-weighted hours toward your clone.
+                                </Text>
+                            </View>
                         </View>
-                    </View>
-                    <View style={styles.infoStep}>
-                        <Text style={styles.infoStepEmoji}>🚀</Text>
-                        <View style={styles.infoStepContent}>
-                            <Text style={styles.infoStepTitle}>Clone Ready at 10h</Text>
-                            <Text style={styles.infoText}>
-                                At 10 weighted hours, your data can create an AI voice that sounds like you.
-                            </Text>
+                        <View style={styles.infoStep}>
+                            <Text style={styles.infoStepEmoji}>🚀</Text>
+                            <View style={styles.infoStepContent}>
+                                <Text style={styles.infoStepTitle}>Clone Ready at 10h</Text>
+                                <Text style={styles.infoText}>
+                                    At 10 weighted hours, your data can create an AI voice that sounds like you.
+                                </Text>
+                            </View>
                         </View>
-                    </View>
-                    <View style={styles.infoStep}>
-                        <Text style={styles.infoStepEmoji}>🔒</Text>
-                        <View style={styles.infoStepContent}>
-                            <Text style={styles.infoStepTitle}>Privacy First</Text>
-                            <Text style={styles.infoText}>
-                                Recordings are processed locally. Never shared without your permission.
-                            </Text>
+                        <View style={styles.infoStep}>
+                            <Text style={styles.infoStepEmoji}>🔒</Text>
+                            <View style={styles.infoStepContent}>
+                                <Text style={styles.infoStepTitle}>Privacy First</Text>
+                                <Text style={styles.infoText}>
+                                    Recordings are processed locally. Never shared without your permission.
+                                </Text>
+                            </View>
                         </View>
                     </View>
                 </View>
-            </View>
 
-            {/* Test My Clone Modal */}
-            <Modal
-                visible={showTestModal}
-                animationType="slide"
-                transparent
-                onRequestClose={() => setShowTestModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalCard}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>🎙️ Test My Clone</Text>
-                            <Pressable onPress={() => setShowTestModal(false)}>
-                                <Text style={styles.modalClose}>✕</Text>
+                {/* Test My Clone Modal */}
+                <Modal
+                    visible={showTestModal}
+                    animationType="slide"
+                    transparent
+                    onRequestClose={() => setShowTestModal(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalCard}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>🎙️ Test My Clone</Text>
+                                <Pressable onPress={() => setShowTestModal(false)}>
+                                    <Text style={styles.modalClose}>✕</Text>
+                                </Pressable>
+                            </View>
+                            <Text style={styles.modalSubtext}>
+                                Type text below and hear how your AI clone voice would sound.
+                            </Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                value={testText}
+                                onChangeText={setTestText}
+                                multiline
+                                numberOfLines={3}
+                                placeholder="Enter text to speak..."
+                                placeholderTextColor={colors.textTertiary}
+                            />
+                            <Pressable
+                                style={[styles.modalPlayBtn, testPlaying && styles.modalPlayBtnActive]}
+                                onPress={handleTestClone}
+                                disabled={testPlaying}
+                            >
+                                <Text style={styles.modalPlayEmoji}>
+                                    {testPlaying ? '⏳' : '▶️'}
+                                </Text>
+                                <Text style={styles.modalPlayText}>
+                                    {testPlaying ? 'Generating...' : 'Play Clone Preview'}
+                                </Text>
                             </Pressable>
+                            <Text style={styles.modalDisclaimer}>
+                                Preview uses text-to-speech simulation. Full clone synthesis coming soon.
+                            </Text>
                         </View>
-                        <Text style={styles.modalSubtext}>
-                            Type text below and hear how your AI clone voice would sound.
-                        </Text>
-                        <TextInput
-                            style={styles.modalInput}
-                            value={testText}
-                            onChangeText={setTestText}
-                            multiline
-                            numberOfLines={3}
-                            placeholder="Enter text to speak..."
-                            placeholderTextColor={colors.textTertiary}
-                        />
-                        <Pressable
-                            style={[styles.modalPlayBtn, testPlaying && styles.modalPlayBtnActive]}
-                            onPress={handleTestClone}
-                            disabled={testPlaying}
-                        >
-                            <Text style={styles.modalPlayEmoji}>
-                                {testPlaying ? '⏳' : '▶️'}
-                            </Text>
-                            <Text style={styles.modalPlayText}>
-                                {testPlaying ? 'Generating...' : 'Play Clone Preview'}
-                            </Text>
-                        </Pressable>
-                        <Text style={styles.modalDisclaimer}>
-                            Preview uses text-to-speech simulation. Full clone synthesis coming soon.
-                        </Text>
                     </View>
-                </View>
-            </Modal>
-        </ScrollView>
+                </Modal>
+            </ScrollView>
+        </ScreenErrorBoundary>
     );
 }
 

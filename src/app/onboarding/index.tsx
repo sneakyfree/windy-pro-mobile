@@ -76,11 +76,11 @@ export default function OnboardingScreen() {
                 'Windy Pro needs microphone access to convert your speech to text.'
             );
         }
-        feedbackService.tap().catch(() => {});
+        feedbackService.tap().catch(() => { });
     };
 
     const handleNext = async () => {
-        feedbackService.tap().catch(() => {});
+        feedbackService.tap().catch(() => { });
 
         if (currentIndex < SLIDES.length - 1) {
             // On permissions page, run WindyTune before advancing
@@ -96,7 +96,7 @@ export default function OnboardingScreen() {
             // Final step — complete onboarding
             setOnboardingComplete(true);
             analyticsService.trackScreenView('onboarding_complete');
-            feedbackService.success().catch(() => {});
+            feedbackService.success().catch(() => { });
             router.replace('/(tabs)');
         }
     };
@@ -136,7 +136,7 @@ export default function OnboardingScreen() {
 
                             <Pressable style={styles.permissionCard} onPress={async () => {
                                 await Camera.requestCameraPermissionsAsync();
-                                feedbackService.tap().catch(() => {});
+                                feedbackService.tap().catch(() => { });
                             }}>
                                 <Text style={styles.permissionEmoji}>📷</Text>
                                 <View style={styles.permissionTextCol}>
@@ -163,66 +163,68 @@ export default function OnboardingScreen() {
     }, [micGranted, windyTune]);
 
     return (
-        <View style={styles.container}>
-            <FlatList
-                ref={flatListRef}
-                data={SLIDES}
-                renderItem={renderSlide}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={Animated.event(
-                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                    { useNativeDriver: false }
-                )}
-                onViewableItemsChanged={onViewableItemsChanged}
-                viewabilityConfig={viewabilityConfig}
-                scrollEnabled={currentIndex !== 1 || micGranted}
-                keyExtractor={(item) => item.key}
-            />
+        <ScreenErrorBoundary screenName="Onboarding">
+            <View style={styles.container}>
+                <FlatList
+                    ref={flatListRef}
+                    data={SLIDES}
+                    renderItem={renderSlide}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                        { useNativeDriver: false }
+                    )}
+                    onViewableItemsChanged={onViewableItemsChanged}
+                    viewabilityConfig={viewabilityConfig}
+                    scrollEnabled={currentIndex !== 1 || micGranted}
+                    keyExtractor={(item) => item.key}
+                />
 
-            {/* Dot indicators */}
-            <View style={styles.dotRow}>
-                {SLIDES.map((_, i) => {
-                    const inputRange = [(i - 1) * SCREEN_WIDTH, i * SCREEN_WIDTH, (i + 1) * SCREEN_WIDTH];
-                    const dotWidth = scrollX.interpolate({
-                        inputRange,
-                        outputRange: [8, 24, 8],
-                        extrapolate: 'clamp',
-                    });
-                    const dotOpacity = scrollX.interpolate({
-                        inputRange,
-                        outputRange: [0.3, 1, 0.3],
-                        extrapolate: 'clamp',
-                    });
-                    return (
-                        <Animated.View
-                            key={i}
-                            style={[styles.dot, { width: dotWidth, opacity: dotOpacity }]}
-                        />
-                    );
-                })}
-            </View>
+                {/* Dot indicators */}
+                <View style={styles.dotRow}>
+                    {SLIDES.map((_, i) => {
+                        const inputRange = [(i - 1) * SCREEN_WIDTH, i * SCREEN_WIDTH, (i + 1) * SCREEN_WIDTH];
+                        const dotWidth = scrollX.interpolate({
+                            inputRange,
+                            outputRange: [8, 24, 8],
+                            extrapolate: 'clamp',
+                        });
+                        const dotOpacity = scrollX.interpolate({
+                            inputRange,
+                            outputRange: [0.3, 1, 0.3],
+                            extrapolate: 'clamp',
+                        });
+                        return (
+                            <Animated.View
+                                key={i}
+                                style={[styles.dot, { width: dotWidth, opacity: dotOpacity }]}
+                            />
+                        );
+                    })}
+                </View>
 
-            {/* Bottom button */}
-            <View style={styles.bottomSection}>
-                <Pressable
-                    style={[
-                        styles.primaryButton,
-                        currentIndex === 1 && !micGranted && styles.buttonDisabled,
-                    ]}
-                    onPress={currentIndex === 1 && !micGranted ? requestMicrophone : handleNext}
-                >
-                    <Text style={styles.primaryButtonText}>{getButtonText()}</Text>
-                </Pressable>
-
-                {currentIndex === 1 && (
-                    <Pressable onPress={handleNext} style={styles.skipButton}>
-                        <Text style={styles.skipText}>Skip for now</Text>
+                {/* Bottom button */}
+                <View style={styles.bottomSection}>
+                    <Pressable
+                        style={[
+                            styles.primaryButton,
+                            currentIndex === 1 && !micGranted && styles.buttonDisabled,
+                        ]}
+                        onPress={currentIndex === 1 && !micGranted ? requestMicrophone : handleNext}
+                    >
+                        <Text style={styles.primaryButtonText}>{getButtonText()}</Text>
                     </Pressable>
-                )}
+
+                    {currentIndex === 1 && (
+                        <Pressable onPress={handleNext} style={styles.skipButton}>
+                            <Text style={styles.skipText}>Skip for now</Text>
+                        </Pressable>
+                    )}
+                </View>
             </View>
-        </View>
+        </ScreenErrorBoundary>
     );
 }
 

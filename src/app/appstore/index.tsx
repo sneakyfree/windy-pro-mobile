@@ -111,7 +111,7 @@ export default function AppStoreScreen() {
     }, []);
 
     const handleRateApp = async () => {
-        feedbackService.success().catch(() => {});
+        feedbackService.success().catch(() => { });
 
         if (canReview) {
             try {
@@ -140,7 +140,7 @@ export default function AppStoreScreen() {
     };
 
     const handleShareApp = async () => {
-        feedbackService.tap().catch(() => {});
+        feedbackService.tap().catch(() => { });
         const deepLink = Linking.createURL('/', { scheme: 'windypro' });
         await Share.share({
             message: `🌪️ Check out Windy Pro — the best voice-to-text app!\n\nDownload: https://windypro.thewindstorm.uk/download\n\n${deepLink}`,
@@ -155,141 +155,143 @@ export default function AppStoreScreen() {
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backBtn}>
-                    <Text style={styles.backText}>← Back</Text>
-                </Pressable>
-                <Text style={styles.title}>About Windy Pro</Text>
-                <View style={{ width: 40 }} />
-            </View>
-
-            {/* App Identity */}
-            <Animated.View style={[styles.appIdentity, { opacity: fadeAnim }]}>
-                <View style={styles.appIcon}>
-                    <Text style={styles.appIconEmoji}>🌪️</Text>
+        <ScreenErrorBoundary screenName="App Store">
+            <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                        <Text style={styles.backText}>← Back</Text>
+                    </Pressable>
+                    <Text style={styles.title}>About Windy Pro</Text>
+                    <View style={{ width: 40 }} />
                 </View>
-                <Text style={styles.appName}>Windy Pro</Text>
-                <Text style={styles.appTagline}>Voice to Text, Your Way</Text>
-                <Text style={styles.appVersion}>Version {CHANGELOG[0].version}</Text>
-            </Animated.View>
 
-            {/* Screenshots Carousel */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Screenshots</Text>
-                <ScrollView
-                    ref={scrollRef}
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    snapToInterval={CARD_WIDTH + spacing.sm}
-                    decelerationRate="fast"
-                    onMomentumScrollEnd={handleScreenshotScroll}
-                    style={styles.carouselScroll}
-                    contentContainerStyle={styles.carouselContent}
-                >
-                    {SCREENSHOTS.map((shot) => (
-                        <View key={shot.id} style={styles.screenshotCard}>
-                            <View style={[styles.screenshotPreview, {
-                                backgroundColor: shot.colors[0],
-                                borderColor: shot.colors[1] + '40',
-                            }]}>
-                                <Text style={styles.screenshotEmoji}>{shot.emoji}</Text>
-                                <Text style={[styles.screenshotLabel, { color: shot.colors[1] }]}>
-                                    {shot.title}
-                                </Text>
-                            </View>
-                            <Text style={styles.screenshotTitle}>{shot.title}</Text>
-                            <Text style={styles.screenshotSubtitle}>{shot.subtitle}</Text>
-                        </View>
-                    ))}
-                </ScrollView>
-                {/* Dots indicator */}
-                <View style={styles.dotsRow}>
-                    {SCREENSHOTS.map((_, i) => (
-                        <View
-                            key={`dot-${i}`}
-                            style={[
-                                styles.dot,
-                                i === activeScreenshot && styles.dotActive,
-                            ]}
-                        />
-                    ))}
-                </View>
-            </View>
-
-            {/* What's New */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>What's New</Text>
-                {CHANGELOG.map((release) => (
-                    <View key={release.version} style={styles.changelogCard}>
-                        <View style={styles.changelogHeader}>
-                            <Text style={styles.changelogTitle}>{release.title}</Text>
-                            <View style={styles.changelogMeta}>
-                                <Text style={styles.changelogVersion}>v{release.version}</Text>
-                                <Text style={styles.changelogDate}>{release.date}</Text>
-                            </View>
-                        </View>
-                        <View style={styles.changelogList}>
-                            {release.changes.map((change, i) => (
-                                <Text key={`${release.version}-${i}`} style={styles.changelogItem}>
-                                    {change}
-                                </Text>
-                            ))}
-                        </View>
+                {/* App Identity */}
+                <Animated.View style={[styles.appIdentity, { opacity: fadeAnim }]}>
+                    <View style={styles.appIcon}>
+                        <Text style={styles.appIconEmoji}>🌪️</Text>
                     </View>
-                ))}
-            </View>
+                    <Text style={styles.appName}>Windy Pro</Text>
+                    <Text style={styles.appTagline}>Voice to Text, Your Way</Text>
+                    <Text style={styles.appVersion}>Version {CHANGELOG[0].version}</Text>
+                </Animated.View>
 
-            {/* Rate This App */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Rate & Share</Text>
-                <View style={styles.rateCard}>
-                    <Text style={styles.rateEmoji}>⭐</Text>
-                    <View style={styles.rateContent}>
-                        <Text style={styles.rateTitle}>Enjoying Windy Pro?</Text>
-                        <Text style={styles.rateSubtext}>
-                            Rate us on the {Platform.OS === 'ios' ? 'App Store' : 'Play Store'} — it really helps!
-                        </Text>
+                {/* Screenshots Carousel */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Screenshots</Text>
+                    <ScrollView
+                        ref={scrollRef}
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        snapToInterval={CARD_WIDTH + spacing.sm}
+                        decelerationRate="fast"
+                        onMomentumScrollEnd={handleScreenshotScroll}
+                        style={styles.carouselScroll}
+                        contentContainerStyle={styles.carouselContent}
+                    >
+                        {SCREENSHOTS.map((shot) => (
+                            <View key={shot.id} style={styles.screenshotCard}>
+                                <View style={[styles.screenshotPreview, {
+                                    backgroundColor: shot.colors[0],
+                                    borderColor: shot.colors[1] + '40',
+                                }]}>
+                                    <Text style={styles.screenshotEmoji}>{shot.emoji}</Text>
+                                    <Text style={[styles.screenshotLabel, { color: shot.colors[1] }]}>
+                                        {shot.title}
+                                    </Text>
+                                </View>
+                                <Text style={styles.screenshotTitle}>{shot.title}</Text>
+                                <Text style={styles.screenshotSubtitle}>{shot.subtitle}</Text>
+                            </View>
+                        ))}
+                    </ScrollView>
+                    {/* Dots indicator */}
+                    <View style={styles.dotsRow}>
+                        {SCREENSHOTS.map((_, i) => (
+                            <View
+                                key={`dot-${i}`}
+                                style={[
+                                    styles.dot,
+                                    i === activeScreenshot && styles.dotActive,
+                                ]}
+                            />
+                        ))}
                     </View>
                 </View>
-                <Pressable style={styles.rateCta} onPress={handleRateApp}>
-                    <Text style={styles.rateCtaEmoji}>⭐</Text>
-                    <Text style={styles.rateCtaText}>Rate This App</Text>
-                </Pressable>
-            </View>
 
-            {/* Share App */}
-            <Pressable style={styles.shareButton} onPress={handleShareApp}>
-                <Text style={styles.shareEmoji}>📤</Text>
-                <View style={styles.shareContent}>
-                    <Text style={styles.shareTitle}>Share Windy Pro</Text>
-                    <Text style={styles.shareSubtext}>Send a download link to friends</Text>
+                {/* What's New */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>What's New</Text>
+                    {CHANGELOG.map((release) => (
+                        <View key={release.version} style={styles.changelogCard}>
+                            <View style={styles.changelogHeader}>
+                                <Text style={styles.changelogTitle}>{release.title}</Text>
+                                <View style={styles.changelogMeta}>
+                                    <Text style={styles.changelogVersion}>v{release.version}</Text>
+                                    <Text style={styles.changelogDate}>{release.date}</Text>
+                                </View>
+                            </View>
+                            <View style={styles.changelogList}>
+                                {release.changes.map((change, i) => (
+                                    <Text key={`${release.version}-${i}`} style={styles.changelogItem}>
+                                        {change}
+                                    </Text>
+                                ))}
+                            </View>
+                        </View>
+                    ))}
                 </View>
-            </Pressable>
 
-            {/* Footer links */}
-            <View style={styles.footerLinks}>
-                <Pressable onPress={() => Linking.openURL('https://windypro.thewindstorm.uk')}>
-                    <Text style={styles.footerLink}>🌐 Website</Text>
-                </Pressable>
-                <Pressable onPress={() => router.push('/legal/privacy')}>
-                    <Text style={styles.footerLink}>🔒 Privacy</Text>
-                </Pressable>
-                <Pressable onPress={() => router.push('/legal/terms')}>
-                    <Text style={styles.footerLink}>📋 Terms</Text>
-                </Pressable>
-                <Pressable onPress={() => Linking.openURL('mailto:support@thewindstorm.uk')}>
-                    <Text style={styles.footerLink}>✉️ Support</Text>
-                </Pressable>
-            </View>
+                {/* Rate This App */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Rate & Share</Text>
+                    <View style={styles.rateCard}>
+                        <Text style={styles.rateEmoji}>⭐</Text>
+                        <View style={styles.rateContent}>
+                            <Text style={styles.rateTitle}>Enjoying Windy Pro?</Text>
+                            <Text style={styles.rateSubtext}>
+                                Rate us on the {Platform.OS === 'ios' ? 'App Store' : 'Play Store'} — it really helps!
+                            </Text>
+                        </View>
+                    </View>
+                    <Pressable style={styles.rateCta} onPress={handleRateApp}>
+                        <Text style={styles.rateCtaEmoji}>⭐</Text>
+                        <Text style={styles.rateCtaText}>Rate This App</Text>
+                    </Pressable>
+                </View>
 
-            <View style={styles.footer}>
-                <Text style={styles.footerText}>Made with 🌪️ in England</Text>
-                <Text style={styles.footerCopyright}>© 2026 The Windstorm. All rights reserved.</Text>
-            </View>
-        </ScrollView>
+                {/* Share App */}
+                <Pressable style={styles.shareButton} onPress={handleShareApp}>
+                    <Text style={styles.shareEmoji}>📤</Text>
+                    <View style={styles.shareContent}>
+                        <Text style={styles.shareTitle}>Share Windy Pro</Text>
+                        <Text style={styles.shareSubtext}>Send a download link to friends</Text>
+                    </View>
+                </Pressable>
+
+                {/* Footer links */}
+                <View style={styles.footerLinks}>
+                    <Pressable onPress={() => Linking.openURL('https://windypro.thewindstorm.uk')}>
+                        <Text style={styles.footerLink}>🌐 Website</Text>
+                    </Pressable>
+                    <Pressable onPress={() => router.push('/legal/privacy')}>
+                        <Text style={styles.footerLink}>🔒 Privacy</Text>
+                    </Pressable>
+                    <Pressable onPress={() => router.push('/legal/terms')}>
+                        <Text style={styles.footerLink}>📋 Terms</Text>
+                    </Pressable>
+                    <Pressable onPress={() => Linking.openURL('mailto:support@thewindstorm.uk')}>
+                        <Text style={styles.footerLink}>✉️ Support</Text>
+                    </Pressable>
+                </View>
+
+                <View style={styles.footer}>
+                    <Text style={styles.footerText}>Made with 🌪️ in England</Text>
+                    <Text style={styles.footerCopyright}>© 2026 The Windstorm. All rights reserved.</Text>
+                </View>
+            </ScrollView>
+        </ScreenErrorBoundary>
     );
 }
 

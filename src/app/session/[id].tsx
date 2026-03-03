@@ -155,7 +155,7 @@ export default function SessionDetailScreen() {
     if (loading) {
         return (
             <View style={styles.container}>
-                <Text style={styles.loadingText}>Loading...</Text>
+                <Text style={styles.loadingText} accessibilityRole="text">Loading...</Text>
             </View>
         );
     }
@@ -175,92 +175,94 @@ export default function SessionDetailScreen() {
     }
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.closeButton} accessibilityLabel="Close session" accessibilityRole="button">
-                    <Text style={styles.closeText}>✕</Text>
-                </Pressable>
-                <Text style={styles.headerDate}>
-                    {new Date(session.createdAt).toLocaleDateString('en-US', {
-                        weekday: 'long', month: 'long', day: 'numeric',
-                    })}
-                </Text>
-                <Text style={styles.headerTime}>
-                    {new Date(session.createdAt).toLocaleTimeString('en-US', {
-                        hour: 'numeric', minute: '2-digit',
-                    })}
-                </Text>
-            </View>
-
-            {/* Quick Stats */}
-            <View style={styles.statsRow}>
-                <View style={styles.stat}>
-                    <Text style={styles.statValue}>{formatDuration(session.duration)}</Text>
-                    <Text style={styles.statLabel}>Duration</Text>
-                </View>
-                <View style={styles.stat}>
-                    <Text style={[styles.statValue, { color: getQualityColor(session.quality?.score ?? 0) }]}>
-                        {session.quality?.score ?? '—'}
+        <ScreenErrorBoundary screenName="Session Detail">
+            <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Pressable onPress={() => router.back()} style={styles.closeButton} accessibilityLabel="Close session" accessibilityRole="button">
+                        <Text style={styles.closeText}>✕</Text>
+                    </Pressable>
+                    <Text style={styles.headerDate}>
+                        {new Date(session.createdAt).toLocaleDateString('en-US', {
+                            weekday: 'long', month: 'long', day: 'numeric',
+                        })}
                     </Text>
-                    <Text style={styles.statLabel}>Quality</Text>
-                </View>
-                <View style={styles.stat}>
-                    <Text style={styles.statValue}>{session.engineUsed}</Text>
-                    <Text style={styles.statLabel}>Engine</Text>
-                </View>
-                <View style={styles.stat}>
-                    <Text style={styles.statValue}>{session.synced ? '☁️' : '📱'}</Text>
-                    <Text style={styles.statLabel}>{session.synced ? 'Synced' : 'Local'}</Text>
-                </View>
-            </View>
-
-            {/* Audio Player */}
-            {session.audioFilePath && (
-                <Pressable style={styles.playerButton} onPress={handlePlayPause}>
-                    <Text style={styles.playerIcon}>{isPlaying ? '⏸' : '▶️'}</Text>
-                    <Text style={styles.playerText}>
-                        {isPlaying ? formatDuration(playbackPosition) : 'Play Recording'}
+                    <Text style={styles.headerTime}>
+                        {new Date(session.createdAt).toLocaleTimeString('en-US', {
+                            hour: 'numeric', minute: '2-digit',
+                        })}
                     </Text>
-                </Pressable>
-            )}
+                </View>
 
-            {/* Transcript — Enhanced TranscriptionViewer */}
-            <View style={styles.transcriptSection}>
-                <Text style={styles.sectionTitle}>Transcript</Text>
-                <TranscriptionViewer
-                    segments={session.segments.length > 0 ? session.segments : [{
-                        id: 'full',
-                        text: session.transcript || 'No transcript available',
-                        startTime: 0,
-                        endTime: session.duration,
-                        confidence: 1,
-                        isPartial: false,
-                        speakerId: null,
-                        language: session.languages?.[0] || 'en',
-                    }]}
-                    showProgress={isPlaying}
-                    currentTime={playbackPosition}
-                    totalDuration={session.duration}
-                />
-            </View>
+                {/* Quick Stats */}
+                <View style={styles.statsRow}>
+                    <View style={styles.stat}>
+                        <Text style={styles.statValue}>{formatDuration(session.duration)}</Text>
+                        <Text style={styles.statLabel}>Duration</Text>
+                    </View>
+                    <View style={styles.stat}>
+                        <Text style={[styles.statValue, { color: getQualityColor(session.quality?.score ?? 0) }]}>
+                            {session.quality?.score ?? '—'}
+                        </Text>
+                        <Text style={styles.statLabel}>Quality</Text>
+                    </View>
+                    <View style={styles.stat}>
+                        <Text style={styles.statValue}>{session.engineUsed}</Text>
+                        <Text style={styles.statLabel}>Engine</Text>
+                    </View>
+                    <View style={styles.stat}>
+                        <Text style={styles.statValue}>{session.synced ? '☁️' : '📱'}</Text>
+                        <Text style={styles.statLabel}>{session.synced ? 'Synced' : 'Local'}</Text>
+                    </View>
+                </View>
 
-            {/* Action Buttons */}
-            <View style={styles.actionRow}>
-                <Pressable style={styles.actionBtn} onPress={handleCopy} accessibilityLabel="Copy transcript" accessibilityRole="button">
-                    <Text style={styles.actionBtnText}>📋 Copy</Text>
-                </Pressable>
-                <Pressable style={styles.actionBtn} onPress={handleShare} accessibilityLabel="Share transcript" accessibilityRole="button">
-                    <Text style={styles.actionBtnText}>📤 Share</Text>
-                </Pressable>
-                <Pressable style={styles.actionBtn} onPress={handleExport} accessibilityLabel="Export session data" accessibilityRole="button">
-                    <Text style={styles.actionBtnText}>📋 Export</Text>
-                </Pressable>
-                <Pressable style={[styles.actionBtn, styles.deleteBtn]} onPress={handleDelete} accessibilityLabel="Delete session" accessibilityRole="button">
-                    <Text style={[styles.actionBtnText, styles.deleteBtnText]}>🗑 Delete</Text>
-                </Pressable>
-            </View>
-        </ScrollView>
+                {/* Audio Player */}
+                {session.audioFilePath && (
+                    <Pressable style={styles.playerButton} onPress={handlePlayPause}>
+                        <Text style={styles.playerIcon}>{isPlaying ? '⏸' : '▶️'}</Text>
+                        <Text style={styles.playerText}>
+                            {isPlaying ? formatDuration(playbackPosition) : 'Play Recording'}
+                        </Text>
+                    </Pressable>
+                )}
+
+                {/* Transcript — Enhanced TranscriptionViewer */}
+                <View style={styles.transcriptSection}>
+                    <Text style={styles.sectionTitle}>Transcript</Text>
+                    <TranscriptionViewer
+                        segments={session.segments.length > 0 ? session.segments : [{
+                            id: 'full',
+                            text: session.transcript || 'No transcript available',
+                            startTime: 0,
+                            endTime: session.duration,
+                            confidence: 1,
+                            isPartial: false,
+                            speakerId: null,
+                            language: session.languages?.[0] || 'en',
+                        }]}
+                        showProgress={isPlaying}
+                        currentTime={playbackPosition}
+                        totalDuration={session.duration}
+                    />
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.actionRow}>
+                    <Pressable style={styles.actionBtn} onPress={handleCopy} accessibilityLabel="Copy transcript" accessibilityRole="button">
+                        <Text style={styles.actionBtnText}>📋 Copy</Text>
+                    </Pressable>
+                    <Pressable style={styles.actionBtn} onPress={handleShare} accessibilityLabel="Share transcript" accessibilityRole="button">
+                        <Text style={styles.actionBtnText}>📤 Share</Text>
+                    </Pressable>
+                    <Pressable style={styles.actionBtn} onPress={handleExport} accessibilityLabel="Export session data" accessibilityRole="button">
+                        <Text style={styles.actionBtnText}>📋 Export</Text>
+                    </Pressable>
+                    <Pressable style={[styles.actionBtn, styles.deleteBtn]} onPress={handleDelete} accessibilityLabel="Delete session" accessibilityRole="button">
+                        <Text style={[styles.actionBtnText, styles.deleteBtnText]}>🗑 Delete</Text>
+                    </Pressable>
+                </View>
+            </ScrollView>
+        </ScreenErrorBoundary>
     );
 }
 
