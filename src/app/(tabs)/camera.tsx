@@ -18,10 +18,8 @@ import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-/** Focused languages for camera translate */
-const CAMERA_LANGUAGES = TIER_1_LANGUAGES.filter((l) =>
-    ['en', 'es', 'fr', 'de', 'zh'].includes(l.code)
-);
+/** All 15 Tier-1 languages available for camera translate */
+const CAMERA_LANGUAGES = TIER_1_LANGUAGES;
 
 export default function CameraTab() {
     const [permission, requestPermission] = useCameraPermissions();
@@ -192,7 +190,7 @@ export default function CameraTab() {
                         Windy will translate it instantly.
                     </Text>
                     <Text style={styles.permissionLangs}>
-                        🇺🇸 🇪🇸 🇫🇷 🇩🇪 🇨🇳
+                        🇺🇸 🇪🇸 🇫🇷 🇩🇪 🇨🇳 🇯🇵 🇰🇷 🇧🇷 🇮🇹 🇷🇺
                     </Text>
                     <Pressable style={styles.permissionBtn} onPress={requestPermission} accessibilityLabel="Enable camera access" accessibilityRole="button" accessibilityHint="Grants camera permission for text translation">
                         <Text style={styles.permissionBtnText}>Enable Camera</Text>
@@ -295,19 +293,25 @@ export default function CameraTab() {
                             </View>
                         )}
 
-                        {/* Detected language + live mode badge */}
-                        {liveMode && (
-                            <View style={styles.liveBadgeRow}>
-                                <View style={styles.liveBadge}>
-                                    <Text style={styles.liveBadgeText}>🟢 LIVE</Text>
+                        {/* Live floating translation bubble */}
+                        {liveMode && liveResult && !frozen && (
+                            <View style={styles.floatingBubble}>
+                                <View style={styles.bubbleHeader}>
+                                    <Text style={styles.bubbleHeaderText}>
+                                        {getFlag(liveResult.fromLang)} → {getFlag(targetLang)}
+                                    </Text>
+                                    <View style={styles.bubbleLiveDot} />
                                 </View>
-                                {detectedLang && (
-                                    <View style={styles.detectedLangBadge}>
-                                        <Text style={styles.detectedLangText}>
-                                            {getFlag(detectedLang)} {getName(detectedLang)}
-                                        </Text>
-                                    </View>
-                                )}
+                                <Text style={styles.bubbleOriginal} numberOfLines={2}>
+                                    {liveResult.original.text}
+                                </Text>
+                                <View style={styles.bubbleDivider} />
+                                <Text style={styles.bubbleTranslated} numberOfLines={3}>
+                                    {liveResult.translated}
+                                </Text>
+                                <Pressable style={styles.bubbleFreezeBtn} onPress={freezeFrame}>
+                                    <Text style={styles.bubbleFreezeBtnText}>❄️ Freeze & Read</Text>
+                                </Pressable>
                             </View>
                         )}
 
@@ -573,6 +577,30 @@ const styles = StyleSheet.create({
     liveBadgeText: { fontSize: 12, fontWeight: '700', color: '#22c55e' },
     detectedLangBadge: { backgroundColor: 'rgba(99,102,241,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
     detectedLangText: { fontSize: 12, fontWeight: '600', color: '#6366f1' },
+
+    // Floating translation bubble
+    floatingBubble: {
+        position: 'absolute', bottom: 8, left: 12, right: 12,
+        backgroundColor: 'rgba(15,23,42,0.92)', borderRadius: 16,
+        padding: 14, borderWidth: 1, borderColor: 'rgba(163,230,53,0.3)',
+        shadowColor: '#a3e635', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: -4 },
+        elevation: 8,
+    },
+    bubbleHeader: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
+    },
+    bubbleHeaderText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+    bubbleLiveDot: {
+        width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e',
+    },
+    bubbleOriginal: { fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 18 },
+    bubbleDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 8 },
+    bubbleTranslated: { fontSize: 17, color: '#a3e635', lineHeight: 24, fontWeight: '600' },
+    bubbleFreezeBtn: {
+        marginTop: 10, backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: 10,
+        paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)',
+    },
+    bubbleFreezeBtnText: { fontSize: 13, fontWeight: '600', color: '#60a5fa' },
 
     // History
     historyHeader: {
