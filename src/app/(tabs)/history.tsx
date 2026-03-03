@@ -90,6 +90,7 @@ export default function HistoryScreen() {
       setSessions(data);
     } catch (err) {
       console.error('[History] Load failed:', err);
+      Alert.alert('Load Error', 'Could not load your recording history. Pull down to retry.');
     } finally {
       setLoading(false);
     }

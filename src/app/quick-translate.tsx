@@ -7,7 +7,7 @@
  * This screen can serve as the App Clip entry point when the
  * native Xcode App Clip target is configured.
  */
-import { View, Text, StyleSheet, TextInput, Pressable, Platform, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, Platform, ActivityIndicator, KeyboardAvoidingView, Alert } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,14 +16,19 @@ import { colors, spacing, borderRadius } from '@/theme';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { useHaptic } from '@/hooks/useHaptic';
 
+const VALID_LANG_CODES = new Set(TIER_1_LANGUAGES.map(l => l.code));
+const safeLangCode = (code: string | undefined, fallback: string): string =>
+    code && VALID_LANG_CODES.has(code) ? code : fallback;
+
 export default function QuickTranslateScreen() {
     const router = useRouter();
     const params = useLocalSearchParams<{ text?: string; from?: string; to?: string }>();
     const haptic = useHaptic();
 
     const [inputText, setInputText] = useState(params.text || '');
-    const [sourceLang, setSourceLang] = useState(params.from || 'en');
-    const [targetLang, setTargetLang] = useState(params.to || 'es');
+    const [sourceLang, setSourceLang] = useState(safeLangCode(params.from, 'en'));
+    const [targetLang, setTargetLang] = useState(safeLangCode(params.to, 'es'));
+    const [errorMsg, setErrorMsg] = useState('');
     const [translatedText, setTranslatedText] = useState('');
     const [processing, setProcessing] = useState(false);
     const [confidence, setConfidence] = useState(0);
@@ -40,6 +45,7 @@ export default function QuickTranslateScreen() {
         if (!toTranslate.trim()) return;
 
         setProcessing(true);
+        setErrorMsg('');
         haptic.light();
 
         try {
@@ -47,10 +53,16 @@ export default function QuickTranslateScreen() {
             setTranslatedText(result.translated);
             setConfidence(result.confidence);
             haptic.success();
-        } catch (err) {
-            setTranslatedText('[Translation failed]');
+        } catch (err: any) {
+            const isOffline = err?.message?.includes('Network') || err?.message?.includes('fetch');
+            const msg = isOffline
+                ? 'You appear to be offline. Please check your connection and try again.'
+                : 'Translation failed. Please try again.';
+            setTranslatedText('');
+            setErrorMsg(msg);
             setConfidence(0);
             haptic.error();
+            Alert.alert('Translation Error', msg);
         } finally {
             setProcessing(false);
         }

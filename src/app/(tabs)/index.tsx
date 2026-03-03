@@ -131,6 +131,27 @@ export default function RecordScreen() {
     const handleRecordPress = useCallback(async () => {
         if (state === 'idle' || state === 'error') {
             try {
+                // Permission pre-check
+                const { status } = await Audio.requestPermissionsAsync();
+                if (status !== 'granted') {
+                    Alert.alert(
+                        'Microphone Access Required',
+                        'Windy Pro needs microphone access to record. Please enable it in Settings.',
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                                text: 'Open Settings', onPress: () => {
+                                    if (Platform.OS === 'ios') {
+                                        const { Linking } = require('react-native');
+                                        Linking.openSettings();
+                                    }
+                                }
+                            },
+                        ]
+                    );
+                    return;
+                }
+
                 // Generate session ID
                 const newSessionId = `session-${Date.now()}`;
 
@@ -299,11 +320,16 @@ export default function RecordScreen() {
                 await localStorageService.saveSession(session);
             } catch (saveErr) {
                 console.warn('[Record] Save failed:', saveErr);
+                Alert.alert('Save Warning', 'Recording completed but could not be saved to history. Try exporting manually.');
             }
 
         } catch (err: any) {
             console.error('[Record] Stop failed:', err);
             await feedbackService.error();
+            Alert.alert(
+                'Recording Error',
+                'Something went wrong while stopping the recording. Your audio file may still be saved.'
+            );
         }
 
         // Return to idle
