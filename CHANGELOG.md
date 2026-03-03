@@ -1,47 +1,70 @@
-# Changelog — Windy Pro iOS
+# Changelog
 
-## [1.0.0-rc.1] — 2026-03-02
+All notable changes to Windy Pro Mobile are documented here.
 
-### 🎙 Core Features
-- **Speech Translation**: Press-and-hold recording, animated waveform, haptic feedback, 5-language tier-1 support
-- **Conversation Mode**: Alternating mic, dual transcript, pulse animation
-- **Camera OCR**: Live scan with bounding boxes, freeze frame, auto-detect language, 5-language translate
-- **Clone Recording**: 30s voice sample pipeline with upload progress and voice ID storage
-- **Deep Links**: `windypro://translate?from=en&to=es&text=hello` quick-translate route
+## [1.0.0] — 2026-03-02
 
-### 📦 History & Sync
-- Backend sync with offline fallback via `NetworkMonitor`
-- Favorites with optimistic updates
-- Swipe-to-delete with PanResponder
-- CSV export, storage usage indicator, sort/filter controls
+### 🚀 Initial Release — Android Launch
 
-### 💰 Monetization
-- RevenueCat subscription integration (`react-native-purchases ^9.10.5`)
-- 4-tier paywall: Free / Pro / Translate / Translate Pro
-- Feature comparison table, restore purchases flow
-- License service with key activation fallback
+#### Phase 1: Foundation & Build Config
+- Configured EAS build with `expo-build-properties` (compileSdk 35, targetSdk 34, Kotlin 1.9.24)
+- Set up EAS production profile with app-bundle, remote signing, internal track
+- Synced `versionCode` across `app.json` and `build.gradle`
+- Added EAS Secrets for Google Vision API and FCM server keys
 
-### ♿ Accessibility
-- VoiceOver labels on all 7 screens (Record, Settings, Translate, Camera, History, Subscription, Tab Bar)
-- `useReducedMotion` hook respects system preference
-- `useAccessibility` hook for Dynamic Type + VoiceOver detection
-- Chevrons hidden from screen readers
+#### Phase 2: Release Hardening
+- Added comprehensive ProGuard/R8 rules (Hermes, OkHttp, Expo modules, React Native core)
+- Implemented recording cleanup on translate screen unmount (prevents memory leaks)
+- Added explicit Stack.Screen for OCR modal with slide-from-bottom animation
+- Added audio mode reset and callback cleanup in speech translation cancellation
+- Removed duplicate network monitor start calls
+- Added network-aware error handling to OCR screen
 
-### 🏗 Build & Infrastructure
-- CocoaPods toolchain resolved (Homebrew Ruby 4.0.1, 106 pods)
-- iOS simulator build: 0 errors
-- EAS production profile with auto-increment, remote credentials
-- Deployment target: iOS 16.0
-- Bundle ID: `uk.thewindstorm.windypro`
+#### Phase 3: Polish & User Experience
+- Rewrote onboarding as swipeable FlatList with animated dot indicators
+- Created `ScreenErrorBoundary` component — wraps all 6 screens
+- Created `AnalyticsService` for tracking screen views, translations, language pairs
+- Created `RatingPromptService` using `expo-store-review` (triggers after 5th translation)
+- Integrated analytics and rating prompt into translate screen
+- Commented out ~40 `console.log` calls across all production files
+- Fixed `translation.ts` broken `onDone` callback
 
-### 🔒 Privacy & Compliance
-- 9 Info.plist privacy descriptions (Mic, Camera, Location, Photos ×2, Speech, FaceID, LocalNetwork, Tracking)
-- `ITSAppUsesNonExemptEncryption: false`
-- `UIBackgroundModes: ["audio", "fetch"]`
-- Associated Domains: `applinks:` + `appclips:windypro.thewindstorm.uk`
+#### Phase 4: Android Launch Prep
+- Added HTTPS App Links with `autoVerify` to AndroidManifest
+- Bumped `versionCode` to 4 for release
+- Verified all deep link routes (translate, quick-translate, clone, session, license, settings)
 
-### 🧪 Quality
-- TypeScript strict: 0 errors
-- Jest: 145/145 tests (6 suites)
-- Comprehensive error handling with typed errors, timeout, retry
-- Offline queue with network monitor
+#### Phase 5: Final QA & Submission
+- Created Play Store listing (title, descriptions, metadata)
+- Security audit: no hardcoded API keys or secrets in source
+- Permissions audit: verified all permissions are necessary
+- Created comprehensive README with setup and deployment guide
+- Git cleanup: verified `.gitignore` covers all build artifacts
+
+### Features
+- 🎤 Press-and-hold voice recording with live waveform visualization
+- 🌍 15-language speech translation (Tier 1 languages)
+- 🗣️ Split-screen conversation mode (2-person real-time translation)
+- 📷 Camera OCR text extraction and translation
+- 🔊 Text-to-speech playback with voice selection
+- 📚 Recording history with search, favorites, sort, and language filter
+- ☁️ Cloud sync with Wi-Fi-only and plugged-in-only options
+- 💾 CSV and SRT export
+- 🌐 Deep link support (`windypro://` scheme + HTTPS App Links)
+- 🔔 Push notifications with deep link routing
+- ⚙️ Comprehensive settings (language, voice, quality, theme, cache, about)
+- 🛡️ Error boundaries on all screens
+- 📊 Local analytics tracking
+- ⭐ App rating prompt after 5th translation
+- 🎨 Dark mode with Material Design 3 styling
+- ♿ Full accessibility support (VoiceOver, Dynamic Type)
+- 🔒 ProGuard/R8 hardened for release builds
+
+### Technical Stack
+- React Native + Expo SDK 52
+- expo-router (file-based navigation)
+- Zustand (state management with persist)
+- expo-av, expo-camera, expo-speech, expo-haptics
+- expo-notifications, expo-store-review
+- Custom services: audio capture, speech translation, OCR, sync engine
+- SQLite local storage with cloud sync
