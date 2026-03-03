@@ -193,7 +193,7 @@ export default function CameraTab() {
                     <Text style={styles.permissionLangs}>
                         🇺🇸 🇪🇸 🇫🇷 🇩🇪 🇨🇳
                     </Text>
-                    <Pressable style={styles.permissionBtn} onPress={requestPermission}>
+                    <Pressable style={styles.permissionBtn} onPress={requestPermission} accessibilityLabel="Enable camera access" accessibilityRole="button" accessibilityHint="Grants camera permission for text translation">
                         <Text style={styles.permissionBtnText}>Enable Camera</Text>
                     </Pressable>
                 </View>
@@ -208,7 +208,7 @@ export default function CameraTab() {
             <View style={styles.container}>
                 <View style={styles.historyHeader}>
                     <Text style={styles.historyTitle}>Translation History</Text>
-                    <Pressable onPress={() => setShowHistory(false)}>
+                    <Pressable onPress={() => setShowHistory(false)} accessibilityLabel="Close translation history" accessibilityRole="button">
                         <Text style={styles.historyClose}>✕ Close</Text>
                     </Pressable>
                 </View>
@@ -245,6 +245,8 @@ export default function CameraTab() {
                         <Pressable
                             style={styles.historyBtn}
                             onPress={() => setShowHistory(true)}
+                            accessibilityLabel={`View translation history, ${history.length} items`}
+                            accessibilityRole="button"
                         >
                             <Text style={styles.historyBtnText}>
                                 📋 {history.length}
@@ -311,7 +313,7 @@ export default function CameraTab() {
                     {error ? (
                         <View style={styles.errorBanner}>
                             <Text style={styles.errorText}>⚠️ {error}</Text>
-                            <Pressable onPress={() => setError(null)}>
+                            <Pressable onPress={() => setError(null)} accessibilityLabel="Dismiss error" accessibilityRole="button">
                                 <Text style={styles.errorDismiss}>✕</Text>
                             </Pressable>
                         </View>
@@ -323,7 +325,7 @@ export default function CameraTab() {
                 {/* Translation Overlay */}
                 {result && (
                     <Animated.View style={[styles.translationOverlay, { opacity: overlayOpacity }]}>
-                        <Pressable style={styles.overlayCard} onPress={dismissResult}>
+                        <Pressable style={styles.overlayCard} onPress={dismissResult} accessibilityLabel="Translation result. Tap to dismiss" accessibilityRole="button">
                             {/* Original */}
                             <View style={styles.overlaySection}>
                                 <Text style={styles.overlayLabel}>
@@ -351,10 +353,12 @@ export default function CameraTab() {
                                 <Pressable
                                     style={styles.overlayActionBtn}
                                     onPress={() => translationService.speak(result.translated, result.toLang)}
+                                    accessibilityLabel="Listen to translation"
+                                    accessibilityRole="button"
                                 >
                                     <Text style={styles.overlayActionText}>🔊 Listen</Text>
                                 </Pressable>
-                                <Pressable style={styles.overlayActionBtn} onPress={dismissResult}>
+                                <Pressable style={styles.overlayActionBtn} onPress={dismissResult} accessibilityLabel="Dismiss translation" accessibilityRole="button">
                                     <Text style={styles.overlayActionText}>✕ Dismiss</Text>
                                 </Pressable>
                             </View>
@@ -380,6 +384,9 @@ export default function CameraTab() {
                                 setResult(null);
                                 feedbackService.tap();
                             }}
+                            accessibilityLabel={`Translate to ${lang.name}`}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: targetLang === lang.code }}
                         >
                             <Text style={styles.langChipFlag}>{lang.flag}</Text>
                             <Text style={[
@@ -398,6 +405,9 @@ export default function CameraTab() {
                         style={[styles.captureBtn, capturing && styles.captureBtnDisabled]}
                         onPress={handleCapture}
                         disabled={capturing || liveMode}
+                        accessibilityLabel={capturing ? 'Processing photo' : 'Capture text for translation'}
+                        accessibilityRole="button"
+                        accessibilityState={{ disabled: capturing || liveMode }}
                     >
                         {capturing ? (
                             <ActivityIndicator size="small" color={colors.background} />
@@ -413,6 +423,8 @@ export default function CameraTab() {
                     <Pressable
                         style={[styles.liveBtn, liveMode && styles.liveBtnActive]}
                         onPress={() => liveMode ? stopLiveScan() : startLiveScan()}
+                        accessibilityLabel={liveMode ? 'Stop live scanning' : 'Start live scanning'}
+                        accessibilityRole="button"
                     >
                         <Text style={styles.liveBtnText}>
                             {liveMode ? '⏹ Stop Live' : '🟢 Live Scan'}
@@ -421,7 +433,7 @@ export default function CameraTab() {
 
                     {/* Freeze button (visible in live mode) */}
                     {liveMode && liveResult && !frozen && (
-                        <Pressable style={styles.freezeBtn} onPress={freezeFrame}>
+                        <Pressable style={styles.freezeBtn} onPress={freezeFrame} accessibilityLabel="Freeze current translation" accessibilityRole="button">
                             <Text style={styles.freezeBtnText}>❄️ Freeze</Text>
                         </Pressable>
                     )}

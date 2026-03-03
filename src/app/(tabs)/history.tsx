@@ -316,6 +316,9 @@ export default function HistoryScreen() {
         style={styles.card}
         onPress={() => selectMode ? toggleSelect(item.id) : router.push(`/session/${item.id}`)}
         onLongPress={() => { if (!selectMode) handleDelete(item.id); }}
+        accessibilityLabel={`Recording from ${formatDate(item.createdAt)}, ${formatDuration(item.duration)}, ${item.previewText || 'No transcript'}`}
+        accessibilityRole="button"
+        accessibilityHint={selectMode ? 'Tap to select' : 'Tap to open, hold to delete'}
       >
         {selectMode && (
           <Text style={styles.checkbox}>{selected.has(item.id) ? '☑️' : '⬜'}</Text>
@@ -323,7 +326,7 @@ export default function HistoryScreen() {
         <View style={styles.cardHeader}>
           <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
           <View style={styles.cardMeta}>
-            <Pressable onPress={() => toggleFavorite(item.id)}>
+            <Pressable onPress={() => toggleFavorite(item.id)} accessibilityLabel={favorites.has(item.id) ? 'Remove from favorites' : 'Add to favorites'} accessibilityRole="button">
               <Text style={styles.favStar}>{favorites.has(item.id) ? '⭐' : '☆'}</Text>
             </Pressable>
             <Text style={styles.cardDuration}>{formatDuration(item.duration)}</Text>
@@ -338,7 +341,7 @@ export default function HistoryScreen() {
           <Text style={styles.qualityText}>{item.quality.score}</Text>
           <Text style={styles.cardSource}>{item.source}</Text>
           {!selectMode && (
-            <Pressable style={styles.exportBtn} onPress={() => handleExportSession(item)}>
+            <Pressable style={styles.exportBtn} onPress={() => handleExportSession(item)} accessibilityLabel="Export this recording" accessibilityRole="button">
               <Text style={styles.exportBtnText}>📤</Text>
             </Pressable>
           )}
@@ -392,6 +395,8 @@ export default function HistoryScreen() {
           value={searchQuery}
           onChangeText={handleSearch}
           returnKeyType="search"
+          accessibilityLabel="Search transcripts"
+          accessibilityHint="Type to filter recording history"
         />
       </View>
 
@@ -402,6 +407,8 @@ export default function HistoryScreen() {
             key={field}
             style={[styles.sortBtn, sortBy === field && styles.sortBtnActive]}
             onPress={() => toggleSort(field)}
+            accessibilityLabel={`Sort by ${field}${sortBy === field ? `, ${sortDir === 'desc' ? 'descending' : 'ascending'}` : ''}`}
+            accessibilityRole="button"
           >
             <Text style={[styles.sortBtnText, sortBy === field && styles.sortBtnTextActive]}>
               {field === 'date' ? '📅' : field === 'duration' ? '⏱' : '⭐'}{' '}
@@ -418,6 +425,9 @@ export default function HistoryScreen() {
           <Pressable
             style={[styles.filterChip, !langFilter && styles.filterChipActive]}
             onPress={() => setLangFilter(null)}
+            accessibilityLabel="Show all languages"
+            accessibilityRole="button"
+            accessibilityState={{ selected: !langFilter }}
           >
             <Text style={[styles.filterChipText, !langFilter && styles.filterChipTextActive]}>All</Text>
           </Pressable>
@@ -426,6 +436,9 @@ export default function HistoryScreen() {
               key={pair}
               style={[styles.filterChip, langFilter === pair && styles.filterChipActive]}
               onPress={() => setLangFilter(langFilter === pair ? null : pair)}
+              accessibilityLabel={`Filter by ${pair.toUpperCase()}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: langFilter === pair }}
             >
               <Text style={[styles.filterChipText, langFilter === pair && styles.filterChipTextActive]}>
                 {translationService.getFlag(pair)} {pair.toUpperCase()}
@@ -433,7 +446,7 @@ export default function HistoryScreen() {
             </Pressable>
           ))}
           {/* CSV export button */}
-          <Pressable style={styles.csvExportBtn} onPress={handleExportCsv}>
+          <Pressable style={styles.csvExportBtn} onPress={handleExportCsv} accessibilityLabel="Export history as CSV" accessibilityRole="button">
             <Text style={styles.csvExportText}>💾 CSV</Text>
           </Pressable>
         </View>
@@ -441,20 +454,20 @@ export default function HistoryScreen() {
 
       {/* Select / Batch Delete Header */}
       <View style={styles.selectHeader}>
-        <Pressable onPress={() => { setSelectMode(!selectMode); setSelected(new Set()); }}>
+        <Pressable onPress={() => { setSelectMode(!selectMode); setSelected(new Set()); }} accessibilityLabel={selectMode ? 'Exit selection mode' : 'Enter selection mode'} accessibilityRole="button">
           <Text style={styles.selectBtn}>
             {selectMode ? '✅ Done' : '☑️ Select'}
           </Text>
         </Pressable>
         {selectMode && (
           <View style={styles.selectActions}>
-            <Pressable onPress={handleSelectAll}>
+            <Pressable onPress={handleSelectAll} accessibilityLabel={selected.size === sessions.length ? 'Deselect all' : 'Select all'} accessibilityRole="button">
               <Text style={styles.selectAllBtn}>
                 {selected.size === sessions.length ? 'Deselect All' : 'Select All'}
               </Text>
             </Pressable>
             {selected.size > 0 && (
-              <Pressable onPress={handleBatchDelete}>
+              <Pressable onPress={handleBatchDelete} accessibilityLabel={`Delete ${selected.size} selected recordings`} accessibilityRole="button">
                 <Text style={styles.batchDeleteBtn}>🗑️ Delete ({selected.size})</Text>
               </Pressable>
             )}

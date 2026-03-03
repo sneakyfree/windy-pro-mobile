@@ -233,7 +233,7 @@ export default function SubscriptionScreen() {
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
             {/* Header */}
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                <Pressable onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
                     <Text style={styles.backText}>← Back</Text>
                 </Pressable>
             </View>
@@ -297,6 +297,9 @@ export default function SubscriptionScreen() {
                             ]}
                             onPress={() => handlePurchase(plan)}
                             disabled={isCurrentTier || purchasing === plan.id}
+                            accessibilityLabel={isCurrentTier ? `${plan.name} is your current plan` : `Purchase ${plan.name} for ${plan.price}`}
+                            accessibilityRole="button"
+                            accessibilityState={{ disabled: isCurrentTier || purchasing === plan.id }}
                         >
                             <Text style={[
                                 styles.ctaText,
@@ -315,6 +318,8 @@ export default function SubscriptionScreen() {
             <Pressable
                 style={styles.comparisonToggle}
                 onPress={() => setShowComparison(!showComparison)}
+                accessibilityLabel={showComparison ? 'Hide feature comparison table' : 'Show feature comparison table'}
+                accessibilityRole="button"
             >
                 <Text style={styles.comparisonToggleText}>
                     {showComparison ? '▼ Hide' : '▶ Show'} Feature Comparison
@@ -349,6 +354,9 @@ export default function SubscriptionScreen() {
                 style={[styles.restoreButton, restoring && { opacity: 0.6 }]}
                 onPress={handleRestore}
                 disabled={restoring}
+                accessibilityLabel={restoring ? 'Restoring purchases' : 'Restore previous purchase'}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: restoring }}
             >
                 <Text style={styles.restoreText}>
                     {restoring ? '⏳ Restoring...' : '🔑 Restore Purchase'}
