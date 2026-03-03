@@ -225,7 +225,11 @@ export default function SettingsScreen() {
             valueColor={settings.licenseTier === 'free' ? colors.textTertiary : colors.accent}
           />
           {settings.licenseTier === 'free' && (
-            <Pressable style={styles.upgradeButton} onPress={handleUpgrade}>
+            <Pressable style={styles.upgradeButton} onPress={handleUpgrade}
+              accessibilityLabel="Upgrade to Pro for $49"
+              accessibilityRole="button"
+              accessibilityHint="Opens subscription page"
+            >
               <Text style={styles.upgradeText}>⚡ Upgrade to Pro — $49</Text>
             </Pressable>
           )}
@@ -233,10 +237,14 @@ export default function SettingsScreen() {
 
         {/* Voice Engine */}
         <SettingsSection title="Voice Engine">
-          <Pressable style={styles.navRow} onPress={() => setEnginePickerVisible(true)}>
+          <Pressable style={styles.navRow} onPress={() => setEnginePickerVisible(true)}
+            accessibilityLabel={`Current engine: ${settings.selectedEngine || 'Auto'}`}
+            accessibilityRole="button"
+            accessibilityHint="Opens engine selection"
+          >
             <Text style={styles.navRowLabel}>Current Engine</Text>
             <Text style={styles.rowValue}>{settings.selectedEngine || 'Auto'}</Text>
-            <Text style={styles.chevron}>›</Text>
+            <Text style={styles.chevron} importantForAccessibility="no">›</Text>
           </Pressable>
           <SettingsToggle label="Auto-select best engine" value={settings.windyTuneAutoSelect} onToggle={settings.setWindyTuneAutoSelect} />
           <SettingsToggle label="Cloud fallback" subtitle="Use cloud if device struggles" value={settings.cloudFallbackEnabled} onToggle={settings.setCloudFallbackEnabled} />
@@ -329,17 +337,23 @@ export default function SettingsScreen() {
 
         {/* Features */}
         <SettingsSection title="Features">
-          <Pressable style={styles.navRow} onPress={() => router.push('/translate')}>
+          <Pressable style={styles.navRow} onPress={() => router.push('/translate')}
+            accessibilityLabel="Windy Translate" accessibilityRole="button" accessibilityHint="Opens translation screen"
+          >
             <Text style={styles.navRowLabel}>🌐 Windy Translate</Text>
-            <Text style={styles.chevron}>›</Text>
+            <Text style={styles.chevron} importantForAccessibility="no">›</Text>
           </Pressable>
-          <Pressable style={styles.navRow} onPress={() => router.push('/clone')}>
+          <Pressable style={styles.navRow} onPress={() => router.push('/clone')}
+            accessibilityLabel="Voice Clone" accessibilityRole="button" accessibilityHint="Opens voice clone progress"
+          >
             <Text style={styles.navRowLabel}>🧬 Voice Clone</Text>
-            <Text style={styles.chevron}>›</Text>
+            <Text style={styles.chevron} importantForAccessibility="no">›</Text>
           </Pressable>
-          <Pressable style={styles.navRow} onPress={() => router.push('/video')}>
+          <Pressable style={styles.navRow} onPress={() => router.push('/video')}
+            accessibilityLabel="Video Recorder" accessibilityRole="button" accessibilityHint="Opens video recording screen"
+          >
             <Text style={styles.navRowLabel}>📹 Video Recorder</Text>
-            <Text style={styles.chevron}>›</Text>
+            <Text style={styles.chevron} importantForAccessibility="no">›</Text>
           </Pressable>
         </SettingsSection>
 
@@ -397,12 +411,17 @@ export default function SettingsScreen() {
           ) : (
             <SettingsRow label="Calculating..." value="" />
           )}
-          <Pressable style={styles.storageAction} onPress={handleClearCache}>
+          <Pressable style={styles.storageAction} onPress={handleClearCache}
+            accessibilityLabel={clearingCache ? 'Clearing cache' : `Clear cache, ${formatBytes(cacheSize)}`}
+            accessibilityRole="button"
+          >
             <Text style={styles.storageActionText}>
               {clearingCache ? '⏳ Clearing...' : `🗑 Clear Cache (${formatBytes(cacheSize)})`}
             </Text>
           </Pressable>
-          <Pressable style={styles.storageAction} onPress={handleExportAllData}>
+          <Pressable style={styles.storageAction} onPress={handleExportAllData}
+            accessibilityLabel="Export all data" accessibilityRole="button"
+          >
             <Text style={styles.storageActionText}>📦 Export All Data</Text>
           </Pressable>
         </SettingsSection>
@@ -534,7 +553,11 @@ export default function SettingsScreen() {
 
         {/* Danger Zone */}
         <SettingsSection title="Danger Zone">
-          <Pressable style={styles.dangerRow} onPress={handleDeleteAccount}>
+          <Pressable style={styles.dangerRow} onPress={handleDeleteAccount}
+            accessibilityLabel="Delete account and all data"
+            accessibilityRole="button"
+            accessibilityHint="Permanently removes your account, recordings, and settings"
+          >
             <Text style={styles.dangerText}>🗑 Delete Account & Data</Text>
           </Pressable>
         </SettingsSection>
@@ -559,8 +582,8 @@ export default function SettingsScreen() {
 
 function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={styles.section} accessibilityRole="summary">
+      <Text style={styles.sectionTitle} accessibilityRole="header">{title}</Text>
       <View style={styles.sectionContent}>{children}</View>
     </View>
   );
@@ -570,10 +593,10 @@ function SettingsRow({ label, value, valueColor, chevron }: {
   label: string; value?: string; valueColor?: string; chevron?: boolean;
 }) {
   return (
-    <View style={styles.row}>
+    <View style={styles.row} accessibilityLabel={value ? `${label}: ${value}` : label}>
       <Text style={styles.rowLabel}>{label}</Text>
       {value !== undefined && <Text style={[styles.rowValue, valueColor ? { color: valueColor } : undefined]}>{value}</Text>}
-      {chevron && <Text style={styles.chevron}>›</Text>}
+      {chevron && <Text style={styles.chevron} importantForAccessibility="no">›</Text>}
     </View>
   );
 }
@@ -582,12 +605,16 @@ function SettingsToggle({ label, subtitle, value, onToggle }: {
   label: string; subtitle?: string; value: boolean; onToggle: (v: boolean) => void;
 }) {
   return (
-    <View style={styles.row}>
+    <View style={styles.row} accessible={true} accessibilityRole="switch" accessibilityState={{ checked: value }}
+      accessibilityLabel={subtitle ? `${label}, ${subtitle}` : label}
+    >
       <View style={styles.rowLabelContainer}>
         <Text style={styles.rowLabel}>{label}</Text>
         {subtitle && <Text style={styles.rowSubtitle}>{subtitle}</Text>}
       </View>
-      <Switch value={value} onValueChange={onToggle} trackColor={{ false: colors.surfaceLight, true: colors.accent }} thumbColor={colors.textPrimary} />
+      <Switch value={value} onValueChange={onToggle} trackColor={{ false: colors.surfaceLight, true: colors.accent }} thumbColor={colors.textPrimary}
+        accessibilityLabel={label}
+      />
     </View>
   );
 }

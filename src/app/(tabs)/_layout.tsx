@@ -57,6 +57,7 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '🎤 Record',
+          tabBarAccessibilityLabel: 'Record tab. Tap to record voice to text.',
         }}
       />
       <Tabs.Screen
@@ -66,6 +67,7 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '📷 Camera',
+          tabBarAccessibilityLabel: 'Camera tab. Translate text using your camera.',
         }}
       />
       <Tabs.Screen
@@ -74,6 +76,7 @@ export default function TabLayout() {
           title: 'History',
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '📋 History',
+          tabBarAccessibilityLabel: 'History tab. View past recordings and translations.',
         }}
       />
       <Tabs.Screen
@@ -82,6 +85,7 @@ export default function TabLayout() {
           title: 'Settings',
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '⚙️ Settings',
+          tabBarAccessibilityLabel: 'Settings tab. Configure your preferences.',
         }}
       />
     </Tabs>

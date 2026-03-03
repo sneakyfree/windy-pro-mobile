@@ -27,6 +27,7 @@ import { localStorageService } from '@/services/storage-local';
 import { videoCaptureService } from '@/services/video-capture';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { useHaptic } from '@/hooks/useHaptic';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import type { Session } from '@/types';
 
 const WAVEFORM_BARS = 40;
@@ -50,6 +51,7 @@ export default function RecordScreen() {
     const { fullText, clear: clearTranscript, addSegment } = useTranscriptStore();
     const { licenseTier } = useSettingsStore();
     const { requireFeature, getRecordingLimit } = useFeatureGate();
+    const { reduceMotion, animDuration } = useReducedMotion();
 
     const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
     const avgLevelRef = useRef<number>(0);
@@ -105,12 +107,12 @@ export default function RecordScreen() {
                 Animated.sequence([
                     Animated.timing(pulseAnim, {
                         toValue: 1,
-                        duration: 600,
+                        duration: animDuration(600),
                         useNativeDriver: true,
                     }),
                     Animated.timing(pulseAnim, {
                         toValue: 0.4,
-                        duration: 600,
+                        duration: animDuration(600),
                         useNativeDriver: true,
                     }),
                 ])

@@ -31,6 +31,9 @@
         "NSLocationWhenInUseUsageDescription": "Windy Pro tags recordings with location for easy searching. Location data stays on your device.",
         "NSPhotoLibraryUsageDescription": "Windy Pro saves exported recordings and translations to your photo library.",
         "NSPhotoLibraryAddUsageDescription": "Windy Pro saves exported recordings to your photo library.",
+        "NSFaceIDUsageDescription": "Windy Pro uses Face ID to protect your recordings and settings.",
+        "NSLocalNetworkUsageDescription": "Windy Pro discovers local storage nodes to sync your recordings securely.",
+        "NSUserTrackingUsageDescription": "Windy Pro does not track you across apps. This permission is never requested.",
         "UIBackgroundModes": [
           "audio",
           "fetch"
