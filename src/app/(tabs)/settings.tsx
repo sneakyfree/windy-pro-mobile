@@ -5,7 +5,7 @@
  * RP-8.5: Real clone progress
  * Navigation features, translation prefs, voice selection
  */
-import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert, TextInput } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
@@ -28,6 +28,8 @@ import LanguagePickerSheet from '@/components/LanguagePickerSheet';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 import type { StorageUsage } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { syncManager } from '@/services/sync-manager';
+import { getTranscriptionServerUrl, setTranscriptionServerUrl } from '@/services/transcription';
 
 const AUDIO_QUALITY_PRESETS = [
   { id: 'low' as const, label: '🟢 Low', desc: '16 kHz · small files', color: '#22c55e' },
@@ -50,6 +52,9 @@ export default function SettingsScreen() {
   const [packs, setPacks] = useState<LanguagePack[]>([]);
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
   const [targetLangPickerVisible, setTargetLangPickerVisible] = useState(false);
+  const [serverUrl, setServerUrl] = useState(getTranscriptionServerUrl());
+
+  const SERVER_URL_KEY = 'windy-server-url';
 
   useFocusEffect(
     useCallback(() => {
@@ -537,6 +542,43 @@ export default function SettingsScreen() {
             </Pressable>
           </SettingsSection>
 
+          {/* Server Config */}
+          <SettingsSection title="Server">
+            <View style={styles.serverUrlRow}>
+              <Text style={styles.settingLabel}>Server URL</Text>
+              <TextInput
+                style={styles.serverUrlInput}
+                value={serverUrl}
+                onChangeText={setServerUrl}
+                onEndEditing={async () => {
+                  const url = serverUrl.trim() || 'https://windypro.thewindstorm.uk';
+                  setServerUrl(url);
+                  setTranscriptionServerUrl(url);
+                  await AsyncStorage.setItem(SERVER_URL_KEY, url);
+                  feedbackService.success();
+                  Alert.alert('Server Updated', `Transcription server set to:\n${url}`);
+                }}
+                placeholder="https://windypro.thewindstorm.uk"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <Pressable
+                style={styles.serverResetBtn}
+                onPress={async () => {
+                  const def = 'https://windypro.thewindstorm.uk';
+                  setServerUrl(def);
+                  setTranscriptionServerUrl(def);
+                  await AsyncStorage.setItem(SERVER_URL_KEY, def);
+                  feedbackService.tap();
+                }}
+              >
+                <Text style={styles.serverResetText}>Reset</Text>
+              </Pressable>
+            </View>
+          </SettingsSection>
+
           {/* About */}
           <SettingsSection title="About">
             <Pressable style={styles.navRow} onPress={() => router.push('/appstore')}>
@@ -721,5 +763,17 @@ const styles = StyleSheet.create({
 
   // Voice selection
   voiceRowActive: { backgroundColor: 'rgba(163, 230, 53, 0.06)' },
+  // Server URL
+  serverUrlRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  settingLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '600', marginBottom: 4 },
+  serverUrlInput: {
+    backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+    fontSize: 14, color: colors.textPrimary, borderWidth: 1, borderColor: colors.border,
+  },
+  serverResetBtn: {
+    alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12,
+    backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border,
+  },
+  serverResetText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
   voiceCheck: { fontSize: 16, color: colors.accent, fontWeight: '700' },
 });

@@ -1,7 +1,7 @@
 /**
  * 🧬 M3.2 — Transcription Service
- * RP-2.2: Cloud WebSocket with real audio chunk sending
- * Routes audio to on-device (whisper.rn) or cloud (WebSocket)
+ * RP-2.2: Cloud transcription via HTTP POST (primary) + WebSocket (streaming)
+ * Routes audio to on-device (whisper.rn) or cloud
  */
 import * as FileSystem from 'expo-file-system';
 import type {
@@ -11,7 +11,19 @@ import type {
 } from '@/types';
 import { ENGINE_REGISTRY } from './windy-tune';
 
-const CLOUD_WS_URL = 'wss://windypro.thewindstorm.uk/ws/transcribe';
+/** Default server URL — configurable via Settings */
+let SERVER_URL = 'https://windypro.thewindstorm.uk';
+
+/**
+ * Set the transcription server URL (called from Settings)
+ */
+export function setTranscriptionServerUrl(url: string) {
+    SERVER_URL = url.replace(/\/+$/, ''); // strip trailing slash
+}
+
+export function getTranscriptionServerUrl(): string {
+    return SERVER_URL;
+}
 
 class TranscriptionService {
     private activeEngine: EngineId = 'cloud-standard';
@@ -62,10 +74,7 @@ class TranscriptionService {
         uri: string,
         engine: EngineId
     ): Promise<TranscriptSegment[]> {
-        // console.log(`[Transcription] Local transcription with ${engine}: ${uri}`);
-
         try {
-            // Use WhisperManager for model loading + transcription
             const { whisperManager } = require('./whisper-manager');
             await whisperManager.loadModel(engine);
 
@@ -84,12 +93,115 @@ class TranscriptionService {
     }
 
     /**
-     * RP-2.2: Cloud transcription via WebSocket with REAL audio chunks
+     * Cloud transcription — tries HTTP POST first (reliable), WebSocket second (streaming)
      */
     private async cloudTranscribe(
         uri: string,
         engine: EngineId
     ): Promise<TranscriptSegment[]> {
+        // Primary: HTTP POST (most reliable for one-shot transcription)
+        try {
+            const segments = await this.httpTranscribe(uri, engine);
+            if (segments.length > 0) return segments;
+        } catch (httpErr) {
+            console.warn('[Transcription] HTTP POST failed:', httpErr);
+        }
+
+        // Fallback: WebSocket streaming
+        try {
+            const segments = await this.wsTranscribe(uri, engine);
+            if (segments.length > 0) return segments;
+        } catch (wsErr) {
+            console.warn('[Transcription] WebSocket failed:', wsErr);
+        }
+
+        // Both failed — throw so the caller can handle it
+        throw new Error('Cloud transcription failed — check your internet connection and server URL');
+    }
+
+    /**
+     * HTTP POST transcription — upload audio file, get transcript back
+     * Most reliable method for complete file transcription
+     */
+    private async httpTranscribe(
+        uri: string,
+        engine: EngineId
+    ): Promise<TranscriptSegment[]> {
+        const endpoint = `${SERVER_URL}/api/v1/transcribe`;
+
+        // Get auth token
+        const token = (() => {
+            try {
+                return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || '';
+            } catch { return ''; }
+        })();
+
+        const response = await FileSystem.uploadAsync(endpoint, uri, {
+            httpMethod: 'POST',
+            uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+            fieldName: 'audio',
+            headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            parameters: {
+                engine,
+                language: 'auto',
+            },
+        });
+
+        if (response.status < 200 || response.status >= 300) {
+            throw new Error(`HTTP transcription failed: ${response.status}`);
+        }
+
+        const data = JSON.parse(response.body);
+
+        // Parse response — support multiple response formats
+        const rawSegments: any[] = data.segments || data.results || [];
+        const fullText: string = data.text || data.transcript || '';
+
+        const segments: TranscriptSegment[] = rawSegments.length > 0
+            ? rawSegments.map((seg: any, i: number) => {
+                const segment: TranscriptSegment = {
+                    id: `seg-http-${Date.now()}-${i}`,
+                    text: seg.text || seg.transcript || '',
+                    startTime: seg.start ?? seg.startTime ?? 0,
+                    endTime: seg.end ?? seg.endTime ?? 0,
+                    confidence: seg.confidence ?? 0.9,
+                    isPartial: false,
+                    speakerId: null,
+                    language: seg.language || data.language || 'en',
+                };
+                this.onSegment?.(segment);
+                return segment;
+            })
+            : fullText ? [{
+                id: `seg-http-${Date.now()}-0`,
+                text: fullText,
+                startTime: 0,
+                endTime: 0,
+                confidence: data.confidence ?? 0.9,
+                isPartial: false,
+                speakerId: null,
+                language: data.language || 'en',
+            }] : [];
+
+        // Emit single-segment if only fullText was returned
+        if (segments.length === 1 && rawSegments.length === 0) {
+            this.onSegment?.(segments[0]);
+        }
+
+        return segments;
+    }
+
+    /**
+     * WebSocket streaming transcription — sends audio chunks in real-time
+     */
+    private async wsTranscribe(
+        uri: string,
+        engine: EngineId
+    ): Promise<TranscriptSegment[]> {
+        const wsUrl = `${SERVER_URL.replace(/^http/, 'ws')}/ws/transcribe`;
+
         return new Promise<TranscriptSegment[]>(async (resolve, reject) => {
             const segments: TranscriptSegment[] = [];
             let resolved = false;
@@ -103,7 +215,7 @@ class TranscriptionService {
             }, 30000);
 
             try {
-                this.ws = new WebSocket(CLOUD_WS_URL);
+                this.ws = new WebSocket(wsUrl);
 
                 this.ws.onopen = async () => {
                     try {
@@ -146,7 +258,6 @@ class TranscriptionService {
 
                         // Send stop signal
                         this.ws?.send(JSON.stringify({ type: 'stop' }));
-                        // console.log('[Transcription] Audio sent, waiting for transcription...');
                     } catch (err) {
                         if (!resolved) {
                             resolved = true;
@@ -214,7 +325,6 @@ class TranscriptionService {
     /** Switch to cloud processing (fallback) */
     async switchToCloud(): Promise<void> {
         this.activeEngine = 'cloud-standard';
-        // console.log('[Transcription] Switched to cloud processing');
     }
 
     /** Switch to a local engine */
@@ -224,7 +334,6 @@ class TranscriptionService {
             throw new Error(`${engine} is not an on-device engine`);
         }
         this.activeEngine = engine;
-        // console.log(`[Transcription] Switched to local engine: ${engine}`);
     }
 
     /** Cancel active transcription */
@@ -244,3 +353,4 @@ class TranscriptionService {
 }
 
 export const transcriptionService = new TranscriptionService();
+

@@ -53,7 +53,7 @@ export default function RecordScreen() {
         toggleMedia,
     } = useRecordingStore();
 
-    const { fullText, clear: clearTranscript, addSegment } = useTranscriptStore();
+    const { fullText, clear: clearTranscript, addSegment, setSegments } = useTranscriptStore();
     const { licenseTier } = useSettingsStore();
     const { requireFeature, getRecordingLimit } = useFeatureGate();
     const { reduceMotion, animDuration } = useReducedMotion();
@@ -82,6 +82,7 @@ export default function RecordScreen() {
 
     // File size tracking
     const [recordingFileSize, setRecordingFileSize] = useState(0);
+    const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
 
     // AppState ref to track recording state for background handler
     const recordingStateRef = useRef(state);
@@ -306,14 +307,21 @@ export default function RecordScreen() {
             // console.log(`[Record] Quality: ${quality.score}/100 (${quality.label})`);
 
             // RP-2.3: Transcribe the recording
+            setTranscriptionError(null);
             transcriptionService.onSegment = (segment) => {
                 addSegment(segment);
             };
 
             try {
-                await transcriptionService.transcribeFile(result.uri);
-            } catch (transcribeErr) {
+                const segments = await transcriptionService.transcribeFile(result.uri);
+                // If onSegment wasn't called (e.g. HTTP mode returned all at once)
+                // make sure the store has the segments
+                if (segments.length > 0 && useTranscriptStore.getState().segments.length === 0) {
+                    setSegments(segments);
+                }
+            } catch (transcribeErr: any) {
                 console.warn('[Record] Transcription failed:', transcribeErr);
+                setTranscriptionError(transcribeErr?.message || 'Transcription failed — check your connection');
             }
 
             // Save session to local database
@@ -736,7 +744,15 @@ export default function RecordScreen() {
                     style={styles.transcriptContainer}
                     contentContainerStyle={styles.transcriptContent}
                 >
-                    {fullText ? (
+                    {transcriptionError ? (
+                        <View style={styles.transcriptErrorBox}>
+                            <Text style={styles.transcriptErrorEmoji}>⚠️</Text>
+                            <Text style={styles.transcriptErrorText}>{transcriptionError}</Text>
+                            <Text style={styles.transcriptErrorHint}>
+                                Check Settings → Server URL is reachable
+                            </Text>
+                        </View>
+                    ) : fullText ? (
                         <Text style={styles.transcriptText} selectable>{fullText}</Text>
                     ) : (
                         <Text style={styles.transcriptPlaceholder}>
@@ -1025,6 +1041,24 @@ const styles = StyleSheet.create({
         color: colors.textTertiary,
         textAlign: 'center',
         paddingTop: spacing.xl,
+    },
+    transcriptErrorBox: {
+        alignItems: 'center',
+        paddingTop: spacing.lg,
+        paddingHorizontal: spacing.md,
+        gap: 8,
+    },
+    transcriptErrorEmoji: { fontSize: 32 },
+    transcriptErrorText: {
+        fontSize: 14,
+        color: '#ef4444',
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    transcriptErrorHint: {
+        fontSize: 12,
+        color: colors.textTertiary,
+        textAlign: 'center',
     },
 
     // Action buttons
