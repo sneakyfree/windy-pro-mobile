@@ -35,11 +35,12 @@ jest.mock('../storage-local', () => ({
     },
 }));
 
-const mockNetworkStatus = { isConnected: true, isWifi: true };
+let mockIsOnline = true;
 jest.mock('../network-monitor', () => ({
     networkMonitor: {
-        getStatus: () => mockNetworkStatus,
-        subscribe: jest.fn(() => jest.fn()),
+        get isOnline() { return mockIsOnline; },
+        get status() { return mockIsOnline ? 'online' : 'offline'; },
+        onStatusChange: jest.fn(() => jest.fn()),
     },
 }));
 
@@ -68,15 +69,23 @@ import { cloudSyncService } from '../cloud-sync';
 const mockSession = {
     id: 'session-1',
     createdAt: '2026-03-01T00:00:00Z',
-    updatedAt: '2026-03-01T12:00:00Z',
+    syncedAt: '2026-03-01T12:00:00Z',
     duration: 120,
-    previewText: 'Hello world test',
-    transcription: 'Hello world test transcription',
-    source: 'microphone',
-    language: 'en',
-    quality: { score: 85, label: 'good' as const },
-    synced: false,
+    transcript: 'Hello world test transcription',
+    segments: [],
     audioFilePath: '/mock/audio.wav',
+    videoFilePath: null,
+    quality: { score: 85, label: 'good' as const, snrDb: 20, speechRatio: 0.8, hasClipping: false, sampleRate: 44100 },
+    engineUsed: 'cloud',
+    source: 'record' as const,
+    languages: ['en'],
+    mediaCapture: { audio: true, video: false, text: true },
+    fileSize: 1024,
+    synced: false,
+    cloneUsable: false,
+    tags: [],
+    location: null,
+    deviceModel: 'test',
 };
 
 const mockCloudRecording = {
@@ -98,7 +107,7 @@ describe('CloudSyncService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockIsAuthenticated.mockReturnValue(true);
-        mockNetworkStatus.isConnected = true;
+        mockIsOnline = true;
     });
 
     describe('Upload', () => {
@@ -120,7 +129,7 @@ describe('CloudSyncService', () => {
         });
 
         it('queues upload when offline', async () => {
-            mockNetworkStatus.isConnected = false;
+            mockIsOnline = false;
 
             const result = await cloudSyncService.uploadRecording('session-2');
 
@@ -181,8 +190,8 @@ describe('CloudSyncService', () => {
         it('keeps local version when local is newer', async () => {
             mockGetSession.mockResolvedValue({
                 ...mockSession,
-                updatedAt: '2026-03-02T00:00:00Z',
-                transcription: 'Updated local version',
+                syncedAt: '2026-03-02T00:00:00Z',
+                transcript: 'Updated local version',
             });
 
             const result = await cloudSyncService.resolveConflict('session-1', {
@@ -197,8 +206,8 @@ describe('CloudSyncService', () => {
         it('keeps cloud version when cloud is newer', async () => {
             mockGetSession.mockResolvedValue({
                 ...mockSession,
-                updatedAt: '2026-03-01T00:00:00Z',
-                transcription: 'Old local version',
+                syncedAt: '2026-03-01T00:00:00Z',
+                transcript: 'Old local version',
             });
 
             const result = await cloudSyncService.resolveConflict('session-1', {
@@ -222,11 +231,11 @@ describe('CloudSyncService', () => {
     describe('Offline Queue', () => {
         it('processes queue when coming back online', async () => {
             // Queue an item
-            mockNetworkStatus.isConnected = false;
+            mockIsOnline = false;
             await cloudSyncService.uploadRecording('queue-test');
 
             // Come back online
-            mockNetworkStatus.isConnected = true;
+            mockIsOnline = true;
             mockGetSession.mockResolvedValue({ ...mockSession, id: 'queue-test' });
             mockUpload.mockResolvedValue({ success: true });
 
