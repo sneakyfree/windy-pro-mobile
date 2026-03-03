@@ -681,6 +681,8 @@ export default function RecordScreen() {
                             style={styles.playbackBarOuter}
                             onLayout={(e) => { playbackBarWidth.current = e.nativeEvent.layout.width; }}
                             onPress={(e) => handleScrub(e.nativeEvent.locationX)}
+                            accessibilityLabel={`Playback position ${formatDuration(playbackPosition / 1000)} of ${formatDuration(playbackDuration / 1000)}`}
+                            accessibilityRole="adjustable"
                         >
                             <View style={styles.playbackBarBg}>
                                 <View
