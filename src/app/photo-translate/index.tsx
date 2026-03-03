@@ -16,7 +16,7 @@ import { feedbackService } from '@/services/feedback';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 const OCR_API = 'https://windypro.thewindstorm.uk/api/v1/ocr';
-const TRANSLATE_API = 'https://windypro.thewindstorm.uk/api/v1/translate';
+const TRANSLATE_API = 'https://windypro.thewindstorm.uk/api/v1/translate/text';
 
 interface DetectedText {
     text: string;

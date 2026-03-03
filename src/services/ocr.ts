@@ -86,7 +86,7 @@ class OcrService {
         targetLang: string
     ): Promise<OcrTranslation> {
         try {
-            const response = await fetch('https://windypro.thewindstorm.uk/api/ocr/translate', {
+            const response = await fetch('https://windypro.thewindstorm.uk/api/v1/ocr/translate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
