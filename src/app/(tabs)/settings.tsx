@@ -99,7 +99,7 @@ export default function SettingsScreen() {
 
   // RP-5.1: Upgrade button → navigate to subscription paywall
   const handleUpgrade = async () => {
-    await feedbackService.tap();
+    feedbackService.tap().catch(() => {});
     router.push('/subscription');
   };
 
@@ -123,7 +123,7 @@ export default function SettingsScreen() {
                 }
               }
               setCacheSize(0);
-              await feedbackService.success();
+              feedbackService.success().catch(() => {});
               Alert.alert('Done', 'Cache cleared successfully.');
             } catch {
               Alert.alert('Error', 'Could not clear cache.');
@@ -164,7 +164,7 @@ export default function SettingsScreen() {
           dialogTitle: 'Export All Data',
         });
       }
-      await feedbackService.success();
+      feedbackService.success().catch(() => {});
     } catch {
       Alert.alert('Export Failed', 'Could not export data.');
     }
@@ -196,7 +196,7 @@ export default function SettingsScreen() {
                       settings.setCloneTrackingEnabled(false);
                       // Clear local storage
                       await localStorageService.initialize(); // re-init clears
-                      await feedbackService.success();
+                      feedbackService.success().catch(() => {});
                       Alert.alert('Account Deleted', 'Your data has been removed.');
                     } catch {
                       Alert.alert('Error', 'Could not complete account deletion.');

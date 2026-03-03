@@ -9,6 +9,7 @@ import { Audio } from 'expo-av';
 import { Share } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { colors, spacing, borderRadius } from '@/theme';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { localStorageService } from '@/services/storage-local';
 import { feedbackService } from '@/services/feedback';
 import TranscriptionViewer from '@/components/TranscriptionViewer';

@@ -13,6 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
 import { colors, spacing, borderRadius } from '@/theme';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { useHaptic } from '@/hooks/useHaptic';
 

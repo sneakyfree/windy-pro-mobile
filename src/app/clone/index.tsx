@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { colors, spacing, borderRadius } from '@/theme';
 import { cloneTracker, CloneProgress } from '@/services/clone-tracker';
 import { feedbackService } from '@/services/feedback';
@@ -111,7 +112,7 @@ export default function CloneDashboardScreen() {
                     try {
                         await localStorageService.deleteSession(id);
                         setSamples(prev => prev.filter(s => s.id !== id));
-                        await feedbackService.tap();
+                        feedbackService.tap().catch(() => {});
                     } catch (err) {
                         console.warn('[Clone] Delete failed:', err);
                     }
@@ -160,7 +161,7 @@ export default function CloneDashboardScreen() {
                 });
             }, 1000);
 
-            await feedbackService.tap();
+            feedbackService.tap().catch(() => {});
         } catch (err) {
             console.error('[Clone] Recording start failed:', err);
             Alert.alert('Recording Error', 'Could not start recording. Please try again.');
@@ -225,7 +226,7 @@ export default function CloneDashboardScreen() {
                     await AsyncStorage.setItem(CLONE_VOICE_KEY, data.voice_id);
                     setCloneVoiceId(data.voice_id);
                     setCloneUploading(false);
-                    await feedbackService.success();
+                    feedbackService.success().catch(() => {});
                     Alert.alert('🎉 Clone Ready!', 'Your voice clone has been created and saved.');
                 } else if (data.job_id) {
                     // Need to poll for processing
@@ -257,7 +258,7 @@ export default function CloneDashboardScreen() {
                     await AsyncStorage.setItem(CLONE_VOICE_KEY, data.voice_id);
                     setCloneVoiceId(data.voice_id);
                     setCloneProcessing(false);
-                    await feedbackService.success();
+                    feedbackService.success().catch(() => {});
                     Alert.alert('🎉 Clone Ready!', 'Your voice clone has been processed and saved.');
                 } else if (data.status === 'failed') {
                     clearInterval(poll);
@@ -277,7 +278,7 @@ export default function CloneDashboardScreen() {
 
     const handleTestClone = async () => {
         setTestPlaying(true);
-        await feedbackService.success();
+        feedbackService.success().catch(() => {});
         // Simulate clone preview with a brief delay
         setTimeout(() => {
             setTestPlaying(false);
@@ -551,7 +552,7 @@ export default function CloneDashboardScreen() {
                             return;
                         }
                         setShowTestModal(true);
-                        await feedbackService.success();
+                        feedbackService.success().catch(() => {});
                     }}
                 >
                     <Text style={styles.cloneCtaEmoji}>🎙️</Text>

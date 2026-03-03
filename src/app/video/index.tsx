@@ -9,6 +9,7 @@ import { CameraView, Camera } from 'expo-camera';
 import { Audio, Video, ResizeMode } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { colors, spacing, borderRadius } from '@/theme';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { videoCaptureService } from '@/services/video-capture';
 import { audioCaptureService, scoreAudioQuality } from '@/services/audio-capture';
 import { feedbackService } from '@/services/feedback';
@@ -95,7 +96,7 @@ export default function VideoRecordScreen() {
     const handleStartRecording = async () => {
         try {
             const sessionId = `video-${Date.now()}`;
-            await feedbackService.recordStart();
+            feedbackService.recordStart().catch(() => {});
 
             // Reset state
             setRecordedVideoUri(null);
@@ -142,7 +143,7 @@ export default function VideoRecordScreen() {
         } catch (err: any) {
             console.error('[Video] Start failed:', err);
             setError();
-            await feedbackService.error();
+            feedbackService.error().catch(() => {});
             Alert.alert('Recording Error', err.message || 'Could not start recording.');
         }
     };
@@ -153,7 +154,7 @@ export default function VideoRecordScreen() {
             durationInterval.current = null;
         }
 
-        await feedbackService.recordStop();
+        feedbackService.recordStop().catch(() => {});
         setRecordingStopped();
 
         try {
@@ -220,7 +221,7 @@ export default function VideoRecordScreen() {
             }
         } catch (err: any) {
             console.error('[Video] Stop failed:', err);
-            await feedbackService.error();
+            feedbackService.error().catch(() => {});
         }
 
         reset();

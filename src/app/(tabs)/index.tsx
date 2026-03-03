@@ -159,7 +159,7 @@ export default function RecordScreen() {
                 const newSessionId = `session-${Date.now()}`;
 
                 // Haptic feedback
-                await feedbackService.recordStart();
+                feedbackService.recordStart().catch(() => {});
 
                 // Reset waveform
                 waveformLevels.current = new Array(WAVEFORM_BARS).fill(0);
@@ -232,7 +232,7 @@ export default function RecordScreen() {
             } catch (err: any) {
                 console.error('[Record] Start failed:', err);
                 setError();
-                await feedbackService.error();
+                feedbackService.error().catch(() => {});
                 Alert.alert(
                     'Recording Error',
                     err.message || 'Could not start recording. Check microphone permissions.'
@@ -254,7 +254,7 @@ export default function RecordScreen() {
         }
 
         // Haptic feedback
-        await feedbackService.recordStop();
+        feedbackService.recordStop().catch(() => {});
 
         // Update state to processing
         setRecordingStopped();
@@ -328,7 +328,7 @@ export default function RecordScreen() {
 
         } catch (err: any) {
             console.error('[Record] Stop failed:', err);
-            await feedbackService.error();
+            feedbackService.error().catch(() => {});
             Alert.alert(
                 'Recording Error',
                 'Something went wrong while stopping the recording. Your audio file may still be saved.'
@@ -389,7 +389,7 @@ export default function RecordScreen() {
      */
     const handleCopy = async () => {
         await Clipboard.setStringAsync(fullText);
-        await feedbackService.success();
+        feedbackService.success().catch(() => {});
         Alert.alert('Copied', 'Transcript copied to clipboard');
     };
 
@@ -397,7 +397,7 @@ export default function RecordScreen() {
      * RP-1.3: Share transcript via system share sheet
      */
     const handleShare = async () => {
-        await feedbackService.tap();
+        feedbackService.tap().catch(() => {});
         await Share.share({
             message: fullText,
             title: 'Windy Pro Transcript',
@@ -435,10 +435,10 @@ export default function RecordScreen() {
         };
         try {
             await localStorageService.saveSession(session);
-            await feedbackService.success();
+            feedbackService.success().catch(() => {});
             Alert.alert('Saved', 'Session saved to history');
         } catch (err) {
-            await feedbackService.error();
+            feedbackService.error().catch(() => {});
             Alert.alert('Save Failed', 'Could not save session.');
         }
     };
@@ -502,7 +502,7 @@ export default function RecordScreen() {
                 <View style={styles.toggleRow}>
                     <Pressable
                         style={[styles.toggle, mediaCapture.audio && styles.toggleActive]}
-                        onPress={async () => { await feedbackService.tap(); toggleMedia('audio'); }}
+                        onPress={async () => { feedbackService.tap().catch(() => {}); toggleMedia('audio'); }}
                         accessibilityLabel={`Audio capture ${mediaCapture.audio ? 'on' : 'off'}`}
                         accessibilityRole="switch"
                     >
@@ -515,7 +515,7 @@ export default function RecordScreen() {
                         style={[styles.toggle, mediaCapture.video && styles.toggleActive]}
                         onPress={async () => {
                             if (!requireFeature('video-capture', 'Video Capture')) return;
-                            await feedbackService.tap(); toggleMedia('video');
+                            feedbackService.tap().catch(() => {}); toggleMedia('video');
                         }}
                         accessibilityLabel={`Video capture ${mediaCapture.video ? 'on' : 'off'}`}
                         accessibilityRole="switch"
@@ -527,7 +527,7 @@ export default function RecordScreen() {
                     </Pressable>
                     <Pressable
                         style={[styles.toggle, mediaCapture.text && styles.toggleActive]}
-                        onPress={async () => { await feedbackService.tap(); toggleMedia('text'); }}
+                        onPress={async () => { feedbackService.tap().catch(() => {}); toggleMedia('text'); }}
                         accessibilityLabel={`Text transcription ${mediaCapture.text ? 'on' : 'off'}`}
                         accessibilityRole="switch"
                     >

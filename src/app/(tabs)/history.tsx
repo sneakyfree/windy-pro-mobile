@@ -168,7 +168,7 @@ export default function HistoryScreen() {
           mimeType: 'text/csv',
           dialogTitle: 'Export Translation History',
         });
-        await feedbackService.success();
+        feedbackService.success().catch(() => {});
       } else {
         Alert.alert('Export Unavailable', 'Sharing not supported on this device.');
       }
@@ -195,7 +195,7 @@ export default function HistoryScreen() {
         style: 'destructive',
         onPress: async () => {
           await localStorageService.deleteSession(id);
-          await feedbackService.success();
+          feedbackService.success().catch(() => {});
           loadSessions();
           loadStorage();
         },
@@ -241,7 +241,7 @@ export default function HistoryScreen() {
             setSelectMode(false);
             loadSessions();
             loadStorage();
-            await feedbackService.success();
+            feedbackService.success().catch(() => {});
           },
         },
       ]
@@ -269,7 +269,7 @@ export default function HistoryScreen() {
           mimeType: 'audio/wav',
           dialogTitle: 'Export Recording',
         });
-        await feedbackService.success();
+        feedbackService.success().catch(() => {});
       } else {
         Alert.alert('Export Unavailable', 'File sharing is not supported on this device.');
       }

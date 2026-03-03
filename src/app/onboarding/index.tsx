@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import { Camera } from 'expo-camera';
 import { colors, spacing, borderRadius } from '@/theme';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { detectDeviceProfile, getWindyTuneRecommendation } from '@/services/windy-tune';
 import { feedbackService } from '@/services/feedback';
@@ -75,11 +76,11 @@ export default function OnboardingScreen() {
                 'Windy Pro needs microphone access to convert your speech to text.'
             );
         }
-        await feedbackService.tap();
+        feedbackService.tap().catch(() => {});
     };
 
     const handleNext = async () => {
-        await feedbackService.tap();
+        feedbackService.tap().catch(() => {});
 
         if (currentIndex < SLIDES.length - 1) {
             // On permissions page, run WindyTune before advancing
@@ -95,7 +96,7 @@ export default function OnboardingScreen() {
             // Final step — complete onboarding
             setOnboardingComplete(true);
             analyticsService.trackScreenView('onboarding_complete');
-            await feedbackService.success();
+            feedbackService.success().catch(() => {});
             router.replace('/(tabs)');
         }
     };
@@ -135,7 +136,7 @@ export default function OnboardingScreen() {
 
                             <Pressable style={styles.permissionCard} onPress={async () => {
                                 await Camera.requestCameraPermissionsAsync();
-                                await feedbackService.tap();
+                                feedbackService.tap().catch(() => {});
                             }}>
                                 <Text style={styles.permissionEmoji}>📷</Text>
                                 <View style={styles.permissionTextCol}>

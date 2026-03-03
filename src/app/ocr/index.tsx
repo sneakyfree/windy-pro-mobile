@@ -7,6 +7,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { colors, spacing, borderRadius } from '@/theme';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { ocrService, OcrTranslation } from '@/services/ocr';
 import { TIER_1_LANGUAGES } from '@/services/translation';
 import { feedbackService } from '@/services/feedback';
@@ -51,7 +52,7 @@ export default function OcrTranslateScreen() {
 
         setCapturing(true);
         setError(null);
-        await feedbackService.tap();
+        feedbackService.tap().catch(() => {});
 
         try {
             const photo = await cameraRef.current.takePictureAsync({
@@ -69,12 +70,12 @@ export default function OcrTranslateScreen() {
 
             if (!result.original.text.trim()) {
                 Alert.alert('No Text Found', 'Point the camera at text and try again.');
-                await feedbackService.error();
+                feedbackService.error().catch(() => {});
                 return;
             }
 
             setResults((prev) => [result, ...prev]);
-            await feedbackService.success();
+            feedbackService.success().catch(() => {});
         } catch (err) {
             console.error('[OCR] Error:', err);
             const message = err instanceof Error ? err.message : String(err);
@@ -84,7 +85,7 @@ export default function OcrTranslateScreen() {
                 ? 'Connection lost during OCR. Check your network and retry.'
                 : 'OCR processing failed. Try a clearer image or different angle.'
             );
-            await feedbackService.error();
+            feedbackService.error().catch(() => {});
         } finally {
             setCapturing(false);
         }

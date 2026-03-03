@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as StoreReview from 'expo-store-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { colors, spacing, borderRadius } from '@/theme';
 import { feedbackService } from '@/services/feedback';
 
@@ -110,7 +111,7 @@ export default function AppStoreScreen() {
     }, []);
 
     const handleRateApp = async () => {
-        await feedbackService.success();
+        feedbackService.success().catch(() => {});
 
         if (canReview) {
             try {
@@ -139,7 +140,7 @@ export default function AppStoreScreen() {
     };
 
     const handleShareApp = async () => {
-        await feedbackService.tap();
+        feedbackService.tap().catch(() => {});
         const deepLink = Linking.createURL('/', { scheme: 'windypro' });
         await Share.share({
             message: `🌪️ Check out Windy Pro — the best voice-to-text app!\n\nDownload: https://windypro.thewindstorm.uk/download\n\n${deepLink}`,
