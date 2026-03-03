@@ -31,6 +31,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import type { Session } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { analyticsService } from '@/services/analytics';
+import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 
 const WAVEFORM_BARS = 40;
 
@@ -490,6 +491,11 @@ export default function RecordScreen() {
                 <View style={styles.header}>
                     <Text style={styles.title}>Windy Pro</Text>
                     <Text style={styles.subtitle}>Voice to Text, Your Way</Text>
+                </View>
+
+                {/* Sync Status */}
+                <View style={{ paddingHorizontal: spacing.screenPadding }}>
+                    <SyncStatusBanner />
                 </View>
 
                 {/* Media Toggles */}
