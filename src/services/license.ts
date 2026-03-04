@@ -5,7 +5,7 @@
 import type { LicenseTier, LicenseValidation } from '@/types';
 
 /** License validation API endpoint */
-const LICENSE_API = 'https://windypro.thewindstorm.uk/api/license/validate';
+const LICENSE_API = 'https://windypro.thewindstorm.uk/api/v1/license/validate';
 
 /** Purchase page URL */
 const PURCHASE_URL = 'https://windypro.thewindstorm.uk/pricing';
