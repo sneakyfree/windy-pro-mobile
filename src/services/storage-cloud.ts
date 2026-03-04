@@ -4,8 +4,8 @@
  *
  * API Endpoints:
  *   POST /api/v1/auth/login       → JWT token
- *   POST /api/v1/recordings       → upload recording + metadata
- *   GET  /api/v1/recordings       → list all recordings
+ *   POST /api/v1/recordings/upload → upload recording + metadata
+ *   GET  /api/v1/recordings/list   → list all recordings
  *   GET  /api/v1/recordings/:id   → get single recording
  */
 import * as FileSystem from 'expo-file-system';
@@ -189,7 +189,7 @@ class CloudStorageClient {
 
     /**
      * Upload a recording session (metadata + audio) to the account server
-     * POST /api/v1/recordings
+     * POST /api/v1/recordings/upload
      */
     async uploadRecording(
         sessionId: string,
@@ -211,7 +211,7 @@ class CloudStorageClient {
             onProgress?.(10);
 
             // Step 1: Upload metadata
-            const metaResponse = await fetch(`${this.apiBase}/recordings`, {
+            const metaResponse = await fetch(`${this.apiBase}/recordings/upload`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
@@ -272,7 +272,7 @@ class CloudStorageClient {
 
     /**
      * List all recordings from the cloud
-     * GET /api/v1/recordings
+     * GET /api/v1/recordings/list
      */
     async listRecordings(
         page = 1,
@@ -281,7 +281,7 @@ class CloudStorageClient {
         try {
             const headers = await this.getAuthHeaders();
             const response = await fetch(
-                `${this.apiBase}/recordings?page=${page}&limit=${limit}`,
+                `${this.apiBase}/recordings/list?page=${page}&limit=${limit}`,
                 { headers }
             );
 
