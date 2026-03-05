@@ -319,6 +319,16 @@ export default function RecordScreen() {
                 if (segments.length > 0 && useTranscriptStore.getState().segments.length === 0) {
                     setSegments(segments);
                 }
+
+                // 🎯 Auto-copy transcript to clipboard for instant paste
+                const transcriptText = useTranscriptStore.getState().segments
+                    .map(s => s.text)
+                    .join(' ')
+                    .trim();
+                if (transcriptText && transcriptText.length > 0) {
+                    await Clipboard.setStringAsync(transcriptText);
+                    feedbackService.success().catch(() => { });
+                }
             } catch (transcribeErr: any) {
                 console.warn('[Record] Transcription failed:', transcribeErr);
                 setTranscriptionError(transcribeErr?.message || 'Transcription failed — check your connection');
@@ -370,8 +380,13 @@ export default function RecordScreen() {
                     videoPath: videoResult?.uri,
                 });
 
-                // Toast notification
-                Alert.alert('✅ Saved', 'Recording saved — will sync on Wi-Fi');
+                // Toast notification — tell user about clipboard
+                const storeText = useTranscriptStore.getState().segments.map(s => s.text).join(' ').trim();
+                if (storeText) {
+                    Alert.alert('✅ Ready to Paste', 'Transcript copied to clipboard — paste into any app!');
+                } else {
+                    Alert.alert('✅ Saved', 'Recording saved — will sync on Wi-Fi');
+                }
             } catch (saveErr) {
                 console.warn('[Record] Save failed:', saveErr);
                 Alert.alert('Save Warning', 'Recording completed but could not be saved to history. Try exporting manually.');
