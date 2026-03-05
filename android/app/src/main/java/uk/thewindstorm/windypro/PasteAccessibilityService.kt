@@ -30,7 +30,9 @@ class PasteAccessibilityService : AccessibilityService() {
             args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
             focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
         } else {
-            performGlobalAction(GLOBAL_ACTION_PASTE)
+            // No focused text field found; text is already on clipboard
+            // Try ACTION_PASTE on root if available
+            root.performAction(AccessibilityNodeInfo.ACTION_PASTE)
         }
     }
 
