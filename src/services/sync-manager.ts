@@ -655,30 +655,37 @@ class SyncManager {
     }
 }
 
-// ─── Background task handler ────────────────────────────────────
-
-TaskManager.defineTask(BACKGROUND_TASK_NAME, async () => {
-    try {
-        const netState = await NetInfo.fetch();
-        const isWifi = netState.type === NetInfoStateType.wifi;
-        const isConnected = netState.isConnected && netState.isInternetReachable;
-
-        if (!isConnected) return BackgroundFetch.BackgroundFetchResult.NoData;
-
-        // Only sync on Wi-Fi in background unless cellular sync is enabled
-        const settingsRaw = await AsyncStorage.getItem(SETTINGS_KEY);
-        const settings: SyncSettings = settingsRaw
-            ? JSON.parse(settingsRaw)
-            : { auto_sync: true, sync_on_cellular: false, sync_wifi_only_threshold: 5242880, last_sync_at: null, device_id: '' };
-
-        if (!settings.auto_sync) return BackgroundFetch.BackgroundFetchResult.NoData;
-        if (!isWifi && !settings.sync_on_cellular) return BackgroundFetch.BackgroundFetchResult.NoData;
-
-        await syncManager.processQueue();
-        return BackgroundFetch.BackgroundFetchResult.NewData;
-    } catch {
-        return BackgroundFetch.BackgroundFetchResult.Failed;
-    }
-});
-
+// ─── Create singleton FIRST (before background task registration) ────
 export const syncManager = new SyncManager();
+
+// ─── Background task handler ────────────────────────────────────
+// Wrapped in try/catch: if defineTask throws (e.g. unsupported platform),
+// the module still exports syncManager successfully.
+try {
+    TaskManager.defineTask(BACKGROUND_TASK_NAME, async () => {
+        try {
+            const netState = await NetInfo.fetch();
+            const isWifi = netState.type === NetInfoStateType.wifi;
+            const isConnected = netState.isConnected && netState.isInternetReachable;
+
+            if (!isConnected) return BackgroundFetch.BackgroundFetchResult.NoData;
+
+            // Only sync on Wi-Fi in background unless cellular sync is enabled
+            const settingsRaw = await AsyncStorage.getItem(SETTINGS_KEY);
+            const settings: SyncSettings = settingsRaw
+                ? JSON.parse(settingsRaw)
+                : { auto_sync: true, sync_on_cellular: false, sync_wifi_only_threshold: 5242880, last_sync_at: null, device_id: '' };
+
+            if (!settings.auto_sync) return BackgroundFetch.BackgroundFetchResult.NoData;
+            if (!isWifi && !settings.sync_on_cellular) return BackgroundFetch.BackgroundFetchResult.NoData;
+
+            await syncManager.processQueue();
+            return BackgroundFetch.BackgroundFetchResult.NewData;
+        } catch {
+            return BackgroundFetch.BackgroundFetchResult.Failed;
+        }
+    });
+} catch (e) {
+    console.warn('[SyncManager] Failed to register background task:', e);
+}
+
