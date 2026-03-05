@@ -3,15 +3,24 @@
  * Syncs mobile recordings to windypro.thewindstorm.uk backend
  *
  * API Endpoints:
- *   POST /api/v1/auth/login       → JWT token
- *   POST /api/v1/recordings/upload → upload recording + metadata
- *   GET  /api/v1/recordings/list   → list all recordings
- *   GET  /api/v1/recordings/:id   → get single recording
+ *   POST /api/v1/auth/login         → JWT token
+ *   POST /api/v1/recordings/upload  → upload recording + metadata
+ *   GET  /api/v1/recordings/list    → list all recordings
+ *   GET  /api/v1/recordings/:id     → get single recording
+ *   DELETE /api/v1/recordings/:id   → delete recording
  */
 import * as FileSystem from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
+import { ENDPOINTS, apiUrl } from '@/config/api';
+import {
+    parseApiError,
+    parseUploadError,
+    createNetworkError,
+    isAuthError,
+    isRateLimited,
+    ApiError,
+} from '@/utils/api-error';
 
-const API_BASE = 'https://windypro.thewindstorm.uk/api/v1';
 const TOKEN_KEY = 'windy_jwt_token';
 const REFRESH_KEY = 'windy_refresh_token';
 const USER_KEY = 'windy_user_email';
@@ -37,16 +46,22 @@ export interface CloudRecording {
 }
 
 class CloudStorageClient {
-    private apiBase: string = API_BASE;
+    private apiBase: string | undefined;
     private jwtToken: string | null = null;
     private refreshToken: string | null = null;
     private tokenExpiry: number = 0;
 
     /**
-     * Configure API base URL
+     * Configure API base URL override
      */
     configure(config: CloudConfig): void {
         if (config.apiBase) this.apiBase = config.apiBase;
+    }
+
+    // ─── URL helper ────────────────────────────────────────────
+
+    private url(endpoint: string): string {
+        return apiUrl(endpoint, this.apiBase);
     }
 
     // ─── Authentication ────────────────────────────────────────
@@ -56,15 +71,15 @@ class CloudStorageClient {
      */
     async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
         try {
-            const response = await fetch(`${this.apiBase}/auth/login`, {
+            const response = await fetch(this.url(ENDPOINTS.AUTH_LOGIN), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             });
 
             if (!response.ok) {
-                const err = await response.json().catch(() => ({ message: 'Login failed' }));
-                return { success: false, error: err.message || `HTTP ${response.status}` };
+                const apiErr = await parseApiError(response);
+                return { success: false, error: apiErr.message };
             }
 
             const data = await response.json();
@@ -81,9 +96,11 @@ class CloudStorageClient {
             }
             await SecureStore.setItemAsync(USER_KEY, email);
 
-            // console.log('[Cloud] Logged in as:', email);
             return { success: true };
         } catch (error: any) {
+            if (error instanceof ApiError) {
+                return { success: false, error: error.message };
+            }
             console.error('[Cloud] Login error:', error);
             return { success: false, error: error.message || 'Network error' };
         }
@@ -100,7 +117,6 @@ class CloudStorageClient {
             if (token) {
                 this.jwtToken = token;
                 this.refreshToken = refresh;
-                // console.log('[Cloud] Session restored');
                 return true;
             }
             return false;
@@ -116,7 +132,7 @@ class CloudStorageClient {
         if (!this.refreshToken) return false;
 
         try {
-            const response = await fetch(`${this.apiBase}/auth/refresh`, {
+            const response = await fetch(this.url(ENDPOINTS.AUTH_REFRESH), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refreshToken: this.refreshToken }),
@@ -132,7 +148,6 @@ class CloudStorageClient {
                 await SecureStore.setItemAsync(TOKEN_KEY, this.jwtToken);
             }
 
-            // console.log('[Cloud] Token refreshed');
             return true;
         } catch {
             return false;
@@ -149,7 +164,6 @@ class CloudStorageClient {
         await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => { });
         await SecureStore.deleteItemAsync(REFRESH_KEY).catch(() => { });
         await SecureStore.deleteItemAsync(USER_KEY).catch(() => { });
-        // console.log('[Cloud] Logged out');
     }
 
     /**
@@ -211,7 +225,7 @@ class CloudStorageClient {
             onProgress?.(10);
 
             // Step 1: Upload metadata
-            const metaResponse = await fetch(`${this.apiBase}/recordings/upload`, {
+            const metaResponse = await fetch(this.url(ENDPOINTS.RECORDINGS_UPLOAD), {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
@@ -228,8 +242,14 @@ class CloudStorageClient {
             });
 
             if (!metaResponse.ok) {
-                const err = await metaResponse.json().catch(() => ({}));
-                throw new Error(err.message || `Upload metadata failed: ${metaResponse.status}`);
+                const apiErr = await parseApiError(metaResponse);
+                if (isAuthError(metaResponse.status)) {
+                    // Try refresh and retry once
+                    const refreshed = await this.refreshAuth();
+                    if (!refreshed) throw apiErr;
+                    return this.uploadRecording(sessionId, metadata, audioPath, onProgress);
+                }
+                throw apiErr;
             }
 
             const result = await metaResponse.json();
@@ -241,7 +261,7 @@ class CloudStorageClient {
                 const fileInfo = await FileSystem.getInfoAsync(audioPath);
                 if (fileInfo.exists) {
                     const uploadResult = await FileSystem.uploadAsync(
-                        `${this.apiBase}/recordings/${remoteId}/audio`,
+                        `${this.url(ENDPOINTS.RECORDINGS_BY_ID)}/${remoteId}/audio`,
                         audioPath,
                         {
                             httpMethod: 'PUT',
@@ -260,7 +280,6 @@ class CloudStorageClient {
             }
 
             onProgress?.(100);
-            // console.log(`[Cloud] Uploaded recording: ${sessionId} → ${remoteId}`);
             return { success: true, remoteId };
         } catch (error: any) {
             console.error('[Cloud] Upload failed:', error);
@@ -281,12 +300,17 @@ class CloudStorageClient {
         try {
             const headers = await this.getAuthHeaders();
             const response = await fetch(
-                `${this.apiBase}/recordings/list?page=${page}&limit=${limit}`,
+                `${this.url(ENDPOINTS.RECORDINGS_LIST)}?page=${page}&limit=${limit}`,
                 { headers }
             );
 
             if (!response.ok) {
-                throw new Error(`List recordings failed: ${response.status}`);
+                const apiErr = await parseApiError(response);
+                if (isAuthError(response.status)) {
+                    const refreshed = await this.refreshAuth();
+                    if (refreshed) return this.listRecordings(page, limit);
+                }
+                throw apiErr;
             }
 
             const data = await response.json();
@@ -307,9 +331,18 @@ class CloudStorageClient {
     async getRecording(id: string): Promise<CloudRecording | null> {
         try {
             const headers = await this.getAuthHeaders();
-            const response = await fetch(`${this.apiBase}/recordings/${id}`, { headers });
+            const response = await fetch(
+                `${this.url(ENDPOINTS.RECORDINGS_BY_ID)}/${id}`,
+                { headers }
+            );
 
-            if (!response.ok) return null;
+            if (!response.ok) {
+                if (isAuthError(response.status)) {
+                    const refreshed = await this.refreshAuth();
+                    if (refreshed) return this.getRecording(id);
+                }
+                return null;
+            }
             return await response.json();
         } catch {
             return null;
@@ -323,11 +356,22 @@ class CloudStorageClient {
     async deleteRecording(id: string): Promise<boolean> {
         try {
             const headers = await this.getAuthHeaders();
-            const response = await fetch(`${this.apiBase}/recordings/${id}`, {
-                method: 'DELETE',
-                headers,
-            });
-            return response.ok;
+            const response = await fetch(
+                `${this.url(ENDPOINTS.RECORDINGS_BY_ID)}/${id}`,
+                {
+                    method: 'DELETE',
+                    headers,
+                }
+            );
+
+            if (!response.ok) {
+                if (isAuthError(response.status)) {
+                    const refreshed = await this.refreshAuth();
+                    if (refreshed) return this.deleteRecording(id);
+                }
+                return false;
+            }
+            return true;
         } catch {
             return false;
         }
@@ -370,7 +414,6 @@ class CloudStorageClient {
         metadata: Record<string, any>
     ): Promise<void> {
         // No-op — metadata is now sent with uploadRecording
-        // console.log('[Cloud] uploadMetadata called (no-op, use uploadRecording)');
     }
 
     /**

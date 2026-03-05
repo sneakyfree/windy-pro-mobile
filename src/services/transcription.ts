@@ -10,9 +10,11 @@ import type {
     CloudTranscribeResponse,
 } from '@/types';
 import { ENGINE_REGISTRY } from './windy-tune';
+import { API_BASE_URL, ENDPOINTS, apiUrl, wsUrl } from '@/config/api';
+import { parseUploadError, isAuthError, isRateLimited } from '@/utils/api-error';
 
 /** Default server URL — configurable via Settings */
-let SERVER_URL = 'https://windypro.thewindstorm.uk';
+let SERVER_URL = API_BASE_URL;
 
 /**
  * Set the transcription server URL (called from Settings)
@@ -127,7 +129,7 @@ class TranscriptionService {
         uri: string,
         engine: EngineId
     ): Promise<TranscriptSegment[]> {
-        const endpoint = `${SERVER_URL}/api/v1/transcribe`;
+        const endpoint = apiUrl(ENDPOINTS.TRANSCRIBE, SERVER_URL);
 
         // Get auth token
         const token = (() => {
@@ -150,7 +152,14 @@ class TranscriptionService {
         });
 
         if (response.status < 200 || response.status >= 300) {
-            throw new Error(`HTTP transcription failed: ${response.status}`);
+            const apiErr = parseUploadError(response.status, response.body);
+            if (isAuthError(response.status)) {
+                throw new Error('Session expired — please log in again');
+            }
+            if (isRateLimited(response.status)) {
+                throw new Error('Too many attempts, please try again later');
+            }
+            throw new Error(apiErr.message);
         }
 
         const data = JSON.parse(response.body);
@@ -200,7 +209,7 @@ class TranscriptionService {
         uri: string,
         engine: EngineId
     ): Promise<TranscriptSegment[]> {
-        const wsUrl = `${SERVER_URL.replace(/^http/, 'ws')}/ws/transcribe`;
+        const wsEndpoint = wsUrl(ENDPOINTS.WS_TRANSCRIBE, SERVER_URL);
 
         return new Promise<TranscriptSegment[]>(async (resolve, reject) => {
             const segments: TranscriptSegment[] = [];
@@ -215,7 +224,7 @@ class TranscriptionService {
             }, 30000);
 
             try {
-                this.ws = new WebSocket(wsUrl);
+                this.ws = new WebSocket(wsEndpoint);
 
                 this.ws.onopen = async () => {
                     try {

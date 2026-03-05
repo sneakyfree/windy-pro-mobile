@@ -1,7 +1,7 @@
 /**
  * 🧬 Speech Translation Service (Hardened)
  * Handles the full pipeline: record → upload → translate → TTS playback
- * Backend: POST https://windypro.thewindstorm.uk/translate/speech
+ * Backend: POST /api/v1/translate/speech
  *
  * Hardening: typed errors, 15s timeout, 1 automatic retry on transient
  * failures (5xx / timeout), unsupported language validation.
@@ -10,10 +10,11 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import * as Speech from 'expo-speech';
 import { TIER_1_LANGUAGES } from './translation';
+import { ENDPOINTS, apiUrl } from '@/config/api';
+import { parseUploadError, isAuthError, isRateLimited } from '@/utils/api-error';
 
-const API_BASE = 'https://windypro.thewindstorm.uk';
-const SPEECH_TRANSLATE_ENDPOINT = `${API_BASE}/api/v1/translate/speech`;
-const DETECT_ENDPOINT = `${API_BASE}/api/v1/translate/languages`;
+const SPEECH_TRANSLATE_ENDPOINT = apiUrl(ENDPOINTS.TRANSLATE_SPEECH);
+const DETECT_ENDPOINT = apiUrl(ENDPOINTS.TRANSLATE_LANGUAGES);
 
 // ─── Error types ────────────────────────────────────────────────
 
@@ -286,9 +287,16 @@ class SpeechTranslationService {
             throw new SpeechTranslationError('server', `Server responded with ${response.status}`);
         }
 
-        // Client error (4xx) — not retriable
+        // Client error (4xx) — not retriable, parse Zod validation details
         if (response.status >= 400) {
-            throw new SpeechTranslationError('server', `Server responded with ${response.status}: ${response.body}`);
+            const apiErr = parseUploadError(response.status, response.body);
+            if (isAuthError(response.status)) {
+                throw new SpeechTranslationError('server', 'Session expired — please log in again');
+            }
+            if (isRateLimited(response.status)) {
+                throw new SpeechTranslationError('timeout', 'Too many attempts, please try again later');
+            }
+            throw new SpeechTranslationError('server', apiErr.message);
         }
 
         // Success (2xx)

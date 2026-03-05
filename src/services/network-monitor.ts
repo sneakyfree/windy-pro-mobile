@@ -4,8 +4,9 @@
  * for offline fallback. Queued items are processed on reconnect.
  */
 import * as FileSystem from 'expo-file-system';
+import { ENDPOINTS, apiUrl } from '@/config/api';
 
-const HEALTH_URL = 'https://windypro.thewindstorm.uk/health';
+const HEALTH_URL = apiUrl(ENDPOINTS.HEALTH);
 const PING_INTERVAL_MS = 30_000;
 const PING_TIMEOUT_MS = 5_000;
 

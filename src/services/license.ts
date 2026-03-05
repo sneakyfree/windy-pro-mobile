@@ -1,14 +1,17 @@
 /**
  * 🧬 M10.1 — License Validation Service
  * Manages tier-based feature access and Stripe integration
+ *
+ * Server contract:
+ *   POST /api/v1/license/activate  — { key } (auth required via JWT)
+ *   Response: { success, tier, key, activatedAt }
  */
+import * as SecureStore from 'expo-secure-store';
 import type { LicenseTier, LicenseValidation } from '@/types';
+import { API_BASE_URL, ENDPOINTS, apiUrl } from '@/config/api';
+import { parseApiError, createNetworkError, isAuthError, isRateLimited } from '@/utils/api-error';
 
-/** License validation API endpoint */
-const LICENSE_API = 'https://windypro.thewindstorm.uk/api/v1/license/validate';
-
-/** Purchase page URL */
-const PURCHASE_URL = 'https://windypro.thewindstorm.uk/pricing';
+const TOKEN_KEY = 'windy_jwt_token';
 
 /**
  * 🧬 M10.1.1 — Feature matrix by tier
@@ -68,21 +71,51 @@ class LicenseService {
     private cacheExpiry: number = 0; // timestamp
 
     /**
-     * Validate a license key against the server
+     * Validate a license key against the server.
+     * POST /api/v1/license/activate — auth required, sends { key }.
      */
-    async validateLicense(key: string, deviceId: string): Promise<LicenseValidation> {
+    async validateLicense(key: string): Promise<LicenseValidation> {
         try {
-            const response = await fetch(LICENSE_API, {
+            // Get JWT from secure store for auth
+            let token: string | null = null;
+            try {
+                token = await SecureStore.getItemAsync(TOKEN_KEY);
+            } catch { /* no token available */ }
+
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(apiUrl(ENDPOINTS.LICENSE_ACTIVATE), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key, deviceId }),
+                headers,
+                body: JSON.stringify({ key }),
             });
 
             if (!response.ok) {
-                throw new Error(`Validation failed: ${response.status}`);
+                const apiErr = await parseApiError(response);
+                if (isAuthError(response.status)) {
+                    throw new Error('Session expired — please log in again before activating your license');
+                }
+                if (isRateLimited(response.status)) {
+                    throw new Error('Too many attempts, please try again later');
+                }
+                throw apiErr;
             }
 
-            const validation: LicenseValidation = await response.json();
+            const data = await response.json();
+            const validation: LicenseValidation = {
+                key: data.key || key,
+                tier: data.tier || 'free',
+                validUntil: data.activatedAt || null,
+                devicesUsed: data.devicesUsed ?? 1,
+                devicesMax: data.devicesMax ?? 5,
+                features: data.features || [],
+            };
+
             this.tier = validation.tier;
             this.licenseKey = key;
             this.isValidated = true;
@@ -104,21 +137,16 @@ class LicenseService {
     }
 
     /**
-     * Convenience method: activate a key with auto-detected device ID
+     * Convenience method: activate a key (no deviceId needed, server gets it from JWT)
      */
     async activateKey(key: string): Promise<LicenseValidation> {
-        const deviceId = `device-${Date.now().toString(36)}`;
-        return this.validateLicense(key, deviceId);
+        return this.validateLicense(key);
     }
 
     /**
      * Check if a specific feature is unlocked
      */
     isFeatureUnlocked(feature: string): boolean {
-        const tierFeatures = FEATURE_MATRIX[this.tier];
-        // Pro and above get all free features
-        // Translate and above get all pro features
-        // etc.
         const allFeatures = this.getUnlockedFeatures();
         return allFeatures.includes(feature);
     }
@@ -157,7 +185,7 @@ class LicenseService {
      */
     async getPurchaseUrl(deviceId: string): Promise<string> {
         try {
-            const response = await fetch(`${PURCHASE_URL.replace('/pricing', '/api/stripe/checkout')}`, {
+            const response = await fetch(apiUrl(ENDPOINTS.STRIPE_CHECKOUT), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ deviceId, tier: 'pro' }),
@@ -169,7 +197,7 @@ class LicenseService {
         } catch {
             // Fall back to static URL
         }
-        return `${PURCHASE_URL}?device=${encodeURIComponent(deviceId)}`;
+        return `${API_BASE_URL}/pricing?device=${encodeURIComponent(deviceId)}`;
     }
 }
 

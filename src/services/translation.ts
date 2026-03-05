@@ -7,11 +7,20 @@ import * as Speech from 'expo-speech';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import type { LicenseTier } from '@/types';
+import { ENDPOINTS, apiUrl } from '@/config/api';
+import {
+    parseApiError,
+    parseUploadError,
+    createNetworkError,
+    isAuthError,
+    isRateLimited,
+    getUserMessage,
+} from '@/utils/api-error';
 
-/** Cloud translation API — canonical cross-platform URLs */
-const TRANSLATE_API = 'https://windypro.thewindstorm.uk/api/v1/translate/text';
-const SPEECH_API = 'https://windypro.thewindstorm.uk/api/v1/translate/speech';
-const DETECT_API = 'https://windypro.thewindstorm.uk/api/v1/translate/languages';
+/** Cloud translation API — resolved from centralized config */
+const TRANSLATE_API = apiUrl(ENDPOINTS.TRANSLATE_TEXT);
+const SPEECH_API = apiUrl(ENDPOINTS.TRANSLATE_SPEECH);
+const DETECT_API = apiUrl(ENDPOINTS.TRANSLATE_LANGUAGES);
 
 /** Translation result */
 export interface TranslationResult {
@@ -110,7 +119,8 @@ class TranslationService {
             });
 
             if (!response.ok) {
-                throw new Error(`Translation failed: ${response.status}`);
+                const apiErr = await parseApiError(response);
+                throw apiErr;
             }
 
             const data = await response.json();
@@ -176,7 +186,8 @@ class TranslationService {
             });
 
             if (uploadResult.status < 200 || uploadResult.status >= 300) {
-                throw new Error(`Speech API returned ${uploadResult.status}`);
+                const apiErr = parseUploadError(uploadResult.status, uploadResult.body);
+                throw apiErr;
             }
 
             const data = JSON.parse(uploadResult.body);
@@ -219,7 +230,8 @@ class TranslationService {
                 const data = await response.json();
                 return { language: data.language || 'en', confidence: data.confidence || 0.5 };
             }
-        } catch { /* fallback below */ }
+            // Non-ok but not a network error — fall through to heuristic
+        } catch { /* network error — fallback below */ }
 
         // Heuristic fallback: check against known patterns
         return this.heuristicDetect(text);

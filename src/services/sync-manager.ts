@@ -18,11 +18,13 @@ import * as FileSystem from 'expo-file-system';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
+import { ENDPOINTS, apiUrl } from '@/config/api';
+import { parseUploadError, isAuthError, isRateLimited, getUserMessage } from '@/utils/api-error';
 
 const QUEUE_KEY = 'windy-sync-queue';
 const SETTINGS_KEY = 'windy-sync-settings';
-const UPLOAD_API = 'https://windypro.thewindstorm.uk/api/v1/recordings/upload';
-const CHECK_API = 'https://windypro.thewindstorm.uk/api/v1/recordings/check';
+const UPLOAD_API = apiUrl(ENDPOINTS.RECORDINGS_UPLOAD);
+const CHECK_API = apiUrl(ENDPOINTS.RECORDINGS_CHECK);
 const BACKGROUND_TASK_NAME = 'windy-background-sync';
 const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
 const SMALL_FILE_THRESHOLD = 5 * 1024 * 1024; // 5MB — uploadable on cellular
@@ -373,7 +375,20 @@ class SyncManager {
             item.bytes_uploaded = item.total_bytes;
             this.emit();
 
-            return result.status >= 200 && result.status < 300;
+            if (result.status >= 200 && result.status < 300) return true;
+
+            // Structured error handling
+            const apiErr = parseUploadError(result.status, result.body);
+            if (isAuthError(result.status)) {
+                item.error = 'Session expired — please log in again';
+            } else if (isRateLimited(result.status)) {
+                item.error = 'Too many attempts, please try again later';
+            } else if (result.status === 502 || result.status === 503) {
+                item.error = getUserMessage(result.status);
+            } else {
+                item.error = apiErr.message;
+            }
+            return false;
         } catch (err) {
             item.error = String(err);
             return false;
@@ -420,7 +435,20 @@ class SyncManager {
                 });
 
                 if (!res.ok) {
-                    item.error = `Chunk ${i} failed: HTTP ${res.status}`;
+                    // Parse structured error
+                    let errorMsg = `Chunk ${i} failed: HTTP ${res.status}`;
+                    try {
+                        const body = await res.json();
+                        if (body.error) errorMsg = body.error;
+                    } catch { /* use default message */ }
+
+                    if (isAuthError(res.status)) {
+                        item.error = 'Session expired — please log in again';
+                    } else if (isRateLimited(res.status)) {
+                        item.error = 'Too many attempts, please try again later';
+                    } else {
+                        item.error = errorMsg;
+                    }
                     item.chunk_index = i;
                     return false;
                 }

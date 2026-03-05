@@ -5,6 +5,8 @@
  */
 
 import { translationService } from './translation';
+import { ENDPOINTS, apiUrl } from '@/config/api';
+import { parseApiError, isAuthError, isRateLimited } from '@/utils/api-error';
 
 const OCR_API = 'https://vision.googleapis.com/v1/images:annotate';
 
@@ -86,7 +88,7 @@ class OcrService {
         targetLang: string
     ): Promise<OcrTranslation> {
         try {
-            const response = await fetch('https://windypro.thewindstorm.uk/api/v1/ocr/translate', {
+            const response = await fetch(apiUrl(ENDPOINTS.OCR_TRANSLATE), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -96,7 +98,8 @@ class OcrService {
             });
 
             if (!response.ok) {
-                throw new Error(`OCR API failed: ${response.status}`);
+                const apiErr = await parseApiError(response);
+                throw apiErr;
             }
 
             const data = await response.json();
