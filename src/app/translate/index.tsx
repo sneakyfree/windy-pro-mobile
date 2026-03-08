@@ -94,7 +94,7 @@ export default function TranslateScreen() {
         try {
             const raw = await AsyncStorage.getItem(HISTORY_KEY);
             if (raw) setHistory(JSON.parse(raw));
-        } catch { /* ignore */ }
+        } catch (err) { console.warn("[Translate] Error:", err); }
     };
 
     const saveToHistory = async (turn: ConversationTurn) => {
@@ -102,7 +102,7 @@ export default function TranslateScreen() {
             const newHistory = [turn, ...history].slice(0, MAX_HISTORY);
             setHistory(newHistory);
             await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
-        } catch { /* ignore */ }
+        } catch (err) { console.warn("[Translate] Error:", err); }
     };
 
     // Copy turn text to clipboard with toast
@@ -127,7 +127,7 @@ export default function TranslateScreen() {
                 title: 'Windy Pro Translation',
             });
             feedbackService.tap();
-        } catch { /* user cancelled */ }
+        } catch (err) { console.warn("[Translate] User action:", err); }
     };
 
     // Toggle favorite/pin on a turn

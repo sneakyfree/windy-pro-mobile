@@ -399,7 +399,7 @@ class SpeechTranslationService {
                 await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
                 const uri = this.recording.getURI();
                 if (uri) await FileSystem.deleteAsync(uri, { idempotent: true });
-            } catch { /* ignore */ }
+            } catch (err) { console.warn('[speechtranslation] Error:', err); }
             this.recording = null;
             this.isRecordingActive = false;
             this.onMeterUpdate = null;

@@ -43,7 +43,7 @@ export async function parseApiError(response: Response): Promise<ApiError> {
                 message: d.message || '',
             }));
         }
-    } catch {
+    } catch (err) { console.warn("[ApiError] Parse error:", err);
         // Body wasn't JSON — use status text
         serverMessage = response.statusText || `HTTP ${status}`;
     }
@@ -68,7 +68,7 @@ export function parseUploadError(status: number, body: string): ApiError {
                 message: d.message || '',
             }));
         }
-    } catch {
+    } catch (err) { console.warn("[ApiError] Parse error:", err);
         serverMessage = body.slice(0, 200);
     }
 

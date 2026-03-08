@@ -122,7 +122,7 @@ export default function RootLayout() {
           } else if (data.type === 'update') {
             Linking.openURL('market://details?id=uk.thewindstorm.windypro').catch(() => { });
           }
-        } catch { /* layout not ready */ }
+        } catch (err) { console.warn("[Layout] Navigation error:", err); }
       }, 300);
     };
 
@@ -171,7 +171,7 @@ export default function RootLayout() {
               try {
                 const { router } = require('expo-router');
                 router.push(`/session/${sessionId}`);
-              } catch { /* layout not ready */ }
+              } catch (err) { console.warn("[Layout] Navigation error:", err); }
             }, 500);
           }
           return;
@@ -199,7 +199,7 @@ export default function RootLayout() {
               try {
                 const { router } = require('expo-router');
                 router.push(`/quick-translate?${params.toString()}`);
-              } catch { /* layout not ready */ }
+              } catch (err) { console.warn("[Layout] Navigation error:", err); }
             }, 500);
           } else {
             // No text param → full translate screen
@@ -207,7 +207,7 @@ export default function RootLayout() {
               try {
                 const { router } = require('expo-router');
                 router.push('/translate');
-              } catch { /* layout not ready */ }
+              } catch (err) { console.warn("[Layout] Navigation error:", err); }
             }, 500);
           }
           return;
@@ -219,7 +219,7 @@ export default function RootLayout() {
             try {
               const { router } = require('expo-router');
               router.push(route);
-            } catch { /* layout not ready */ }
+            } catch (err) { console.warn("[Layout] Navigation error:", err); }
           }, 500);
         }
       } catch (err) {

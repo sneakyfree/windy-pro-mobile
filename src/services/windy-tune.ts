@@ -239,7 +239,7 @@ class WindyTuneManager {
                     this.downloadedEngines.set(info.engineId, info);
                 }
             }
-        } catch {
+        } catch (err) { console.warn('[WindyTune] Error:', err);
             // First launch or corrupt data — start fresh
         }
 
@@ -400,7 +400,7 @@ class WindyTuneManager {
         if (info?.filePath) {
             try {
                 await FileSystem.deleteAsync(info.filePath, { idempotent: true });
-            } catch {
+            } catch (err) { console.warn('[WindyTune] Error:', err);
                 // File already gone
             }
         }
@@ -436,7 +436,7 @@ class WindyTuneManager {
 
     private notifyProgress(engineId: EngineId, progress: number, state: DownloadState): void {
         for (const listener of this.progressListeners) {
-            try { listener(engineId, progress, state); } catch { /* ignore */ }
+            try { listener(engineId, progress, state); } catch (err) { console.warn('[windytune] Error:', err); }
         }
     }
 
@@ -444,7 +444,7 @@ class WindyTuneManager {
         try {
             const data = Array.from(this.downloadedEngines.values());
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        } catch {
+        } catch (err) { console.warn('[WindyTune] Error:', err);
             // Persistence failed — non-fatal
         }
     }

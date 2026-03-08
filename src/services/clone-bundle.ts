@@ -78,7 +78,7 @@ class CloneBundleService {
         try {
             const raw = await AsyncStorage.getItem(BUNDLES_KEY);
             this.bundles = raw ? JSON.parse(raw) : [];
-        } catch {
+        } catch (err) { console.warn('[CloneBundle] Error:', err);
             this.bundles = [];
         }
         this.loaded = true;
@@ -111,13 +111,13 @@ class CloneBundleService {
         try {
             const audioInfo = await FileSystem.getInfoAsync(params.audioPath);
             audioSize = audioInfo.exists && 'size' in audioInfo ? (audioInfo as any).size : 0;
-        } catch { /* file may not exist */ }
+        } catch (err) { console.warn('[cloneuundle] File error:', err); }
 
         if (params.videoPath) {
             try {
                 const videoInfo = await FileSystem.getInfoAsync(params.videoPath);
                 videoSize = videoInfo.exists && 'size' in videoInfo ? (videoInfo as any).size : 0;
-            } catch { /* file may not exist */ }
+            } catch (err) { console.warn('[cloneuundle] File error:', err); }
         }
 
         const hasVideo = !!params.videoPath && videoSize > 0;
@@ -323,7 +323,7 @@ class CloneBundleService {
                 shouldStop: pct <= 15,
                 estimatedMinutesLeft,
             };
-        } catch {
+        } catch (err) { console.warn('[CloneBundle] Error:', err);
             return { level: 100, shouldWarn: false, shouldStop: false, estimatedMinutesLeft: 600 };
         }
     }
@@ -337,7 +337,7 @@ class CloneBundleService {
             // WAV audio: ~5 MB/min, 720p video: ~15 MB/min = ~20 MB/min total
             const estMinutes = Math.floor(free / (20 * 1024 * 1024));
             return { freeBytes: free, estimatedMinutesLeft: estMinutes };
-        } catch {
+        } catch (err) { console.warn('[CloneBundle] Error:', err);
             return { freeBytes: 0, estimatedMinutesLeft: 0 };
         }
     }

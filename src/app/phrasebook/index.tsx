@@ -66,7 +66,7 @@ export default function PhrasebookScreen() {
                 setPhrases(data.phrases || []);
                 setCategories(data.categories || DEFAULT_CATEGORIES);
             }
-        } catch { /* empty phrasebook */ }
+        } catch (err) { console.warn("[Phrasebook] Load error:", err); }
         setLoading(false);
     };
 
@@ -159,7 +159,7 @@ export default function PhrasebookScreen() {
             await FileSystem.writeAsStringAsync(path, content);
             await Sharing.shareAsync(path, { mimeType: 'text/markdown', dialogTitle: 'Export Phrasebook' });
             await feedbackService.success();
-        } catch {
+        } catch (err) { console.warn("[Phrasebook] Error:", err);
             Alert.alert('Export Failed', 'Could not export phrasebook.');
         }
     };

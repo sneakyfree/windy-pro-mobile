@@ -30,7 +30,7 @@ class OverlayService {
         if (!isAvailable) return false;
         try {
             return await WindyOverlay.hasOverlayPermission();
-        } catch {
+        } catch (err) { console.warn('[Overlay] Error:', err);
             return false;
         }
     }
@@ -65,7 +65,7 @@ class OverlayService {
                 );
             }
             return granted;
-        } catch {
+        } catch (err) { console.warn('[Overlay] Error:', err);
             return false;
         }
     }
@@ -98,7 +98,7 @@ class OverlayService {
         if (!isAvailable) return false;
         try {
             return await WindyOverlay.isOverlayActive();
-        } catch {
+        } catch (err) { console.warn('[Overlay] Error:', err);
             return false;
         }
     }

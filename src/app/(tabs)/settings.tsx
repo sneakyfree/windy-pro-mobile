@@ -66,7 +66,7 @@ export default function SettingsScreen() {
     try {
       const storageData = await localStorageService.getStorageUsage();
       setStorage(storageData);
-    } catch { /* ignore */ }
+    } catch (err) { console.warn("[Settings] Error:", err); }
 
     const progress = cloneTracker.getProgress();
     setCloneHours(progress.totalHours);
@@ -79,19 +79,19 @@ export default function SettingsScreen() {
         const info = await FileSystem.getInfoAsync(cacheDir);
         setCacheSize((info as any).size || 0);
       }
-    } catch { setCacheSize(0); }
+    } catch (err) { console.warn("[Settings] Cache check failed:", err); setCacheSize(0); }
 
     // Load offline packs
     try {
       await offlinePackService.initialize();
       setPacks(offlinePackService.getPacks());
-    } catch { /* ignore */ }
+    } catch (err) { console.warn("[Settings] Error:", err); }
 
     // Load cloned voice ID
     try {
       const voiceId = await AsyncStorage.getItem(CLONE_VOICE_KEY);
       setClonedVoiceId(voiceId);
-    } catch { /* ignore */ }
+    } catch (err) { console.warn("[Settings] Error:", err); }
   };
 
   const formatBytes = (bytes: number): string => {
@@ -130,7 +130,7 @@ export default function SettingsScreen() {
               setCacheSize(0);
               feedbackService.success().catch(() => { });
               Alert.alert('Done', 'Cache cleared successfully.');
-            } catch {
+            } catch (err) { console.warn("[Settings] Error:", err);
               Alert.alert('Error', 'Could not clear cache.');
             } finally {
               setClearingCache(false);
@@ -170,7 +170,7 @@ export default function SettingsScreen() {
         });
       }
       feedbackService.success().catch(() => { });
-    } catch {
+    } catch (err) { console.warn("[Settings] Error:", err);
       Alert.alert('Export Failed', 'Could not export data.');
     }
   };
@@ -203,7 +203,7 @@ export default function SettingsScreen() {
                       await localStorageService.initialize(); // re-init clears
                       feedbackService.success().catch(() => { });
                       Alert.alert('Account Deleted', 'Your data has been removed.');
-                    } catch {
+                    } catch (err) { console.warn("[Settings] Error:", err);
                       Alert.alert('Error', 'Could not complete account deletion.');
                     }
                   },

@@ -112,7 +112,7 @@ export default function PronunciationScreen() {
                 syllables,
                 targetLang,
             });
-        } catch {
+        } catch (err) { console.warn("[Pronunciation] Error:", err);
             // Use source text as fallback
             setPronunciation({
                 original: sourceText.trim(),

@@ -284,7 +284,7 @@ class SyncEngine {
                 storageUsed: usage.totalBytes,
                 storageQuota: 10 * 1024 * 1024 * 1024, // 10 GB default
             };
-        } catch {
+        } catch (err) { console.warn('[SyncEngine] Error:', err);
             return {
                 totalSessions: 0,
                 syncedSessions: 0,
@@ -320,7 +320,7 @@ class SyncEngine {
     async unregisterBackgroundSync(): Promise<void> {
         try {
             await BackgroundFetch.unregisterTaskAsync(SYNC_TASK_NAME);
-        } catch { /* ignore */ }
+        } catch (err) { console.warn('[syncengine] Error:', err); }
     }
 
     /**
@@ -350,7 +350,7 @@ TaskManager.defineTask(SYNC_TASK_NAME, async () => {
         return result.synced > 0
             ? BackgroundFetch.BackgroundFetchResult.NewData
             : BackgroundFetch.BackgroundFetchResult.NoData;
-    } catch {
+    } catch (err) { console.warn('[SyncEngine] Error:', err);
         return BackgroundFetch.BackgroundFetchResult.Failed;
     }
 });

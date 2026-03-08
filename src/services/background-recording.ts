@@ -73,7 +73,7 @@ class BackgroundRecordingService {
     private emit(): void {
         const snapshot = this.getState();
         this.listeners.forEach(cb => {
-            try { cb(snapshot); } catch { /* ignore */ }
+            try { cb(snapshot); } catch (err) { console.warn('[uackgroundrecording] Error:', err); }
         });
     }
 
@@ -217,7 +217,7 @@ class BackgroundRecordingService {
                     // Warning only — don't auto-pause
                     this.emit();
                 }
-            } catch { /* ignore */ }
+            } catch (err) { console.warn('[uackgroundrecording] Error:', err); }
         }, 30_000); // Check every 30 seconds
     }
 
@@ -241,14 +241,14 @@ class BackgroundRecordingService {
                 },
                 trigger: null, // Show immediately
             });
-        } catch { /* notification permission not granted */ }
+        } catch (err) { console.warn('[uackgroundrecording] Permission error:', err); }
     }
 
     private async dismissNotification(): Promise<void> {
         if (this.notificationId) {
             try {
                 await Notifications.dismissNotificationAsync(this.notificationId);
-            } catch { /* ignore */ }
+            } catch (err) { console.warn('[uackgroundrecording] Error:', err); }
             this.notificationId = null;
         }
     }

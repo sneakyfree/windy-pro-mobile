@@ -105,7 +105,7 @@ export default function AppStoreScreen() {
                 return true; // Should prompt
             }
             return false;
-        } catch {
+        } catch (err) { console.warn("[AppStore] Error:", err);
             return false;
         }
     }, []);
@@ -121,7 +121,7 @@ export default function AppStoreScreen() {
                 const rateData = data ? JSON.parse(data) : { prompted: false, sessions: 0, dismissed: 0 };
                 rateData.prompted = true;
                 await AsyncStorage.setItem(RATE_STORAGE_KEY, JSON.stringify(rateData));
-            } catch {
+            } catch (err) { console.warn("[AppStore] Error:", err);
                 // Fallback to store URL
                 openStoreUrl();
             }
@@ -312,7 +312,7 @@ export async function maybePromptRating(): Promise<void> {
                 await AsyncStorage.setItem(RATE_STORAGE_KEY, JSON.stringify(rateData));
             }
         }
-    } catch {
+    } catch (err) { console.warn("[AppStore] Error:", err);
         // Silent failure — never interrupt the user
     }
 }

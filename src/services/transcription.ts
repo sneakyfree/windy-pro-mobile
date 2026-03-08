@@ -135,7 +135,7 @@ class TranscriptionService {
         const token = (() => {
             try {
                 return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || '';
-            } catch { return ''; }
+            } catch (err) { console.warn('[transcription] Error:', err); return ''; }
         })();
 
         const response = await FileSystem.uploadAsync(endpoint, uri, {
@@ -231,7 +231,7 @@ class TranscriptionService {
                         // Send auth
                         this.ws?.send(JSON.stringify({
                             type: 'auth',
-                            token: (() => { try { return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || 'anonymous'; } catch { return 'anonymous'; } })(),
+                            token: (() => { try { return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || 'anonymous'; } catch (err) { return 'anonymous'; } })(),
                         }));
 
                         // Send config

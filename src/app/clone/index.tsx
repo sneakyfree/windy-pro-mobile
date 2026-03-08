@@ -75,7 +75,7 @@ export default function CloneDashboardScreen() {
             try {
                 const allSessions = await localStorageService.getSessions({ minQuality: 40 } as any);
                 setSamples(allSessions.slice(0, 8));
-            } catch {
+            } catch (err) { console.warn("[Clone] Error:", err);
                 setSamples([]);
             }
 
@@ -265,7 +265,7 @@ export default function CloneDashboardScreen() {
                     setCloneProcessing(false);
                     Alert.alert('Clone Failed', 'Voice processing failed. Please record a new sample.');
                 }
-            } catch {
+            } catch (err) { console.warn("[Clone] Error:", err);
                 // Ignore transient poll errors
             }
             if (polls >= maxPolls) {

@@ -108,7 +108,7 @@ export default function PhotoTranslateScreen() {
                 // API unavailable — show placeholder
                 setDetectedTexts([{ text: '[OCR service unavailable — text detection requires cloud processing]' }]);
             }
-        } catch {
+        } catch (err) { console.warn("[PhotoTranslate] Error:", err);
             setDetectedTexts([{ text: '[Offline — OCR requires internet connection]' }]);
         }
         setState('result');
@@ -133,7 +133,7 @@ export default function PhotoTranslateScreen() {
                         const data = await res.json();
                         updated[i] = { ...updated[i], translated: data.translated || data.text || updated[i].text };
                     }
-                } catch {
+                } catch (err) { console.warn("[PhotoTranslate] Error:", err);
                     updated[i] = { ...updated[i], translated: updated[i].text };
                 }
             }
@@ -157,7 +157,7 @@ export default function PhotoTranslateScreen() {
             await MediaLibrary.saveToLibraryAsync(photoUri);
             await feedbackService.success();
             Alert.alert('Saved!', 'Photo saved to gallery.');
-        } catch {
+        } catch (err) { console.warn("[PhotoTranslate] Error:", err);
             Alert.alert('Save Failed', 'Could not save photo to gallery.');
         }
     }, [photoUri]);
@@ -166,7 +166,7 @@ export default function PhotoTranslateScreen() {
         if (!photoUri) return;
         try {
             await Sharing.shareAsync(photoUri, { dialogTitle: 'Share Translated Image' });
-        } catch { /* user cancelled */ }
+        } catch (err) { console.warn("[PhotoTranslate] User cancelled:", err); }
     }, [photoUri]);
 
     const handleRetake = () => {

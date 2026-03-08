@@ -211,7 +211,7 @@ export default function SubscriptionScreen() {
                                     useSettingsStore.getState().setLicense(validation.tier, key.trim());
                                     haptic.success();
                                     Alert.alert('✅ Restored!', `Welcome back to ${validation.tier.replace('_', ' ')} tier!`);
-                                } catch {
+                                } catch (err) { console.warn("[Subscription] Error:", err);
                                     haptic.error();
                                     Alert.alert('Error', 'Invalid license key.');
                                 }

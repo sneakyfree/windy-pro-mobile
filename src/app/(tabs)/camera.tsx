@@ -137,7 +137,7 @@ export default function CameraTab() {
                         setDetectedLang(ocrResult.fromLang);
                     }
                 }
-            } catch {
+            } catch (err) { console.warn("[Camera] Error:", err);
                 // Ignore transient errors in live mode
             } finally {
                 scanningRef.current = false;

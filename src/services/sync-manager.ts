@@ -568,7 +568,7 @@ class SyncManager {
                 },
                 trigger: null,
             });
-        } catch { /* ignore */ }
+        } catch (err) { console.warn("[SyncManager] Error:", err); }
     }
 
     // ─── Settings ───────────────────────────────────────────────
@@ -629,7 +629,7 @@ class SyncManager {
     private emit(): void {
         const state = this.getState();
         this.listeners.forEach(cb => {
-            try { cb(state); } catch { /* ignore */ }
+            try { cb(state); } catch (err) { console.warn("[SyncManager] Error:", err); }
         });
     }
 
@@ -681,7 +681,7 @@ try {
 
             await syncManager.processQueue();
             return BackgroundFetch.BackgroundFetchResult.NewData;
-        } catch {
+        } catch (err) { console.warn("[SyncManager] Error:", err);
             return BackgroundFetch.BackgroundFetchResult.Failed;
         }
     });

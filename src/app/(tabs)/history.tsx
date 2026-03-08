@@ -60,7 +60,7 @@ export default function HistoryScreen() {
         duration: 600,
         useNativeDriver: false,
       }).start();
-    } catch { /* ignore */ }
+    } catch (err) { console.warn("[History] Error:", err); }
   };
 
   const loadSessions = async (query?: string) => {
@@ -80,7 +80,7 @@ export default function HistoryScreen() {
             return;
           }
         }
-      } catch {
+      } catch (err) { console.warn("[History] Error:", err);
         // Backend unavailable, fall back to local
       }
 
@@ -139,7 +139,7 @@ export default function HistoryScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: id, action: isFav ? 'remove' : 'add' }),
       });
-    } catch {
+    } catch (err) { console.warn("[History] Error:", err);
       // Optimistic update even if backend fails
     }
     setFavorites(prev => {

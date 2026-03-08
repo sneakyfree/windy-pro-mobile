@@ -24,7 +24,7 @@ class RatingPromptService {
             this.translationCount = count ? parseInt(count, 10) : 0;
             this.lastPromptDate = lastPrompt ? parseInt(lastPrompt, 10) : null;
             this.initialized = true;
-        } catch { /* ignore */ }
+        } catch (err) { console.warn("[RatingPrompt] Error:", err); }
     }
 
     /**
@@ -36,7 +36,7 @@ class RatingPromptService {
 
         try {
             await AsyncStorage.setItem(TRANSLATION_COUNT_KEY, String(this.translationCount));
-        } catch { /* ignore */ }
+        } catch (err) { console.warn("[RatingPrompt] Error:", err); }
 
         // Check if we should prompt
         if (this.translationCount >= TRIGGER_COUNT && this.shouldPrompt()) {
@@ -65,7 +65,7 @@ class RatingPromptService {
             await StoreReview.requestReview();
             this.lastPromptDate = Date.now();
             await AsyncStorage.setItem(LAST_PROMPT_KEY, String(this.lastPromptDate));
-        } catch {
+        } catch (err) { console.warn("[RatingPrompt] Error:", err);
             // Store review not available on this device/emulator
         }
     }

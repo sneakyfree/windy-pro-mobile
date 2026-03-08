@@ -75,7 +75,7 @@ export default function PhoneCameraScreen() {
                     if (msg.type === 'disconnect') {
                         handleDisconnect();
                     }
-                } catch { /* invalid message */ }
+                } catch (err) { console.warn("[CameraLink] Invalid message:", err); }
             };
 
             ws.onerror = () => {
@@ -85,7 +85,7 @@ export default function PhoneCameraScreen() {
             ws.onclose = () => {
                 if (state === 'linked') handleDisconnect();
             };
-        } catch {
+        } catch (err) { console.warn("[CameraLink] Error:", err);
             setState('error');
         }
     }, []);

@@ -37,7 +37,7 @@ export default function CloneDataDashboard() {
             ]);
             setBundles(b);
             setStats(s);
-        } catch { /* ignore */ }
+        } catch (err) { console.warn("[CloneData] Error:", err); }
         setLoading(false);
         setRefreshing(false);
     }, [filter]);

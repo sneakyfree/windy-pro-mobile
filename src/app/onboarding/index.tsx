@@ -91,7 +91,7 @@ export default function OnboardingScreen() {
                     const profile = await detectDeviceProfile();
                     const result = getWindyTuneRecommendation(profile);
                     setWindyTune(result);
-                } catch { /* fallback to cloud */ }
+                } catch (err) { console.warn("[Onboarding] Fallback to cloud:", err); }
             }
             flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
         } else {
@@ -163,7 +163,7 @@ export default function OnboardingScreen() {
                                                     WindyOverlayModule.requestOverlayPermission();
                                                 }
                                             }
-                                        } catch { /* module not available in dev */ }
+                                        } catch (err) { console.warn("[Onboarding] Module not available:", err); }
                                         feedbackService.tap().catch(() => { });
                                     }}
                                 >
@@ -197,7 +197,7 @@ export default function OnboardingScreen() {
                                                     );
                                                 }
                                             }
-                                        } catch { /* module not available in dev */ }
+                                        } catch (err) { console.warn("[Onboarding] Module not available:", err); }
                                         feedbackService.tap().catch(() => { });
                                     }}
                                 >

@@ -220,7 +220,7 @@ class OfflinePackService {
     private async saveMeta(): Promise<void> {
         try {
             await AsyncStorage.setItem(PACKS_META_KEY, JSON.stringify(this.packs));
-        } catch { /* ignore */ }
+        } catch (err) { console.warn("[OfflinePacks] Error:", err); }
     }
 }
 

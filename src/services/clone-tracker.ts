@@ -91,7 +91,7 @@ class CloneTracker {
                 try {
                     const { feedbackService } = require('@/services/feedback');
                     feedbackService.success();
-                } catch { /* ignore */ }
+                } catch (err) { console.warn('[clonetracker] Error:', err); }
 
                 // Push notification celebration
                 try {
@@ -238,7 +238,7 @@ class CloneTracker {
             const AsyncStorage = require('@react-native-async-storage/async-storage').default;
             const key = `clone_milestone_${milestone.percent}`;
             await AsyncStorage.setItem(key, milestone.reachedAt || '');
-        } catch { /* ignore */ }
+        } catch (err) { console.warn('[clonetracker] Error:', err); }
     }
 
     /**
@@ -254,7 +254,7 @@ class CloneTracker {
                     milestone.reachedAt = date;
                 }
             }
-        } catch { /* ignore */ }
+        } catch (err) { console.warn('[clonetracker] Error:', err); }
     }
 }
 

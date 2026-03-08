@@ -132,7 +132,7 @@ class AudioCaptureService {
                 if (uri) {
                     await FileSystem.deleteAsync(uri, { idempotent: true });
                 }
-            } catch {
+            } catch (err) { console.warn('[AudioCapture] Error:', err);
                 // Ignore errors during cancel
             }
             this.recording = null;

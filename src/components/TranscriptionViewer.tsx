@@ -164,7 +164,7 @@ export default function TranscriptionViewer({
                 Alert.alert('Exported', 'SRT content copied to clipboard');
             }
             await feedbackService.success();
-        } catch {
+        } catch (err) { console.warn("[TranscriptionViewer] Error:", err);
             Alert.alert('Export Failed', 'Could not export SRT file.');
         }
     };
@@ -183,7 +183,7 @@ export default function TranscriptionViewer({
                 Alert.alert('Exported', 'VTT content copied to clipboard');
             }
             await feedbackService.success();
-        } catch {
+        } catch (err) { console.warn("[TranscriptionViewer] Error:", err);
             Alert.alert('Export Failed', 'Could not export VTT file.');
         }
     };

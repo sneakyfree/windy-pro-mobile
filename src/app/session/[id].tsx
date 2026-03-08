@@ -79,7 +79,7 @@ export default function SessionDetailScreen() {
             await Clipboard.setStringAsync(session.transcript);
             feedbackService.success().catch(() => { });
             Alert.alert('Copied', 'Transcript copied to clipboard');
-        } catch {
+        } catch (err) { console.warn("[Session] Error:", err);
             Alert.alert('Error', 'Could not copy to clipboard.');
         }
     };
@@ -92,7 +92,7 @@ export default function SessionDetailScreen() {
                 message: session.transcript,
                 title: `Windy Pro — ${new Date(session.createdAt).toLocaleDateString()}`,
             });
-        } catch {
+        } catch (err) { console.warn("[Session] Error:", err);
             Alert.alert('Error', 'Could not open share sheet.');
         }
     };
@@ -131,7 +131,7 @@ export default function SessionDetailScreen() {
                         await localStorageService.deleteSession(session.id);
                         feedbackService.success().catch(() => { });
                         router.back();
-                    } catch {
+                    } catch (err) { console.warn("[Session] Error:", err);
                         Alert.alert('Error', 'Could not delete session.');
                     }
                 },

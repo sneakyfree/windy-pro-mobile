@@ -237,7 +237,7 @@ export default function VideoRecordScreen() {
                 quality: 0.6,
             });
             setThumbnailUri(uri);
-        } catch {
+        } catch (err) { console.warn("[Screen] Error:", err);
             // Fallback: no thumbnail, use placeholder
             setThumbnailUri(null);
         }

@@ -64,7 +64,7 @@ class WhisperManager {
             try {
                 const whisperModule = require('whisper.rn');
                 initWhisper = whisperModule.initWhisper;
-            } catch {
+            } catch (err) { console.warn('[WhisperManager] Error:', err);
                 throw new Error(
                     'whisper.rn is not installed. Run `npm install whisper.rn` and rebuild.'
                 );
