@@ -153,7 +153,7 @@ export default function RootLayout() {
         // License activation: windypro://license?key=XXX
         if (parsed.path === 'license' && parsed.queryParams?.key) {
           const key = parsed.queryParams.key as string;
-          const validation = await licenseService.validateLicense(key, 'device-todo');
+          const validation = await licenseService.validateLicense(key);
           setLicense(validation.tier, key);
           Alert.alert(
             '🎉 License Activated',
