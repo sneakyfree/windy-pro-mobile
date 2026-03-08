@@ -8,6 +8,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import type { LicenseTier } from '@/types';
 import { ENDPOINTS, apiUrl } from '@/config/api';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 import {
     parseApiError,
     parseUploadError,
@@ -116,7 +117,7 @@ class TranslationService {
 
         // Cloud translation
         try {
-            const response = await fetch(TRANSLATE_API, {
+            const response = await fetchWithTimeout(TRANSLATE_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: safeText, source: from, target: to }),

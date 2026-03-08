@@ -9,6 +9,7 @@
 import * as SecureStore from 'expo-secure-store';
 import type { LicenseTier, LicenseValidation } from '@/types';
 import { API_BASE_URL, ENDPOINTS, apiUrl } from '@/config/api';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 import { parseApiError, createNetworkError, isAuthError, isRateLimited } from '@/utils/api-error';
 
 const TOKEN_KEY = 'windy_jwt_token';
@@ -89,7 +90,7 @@ class LicenseService {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            const response = await fetch(apiUrl(ENDPOINTS.LICENSE_ACTIVATE), {
+            const response = await fetchWithTimeout(apiUrl(ENDPOINTS.LICENSE_ACTIVATE), {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ key }),
@@ -185,7 +186,7 @@ class LicenseService {
      */
     async getPurchaseUrl(deviceId: string): Promise<string> {
         try {
-            const response = await fetch(apiUrl(ENDPOINTS.STRIPE_CHECKOUT), {
+            const response = await fetchWithTimeout(apiUrl(ENDPOINTS.STRIPE_CHECKOUT), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ deviceId, tier: 'pro' }),
