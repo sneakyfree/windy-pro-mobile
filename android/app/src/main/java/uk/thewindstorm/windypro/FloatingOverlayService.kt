@@ -1,3 +1,11 @@
+/**
+ * 🧬 M4.1 — Floating Overlay Service
+ * Floating 56dp tornado button using WindowManager TYPE_APPLICATION_OVERLAY.
+ * SINGLE TAP toggles recording (idle → recording → processing → idle).
+ * DRAG to reposition, snaps to nearest edge on release.
+ * LONG PRESS (800ms) hides the button.
+ * startForeground() with persistent notification.
+ */
 package uk.thewindstorm.windypro
 
 import android.app.Notification
@@ -7,256 +15,375 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.graphics.PixelFormat
-import android.os.Build
-import android.os.IBinder
-import android.view.Gravity
-import android.view.MotionEvent
-import android.view.View
-import android.view.WindowManager
-import android.widget.FrameLayout
-import android.graphics.drawable.GradientDrawable
-import android.animation.ValueAnimator
-import android.animation.ArgbEvaluator
-import android.animation.ObjectAnimator
+import android.content.SharedPreferences
 import android.graphics.Color
-import android.view.animation.LinearInterpolator
-import android.view.animation.OvershootInterpolator
+import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
+import android.os.Build
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.view.*
+import android.widget.FrameLayout
 import android.widget.TextView
+import android.widget.Toast
+import kotlin.math.abs
 
 class FloatingOverlayService : Service() {
 
     companion object {
-        const val CHANNEL_ID = "windy_overlay"
-        const val NOTIFICATION_ID = 9001
-        const val ACTION_START = "uk.thewindstorm.windypro.START"
+        const val CHANNEL_ID = "windy_overlay_channel"
+        const val NOTIFICATION_ID = 1001
+        const val ACTION_OPEN_APP = "uk.thewindstorm.windypro.OPEN_APP"
+        const val ACTION_HIDE = "uk.thewindstorm.windypro.HIDE"
         const val ACTION_STOP = "uk.thewindstorm.windypro.STOP"
-        const val ACTION_UPDATE_STATE = "uk.thewindstorm.windypro.UPDATE_STATE"
-        const val EXTRA_STATE = "state"
-        const val COLOR_IDLE = "#6B7280"
-        const val COLOR_RECORDING = "#22C55E"
-        const val COLOR_PROCESSING = "#EAB308"
-        const val COLOR_ERROR = "#EF4444"
-        const val COLOR_BACKGROUND = "#0F172A"
-        var isActive = false
+        const val PREFS_NAME = "windy_overlay_prefs"
+
+        var isRunning = false
             private set
     }
 
+    // States
+    enum class OverlayState { IDLE, RECORDING, PROCESSING }
+
+    private var state = OverlayState.IDLE
     private lateinit var windowManager: WindowManager
-    private var floatingView: View? = null
-    private var overlayParams: WindowManager.LayoutParams? = null
-    private var strobeAnimator: ValueAnimator? = null
-    private var currentState = "idle"
+    private lateinit var prefs: SharedPreferences
+    private var overlayView: FrameLayout? = null
+    private var tornadoButton: TextView? = null
+    private var glowBackground: View? = null
+    private var layoutParams: WindowManager.LayoutParams? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var pulseRunnable: Runnable? = null
+
+    // Drag tracking
     private var initialX = 0
     private var initialY = 0
     private var initialTouchX = 0f
     private var initialTouchY = 0f
-    private var lastTapTime = 0L
-    private var tapCount = 0
-    private var screenWidth = 0
+    private var isDragging = false
+    private var longPressTriggered = false
 
-    override fun onCreate() {
-        super.onCreate()
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        screenWidth = resources.displayMetrics.widthPixels
-        createNotificationChannel()
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_START -> startOverlay()
-            ACTION_STOP -> stopOverlay()
-            ACTION_UPDATE_STATE -> updateState(intent.getStringExtra(EXTRA_STATE) ?: "idle")
+    // Long-press detection
+    private val longPressDelay = 800L
+    private val longPressRunnable = Runnable {
+        if (!isDragging) {
+            longPressTriggered = true
+            hideOverlay()
+            Toast.makeText(this, "Open Windy Pro to bring back", Toast.LENGTH_SHORT).show()
         }
-        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun startOverlay() {
-        if (floatingView != null) return
-        val size = dpToPx(64)
-        val container = FrameLayout(this)
+    override fun onCreate() {
+        super.onCreate()
+        isRunning = true
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        createNotificationChannel()
+        startForeground(NOTIFICATION_ID, createNotification())
+        createOverlayView()
+    }
 
-        val strobeRing = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(size + dpToPx(12), size + dpToPx(12)).apply {
-                gravity = Gravity.CENTER
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_HIDE -> hideOverlay()
+            ACTION_STOP -> {
+                stopSelf()
+                return START_NOT_STICKY
             }
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setStroke(dpToPx(3), Color.parseColor(COLOR_IDLE))
+            ACTION_OPEN_APP -> {
+                val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+                launchIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(launchIntent)
             }
-            elevation = 10f
-            visibility = View.GONE
         }
-        container.addView(strobeRing)
+        return START_STICKY
+    }
 
-        val button = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(size, size).apply { gravity = Gravity.CENTER }
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.parseColor(COLOR_BACKGROUND))
-                setStroke(dpToPx(2), Color.parseColor(COLOR_IDLE))
-            }
-            elevation = 20f
+    override fun onDestroy() {
+        isRunning = false
+        stopPulseAnimation()
+        overlayView?.let {
+            try { windowManager.removeView(it) } catch (_: Exception) {}
         }
-        container.addView(button)
+        overlayView = null
+        super.onDestroy()
+    }
 
-        // Tornado emoji label
-        val label = TextView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT
-            ).apply { gravity = Gravity.CENTER }
+    // ─── Notification ────────────────────────────────────────────
+
+    private fun createNotificationChannel() {
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Windy Pro Overlay",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Floating record button"
+            setShowBadge(false)
+        }
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(channel)
+    }
+
+    private fun createNotification(): Notification {
+        val openIntent = PendingIntent.getService(
+            this, 0,
+            Intent(this, FloatingOverlayService::class.java).apply { action = ACTION_OPEN_APP },
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val hideIntent = PendingIntent.getService(
+            this, 1,
+            Intent(this, FloatingOverlayService::class.java).apply { action = ACTION_HIDE },
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return Notification.Builder(this, CHANNEL_ID)
+            .setContentTitle("Windy Pro")
+            .setContentText("Tap tornado to record")
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setContentIntent(openIntent)
+            .addAction(Notification.Action.Builder(
+                null, "Open App", openIntent
+            ).build())
+            .addAction(Notification.Action.Builder(
+                null, "Hide Tornado", hideIntent
+            ).build())
+            .setOngoing(true)
+            .build()
+    }
+
+    // ─── Overlay View ────────────────────────────────────────────
+
+    private fun createOverlayView() {
+        val buttonSize = (56 * resources.displayMetrics.density).toInt()
+        val glowPadding = (8 * resources.displayMetrics.density).toInt()
+        val totalSize = buttonSize + glowPadding * 2
+
+        // Container
+        overlayView = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(totalSize, totalSize)
+        }
+
+        // Glow background (behind button)
+        glowBackground = View(this).apply {
+            val gd = GradientDrawable()
+            gd.shape = GradientDrawable.OVAL
+            gd.setColor(Color.TRANSPARENT)
+            background = gd
+            alpha = 0f
+        }
+        overlayView?.addView(glowBackground, FrameLayout.LayoutParams(totalSize, totalSize))
+
+        // Tornado button
+        tornadoButton = TextView(this).apply {
             text = "🌪️"
-            textSize = 22f
-            elevation = 25f
+            textSize = 24f
+            gravity = Gravity.CENTER
+            val bg = GradientDrawable()
+            bg.shape = GradientDrawable.OVAL
+            bg.setColor(Color.parseColor("#0f172a")) // colors.background
+            bg.setStroke((2 * resources.displayMetrics.density).toInt(), Color.parseColor("#a3e635")) // colors.accent
+            background = bg
+            elevation = 8 * resources.displayMetrics.density
         }
-        container.addView(label)
-
-        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
-            @Suppress("DEPRECATION")
-            WindowManager.LayoutParams.TYPE_PHONE
+        val btnLP = FrameLayout.LayoutParams(buttonSize, buttonSize).apply {
+            gravity = Gravity.CENTER
         }
+        overlayView?.addView(tornadoButton, btnLP)
 
-        overlayParams = WindowManager.LayoutParams(
-            size + dpToPx(16), size + dpToPx(16), type,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+        // WindowManager layout params
+        val savedX = prefs.getInt("overlay_x", 0)
+        val savedY = prefs.getInt("overlay_y", 200)
+
+        layoutParams = WindowManager.LayoutParams(
+            totalSize,
+            totalSize,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.START; x = dpToPx(16); y = dpToPx(200) }
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = savedX
+            y = savedY
+        }
 
-        container.setOnTouchListener { _, event ->
+        // Touch listener for drag + tap + long-press
+        overlayView?.setOnTouchListener(createTouchListener())
+
+        windowManager.addView(overlayView, layoutParams)
+    }
+
+    private fun createTouchListener(): View.OnTouchListener {
+        return View.OnTouchListener { _, event ->
+            val params = layoutParams ?: return@OnTouchListener false
+
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    initialX = overlayParams!!.x; initialY = overlayParams!!.y
-                    initialTouchX = event.rawX; initialTouchY = event.rawY; true
+                    isDragging = false
+                    longPressTriggered = false
+                    initialX = params.x
+                    initialY = params.y
+                    initialTouchX = event.rawX
+                    initialTouchY = event.rawY
+                    handler.postDelayed(longPressRunnable, longPressDelay)
+                    true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    overlayParams!!.x = initialX + (event.rawX - initialTouchX).toInt()
-                    overlayParams!!.y = initialY + (event.rawY - initialTouchY).toInt()
-                    windowManager.updateViewLayout(floatingView, overlayParams); true
+                    val dx = event.rawX - initialTouchX
+                    val dy = event.rawY - initialTouchY
+                    if (abs(dx) > 10 || abs(dy) > 10) {
+                        isDragging = true
+                        handler.removeCallbacks(longPressRunnable)
+                    }
+                    if (isDragging) {
+                        params.x = initialX + dx.toInt()
+                        params.y = initialY + dy.toInt()
+                        try { windowManager.updateViewLayout(overlayView, params) } catch (_: Exception) {}
+                    }
+                    true
                 }
                 MotionEvent.ACTION_UP -> {
-                    val dx = event.rawX - initialTouchX; val dy = event.rawY - initialTouchY
-                    if (Math.sqrt((dx * dx + dy * dy).toDouble()) <= dpToPx(10)) {
-                        val now = System.currentTimeMillis()
-                        tapCount = if (now - lastTapTime < 300) tapCount + 1 else 1
-                        lastTapTime = now
-                        if (tapCount >= 3) stopOverlay() else {
-                            // Scale bounce animation on tap
-                            container.animate()
-                                .scaleX(0.8f).scaleY(0.8f).setDuration(80)
-                                .withEndAction {
-                                    container.animate().scaleX(1.0f).scaleY(1.0f)
-                                        .setDuration(200)
-                                        .setInterpolator(OvershootInterpolator(3f))
-                                        .start()
-                                }.start()
-                            sendRecordToggle()
-                        }
+                    handler.removeCallbacks(longPressRunnable)
+                    if (longPressTriggered) return@OnTouchListener true
+
+                    if (!isDragging) {
+                        // TAP — toggle recording state
+                        onTap()
                     } else {
-                        // Edge-snap: animate to nearest horizontal edge
+                        // Snap to nearest edge
                         snapToEdge()
-                    }; true
+                    }
+                    true
                 }
                 else -> false
             }
         }
-
-        floatingView = container
-        windowManager.addView(floatingView, overlayParams)
-        isActive = true
-        startForeground(NOTIFICATION_ID, buildNotification())
-    }
-
-    private fun stopOverlay() {
-        strobeAnimator?.cancel()
-        floatingView?.let { windowManager.removeView(it) }
-        floatingView = null; isActive = false
-        stopForeground(STOP_FOREGROUND_REMOVE); stopSelf()
-    }
-
-    private fun updateState(state: String) {
-        currentState = state
-        val color = when (state) {
-            "recording" -> Color.parseColor(COLOR_RECORDING)
-            "processing" -> Color.parseColor(COLOR_PROCESSING)
-            "error" -> Color.parseColor(COLOR_ERROR)
-            else -> Color.parseColor(COLOR_IDLE)
-        }
-        floatingView?.let { container ->
-            if (container is FrameLayout && container.childCount >= 2) {
-                val strobeRing = container.getChildAt(0)
-                val button = container.getChildAt(1)
-                (button.background as? GradientDrawable)?.setStroke(dpToPx(2), color)
-                if (state == "recording" || state == "processing") {
-                    strobeRing.visibility = View.VISIBLE
-                    startStrobeAnimation(strobeRing, color)
-                } else { strobeRing.visibility = View.GONE; strobeAnimator?.cancel() }
-            }
-        }
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(NOTIFICATION_ID, buildNotification())
-    }
-
-    private fun startStrobeAnimation(view: View, color: Int) {
-        strobeAnimator?.cancel()
-        strobeAnimator = ValueAnimator.ofObject(ArgbEvaluator(), color,
-            Color.argb(0, Color.red(color), Color.green(color), Color.blue(color))).apply {
-            duration = 1000; repeatCount = ValueAnimator.INFINITE; repeatMode = ValueAnimator.REVERSE
-            interpolator = LinearInterpolator()
-            addUpdateListener { (view.background as? GradientDrawable)?.setStroke(dpToPx(3), it.animatedValue as Int) }
-            start()
-        }
     }
 
     private fun snapToEdge() {
-        val params = overlayParams ?: return
-        val buttonWidth = params.width
-        val centerX = params.x + buttonWidth / 2
-        val targetX = if (centerX < screenWidth / 2) dpToPx(4) else screenWidth - buttonWidth - dpToPx(4)
+        val params = layoutParams ?: return
+        val display = windowManager.defaultDisplay
+        val screenWidth = display.width
+        val viewWidth = overlayView?.width ?: 0
 
-        val animator = ValueAnimator.ofInt(params.x, targetX).apply {
-            duration = 250
-            interpolator = OvershootInterpolator(1.5f)
-            addUpdateListener { anim ->
-                params.x = anim.animatedValue as Int
-                try { windowManager.updateViewLayout(floatingView, params) } catch (_: Exception) {}
+        val targetX = if (params.x + viewWidth / 2 < screenWidth / 2) 0 else screenWidth - viewWidth
+        params.x = targetX
+        try { windowManager.updateViewLayout(overlayView, params) } catch (_: Exception) {}
+
+        // Save position
+        prefs.edit()
+            .putInt("overlay_x", params.x)
+            .putInt("overlay_y", params.y)
+            .apply()
+    }
+
+    // ─── State Machine ───────────────────────────────────────────
+
+    private fun onTap() {
+        triggerHaptic()
+        when (state) {
+            OverlayState.IDLE -> {
+                state = OverlayState.RECORDING
+                updateVisuals()
+                startPulseAnimation()
+                // Emit event to React Native to start recording
+                WindyOverlayModule.emitEvent("onOverlayRecord", "start")
+            }
+            OverlayState.RECORDING -> {
+                state = OverlayState.PROCESSING
+                updateVisuals()
+                stopPulseAnimation()
+                // Emit event to React Native to stop recording + transcribe
+                WindyOverlayModule.emitEvent("onOverlayRecord", "stop")
+            }
+            OverlayState.PROCESSING -> {
+                // Already processing — ignore taps
             }
         }
-        animator.start()
     }
 
-    private fun sendRecordToggle() {
-        sendBroadcast(Intent("uk.thewindstorm.windypro.OVERLAY_TAP"))
+    /** Called from WindyOverlayModule when transcription is complete */
+    fun onTranscriptionComplete() {
+        handler.post {
+            state = OverlayState.IDLE
+            updateVisuals()
+        }
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Windy Pro Overlay", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Keeps the floating Windy button active"; setShowBadge(false)
-                }
+    private fun updateVisuals() {
+        val button = tornadoButton ?: return
+        val glow = glowBackground ?: return
+        val bg = button.background as? GradientDrawable ?: return
+        val glowBg = glow.background as? GradientDrawable ?: return
+
+        when (state) {
+            OverlayState.IDLE -> {
+                bg.setStroke((2 * resources.displayMetrics.density).toInt(), Color.parseColor("#a3e635"))
+                glowBg.setColor(Color.TRANSPARENT)
+                glow.alpha = 0f
+            }
+            OverlayState.RECORDING -> {
+                bg.setStroke((3 * resources.displayMetrics.density).toInt(), Color.parseColor("#22c55e"))
+                glowBg.setColor(Color.parseColor("#22c55e"))
+                glow.alpha = 0.3f
+            }
+            OverlayState.PROCESSING -> {
+                bg.setStroke((3 * resources.displayMetrics.density).toInt(), Color.parseColor("#eab308"))
+                glowBg.setColor(Color.parseColor("#eab308"))
+                glow.alpha = 0.4f
+            }
+        }
+    }
+
+    // ─── Pulse Animation ─────────────────────────────────────────
+
+    private fun startPulseAnimation() {
+        pulseRunnable = object : Runnable {
+            var growing = true
+            override fun run() {
+                val glow = glowBackground ?: return
+                if (state != OverlayState.RECORDING) return
+
+                val target = if (growing) 0.5f else 0.15f
+                glow.animate().alpha(target).setDuration(600).withEndAction {
+                    growing = !growing
+                    handler.post(this)
+                }.start()
+            }
+        }
+        handler.post(pulseRunnable!!)
+    }
+
+    private fun stopPulseAnimation() {
+        pulseRunnable?.let { handler.removeCallbacks(it) }
+        pulseRunnable = null
+    }
+
+    // ─── Helpers ─────────────────────────────────────────────────
+
+    private fun hideOverlay() {
+        overlayView?.let {
+            try { windowManager.removeView(it) } catch (_: Exception) {}
+        }
+        overlayView = null
+    }
+
+    private fun triggerHaptic() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vm = getSystemService(VibratorManager::class.java)
+            vm?.defaultVibrator?.vibrate(
+                VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE)
             )
+        } else {
+            @Suppress("DEPRECATION")
+            val v = getSystemService(VIBRATOR_SERVICE) as? Vibrator
+            v?.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
         }
     }
-
-    private fun buildNotification(): Notification {
-        val label = when (currentState) {
-            "recording" -> "🎤 Recording..."; "processing" -> "⏳ Processing..."
-            "error" -> "❌ Error"; else -> "🌪️ Windy Pro — Tap to record"
-        }
-        return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Windy Pro").setContentText(label)
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-            .setContentIntent(PendingIntent.getActivity(this, 0,
-                packageManager.getLaunchIntentForPackage(packageName),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
-            .setOngoing(true).build()
-    }
-
-    private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
-
-    override fun onDestroy() { stopOverlay(); super.onDestroy() }
 }
