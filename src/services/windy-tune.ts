@@ -6,6 +6,8 @@
  */
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
+import * as FileSystem from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { DeviceProfile, EngineConfig, EngineId, WindyTuneResult } from '@/types';
 
 /**
@@ -186,3 +188,267 @@ export function getWindyTuneRecommendation(
         allEngines,
     };
 }
+
+// ─── WindyTuneManager: Download Manager ──────────────────────
+
+/**
+ * 🧬 M3.1.3 — WindyTune Manager
+ * Wraps detection + recommendation + download lifecycle.
+ * Download from CDN, track progress, resume interrupted downloads,
+ * persist state to AsyncStorage.
+ */
+
+/** Engine model CDN base URL */
+const ENGINE_CDN_BASE = 'https://windypro.thewindstorm.uk/models';
+
+/** AsyncStorage key for downloaded engines */
+const STORAGE_KEY = 'windy_downloaded_engines';
+
+type DownloadState = 'idle' | 'downloading' | 'paused' | 'complete' | 'error';
+
+interface EngineDownloadInfo {
+    engineId: EngineId;
+    state: DownloadState;
+    progress: number;          // 0-100
+    bytesDownloaded: number;
+    totalBytes: number;
+    filePath: string | null;
+    errorMessage: string | null;
+    completedAt: string | null; // ISO 8601
+}
+
+type ProgressCallback = (engineId: EngineId, progress: number, state: DownloadState) => void;
+
+class WindyTuneManager {
+    private downloadedEngines: Map<EngineId, EngineDownloadInfo> = new Map();
+    private activeDownloads: Map<EngineId, AbortController> = new Map();
+    private progressListeners: ProgressCallback[] = [];
+    private initialized = false;
+
+    /**
+     * Initialize — load persisted download state from AsyncStorage
+     */
+    async initialize(): Promise<void> {
+        if (this.initialized) return;
+
+        try {
+            const stored = await AsyncStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                const parsed: EngineDownloadInfo[] = JSON.parse(stored);
+                for (const info of parsed) {
+                    this.downloadedEngines.set(info.engineId, info);
+                }
+            }
+        } catch {
+            // First launch or corrupt data — start fresh
+        }
+
+        this.initialized = true;
+    }
+
+    /**
+     * Get the full WindyTune recommendation, incorporating download state
+     */
+    async getRecommendation(): Promise<WindyTuneResult> {
+        await this.initialize();
+        const profile = await detectDeviceProfile();
+        const downloaded = new Set(
+            Array.from(this.downloadedEngines.entries())
+                .filter(([, info]) => info.state === 'complete')
+                .map(([id]) => id)
+        );
+        return getWindyTuneRecommendation(profile, downloaded);
+    }
+
+    /**
+     * Get download info for a specific engine
+     */
+    getDownloadInfo(engineId: EngineId): EngineDownloadInfo | null {
+        return this.downloadedEngines.get(engineId) ?? null;
+    }
+
+    /**
+     * Get set of fully downloaded engine IDs
+     */
+    getDownloadedEngineIds(): Set<EngineId> {
+        const ids = new Set<EngineId>();
+        for (const [id, info] of this.downloadedEngines) {
+            if (info.state === 'complete') ids.add(id);
+        }
+        return ids;
+    }
+
+    /**
+     * Check if specific engine is downloaded and ready
+     */
+    isEngineReady(engineId: EngineId): boolean {
+        const info = this.downloadedEngines.get(engineId);
+        return info?.state === 'complete';
+    }
+
+    /**
+     * Start downloading an engine model
+     */
+    async downloadEngine(engineId: EngineId): Promise<void> {
+        await this.initialize();
+
+        const engineConfig = ENGINE_REGISTRY[engineId];
+        if (!engineConfig) throw new Error(`Unknown engine: ${engineId}`);
+        if (!engineConfig.isOnDevice) throw new Error(`${engineId} is a cloud engine — no download needed`);
+
+        // Don't re-download if already complete
+        const existing = this.downloadedEngines.get(engineId);
+        if (existing?.state === 'complete') return;
+
+        // Cancel any existing download for this engine
+        this.cancelDownload(engineId);
+
+        const modelDir = `${FileSystem.documentDirectory}models/`;
+        await FileSystem.makeDirectoryAsync(modelDir, { intermediates: true }).catch(() => { });
+
+        const filePath = `${modelDir}${engineId}.bin`;
+        const downloadUrl = `${ENGINE_CDN_BASE}/${engineId}.bin`;
+
+        const info: EngineDownloadInfo = {
+            engineId,
+            state: 'downloading',
+            progress: 0,
+            bytesDownloaded: 0,
+            totalBytes: engineConfig.sizeBytes,
+            filePath,
+            errorMessage: null,
+            completedAt: null,
+        };
+        this.downloadedEngines.set(engineId, info);
+        this.notifyProgress(engineId, 0, 'downloading');
+
+        try {
+            const controller = new AbortController();
+            this.activeDownloads.set(engineId, controller);
+
+            // Use expo-file-system createDownloadResumable for resumable downloads
+            const downloadResumable = FileSystem.createDownloadResumable(
+                downloadUrl,
+                filePath,
+                {},
+                (downloadProgress: { totalBytesWritten: number; totalBytesExpectedToWrite: number }) => {
+                    const pct = downloadProgress.totalBytesExpectedToWrite > 0
+                        ? Math.round((downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite) * 100)
+                        : 0;
+                    info.progress = pct;
+                    info.bytesDownloaded = downloadProgress.totalBytesWritten;
+                    info.totalBytes = downloadProgress.totalBytesExpectedToWrite;
+                    this.notifyProgress(engineId, pct, 'downloading');
+                }
+            );
+
+            const result = await downloadResumable.downloadAsync();
+
+            if (result) {
+                // Validate file size
+                const fileInfo = await FileSystem.getInfoAsync(result.uri);
+                if (fileInfo.exists && 'size' in fileInfo && fileInfo.size > 0) {
+                    info.state = 'complete';
+                    info.progress = 100;
+                    info.bytesDownloaded = fileInfo.size;
+                    info.filePath = result.uri;
+                    info.completedAt = new Date().toISOString();
+                    this.notifyProgress(engineId, 100, 'complete');
+                } else {
+                    throw new Error('Downloaded file is empty or missing');
+                }
+            }
+
+            this.activeDownloads.delete(engineId);
+            await this.persistState();
+        } catch (error: unknown) {
+            const errMsg = error instanceof Error ? error.message : 'Download failed';
+
+            // Check if it was a deliberate cancellation
+            if (errMsg === 'Download paused') {
+                info.state = 'paused';
+                this.notifyProgress(engineId, info.progress, 'paused');
+            } else {
+                info.state = 'error';
+                info.errorMessage = errMsg;
+                this.notifyProgress(engineId, info.progress, 'error');
+            }
+
+            this.activeDownloads.delete(engineId);
+            await this.persistState();
+        }
+    }
+
+    /**
+     * Pause an active download
+     */
+    cancelDownload(engineId: EngineId): void {
+        const controller = this.activeDownloads.get(engineId);
+        if (controller) {
+            controller.abort();
+            this.activeDownloads.delete(engineId);
+        }
+    }
+
+    /**
+     * Delete a downloaded engine model
+     */
+    async deleteEngine(engineId: EngineId): Promise<void> {
+        this.cancelDownload(engineId);
+
+        const info = this.downloadedEngines.get(engineId);
+        if (info?.filePath) {
+            try {
+                await FileSystem.deleteAsync(info.filePath, { idempotent: true });
+            } catch {
+                // File already gone
+            }
+        }
+
+        this.downloadedEngines.delete(engineId);
+        await this.persistState();
+    }
+
+    /**
+     * Get total storage used by downloaded engines
+     */
+    getTotalStorageUsed(): number {
+        let total = 0;
+        for (const info of this.downloadedEngines.values()) {
+            if (info.state === 'complete') {
+                total += info.bytesDownloaded;
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Add a progress listener
+     */
+    onProgress(callback: ProgressCallback): () => void {
+        this.progressListeners.push(callback);
+        return () => {
+            this.progressListeners = this.progressListeners.filter((cb) => cb !== callback);
+        };
+    }
+
+    // ─── Private Helpers ─────────────────────────────────────────
+
+    private notifyProgress(engineId: EngineId, progress: number, state: DownloadState): void {
+        for (const listener of this.progressListeners) {
+            try { listener(engineId, progress, state); } catch { /* ignore */ }
+        }
+    }
+
+    private async persistState(): Promise<void> {
+        try {
+            const data = Array.from(this.downloadedEngines.values());
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch {
+            // Persistence failed — non-fatal
+        }
+    }
+}
+
+/** Singleton instance */
+export const windyTuneManager = new WindyTuneManager();
