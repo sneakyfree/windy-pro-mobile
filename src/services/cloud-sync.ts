@@ -197,7 +197,8 @@ class CloudSyncService {
             const download = await FileSystem.downloadAsync(recording.audioUrl, localPath);
 
             return download.status === 200 ? localPath : null;
-        } catch {
+        } catch (err) {
+            console.warn('[CloudSync] downloadAudio failed:', err);
             return null;
         }
     }
@@ -229,7 +230,8 @@ class CloudSyncService {
                 localUpdatedAt: local.syncedAt || local.createdAt,
                 cloudUpdatedAt: cloudRecording.createdAt,
             };
-        } catch {
+        } catch (err) {
+            console.warn('[CloudSync] resolveConflict failed:', err);
             return { resolution: 'keep-cloud' };
         }
     }
@@ -400,7 +402,7 @@ class CloudSyncService {
                     unsyncedBytes += size;
                     unsyncedCount++;
                 }
-            } catch { /* file missing */ }
+            } catch (err) { console.warn('[CloudSync] getLocalStorageUsed file error:', err); }
         }
 
         return { totalBytes, syncedBytes, unsyncedBytes, syncedCount, unsyncedCount };
@@ -427,7 +429,7 @@ class CloudSyncService {
                     await FileSystem.deleteAsync(full.audioFilePath, { idempotent: true });
                     count++;
                 }
-            } catch { /* ignore */ }
+            } catch (err) { console.warn('[CloudSync] clearSyncedAudio file error:', err); }
         }
 
         return { freedBytes, count };
@@ -452,7 +454,8 @@ class CloudSyncService {
         try {
             const raw = await AsyncStorage.getItem(QUEUE_KEY);
             this.queue = raw ? JSON.parse(raw) : [];
-        } catch {
+        } catch (err) {
+            console.warn('[CloudSync] loadQueue failed:', err);
             this.queue = [];
         }
     }

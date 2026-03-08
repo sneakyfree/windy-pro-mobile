@@ -114,13 +114,13 @@ class SyncManager {
                     item.status = 'queued';
                 }
             }
-        } catch { this.queue = []; }
+        } catch (err) { console.warn('[SyncManager] loadQueue failed:', err); this.queue = []; }
 
         // Load settings
         try {
             const raw = await AsyncStorage.getItem(SETTINGS_KEY);
             if (raw) this.settings = { ...this.settings, ...JSON.parse(raw) };
-        } catch { /* default settings */ }
+        } catch (err) { console.warn('[SyncManager] loadSettings failed:', err); }
 
         // Listen for network changes
         this.netInfoUnsubscribe = NetInfo.addEventListener(this.handleNetworkChange);
@@ -188,7 +188,7 @@ class SyncManager {
         try {
             const info = await FileSystem.getInfoAsync(params.filePath);
             fileSize = info.exists && 'size' in info ? (info as any).size : 0;
-        } catch { return; }
+        } catch (err) { console.warn('[SyncManager] getFileInfo failed:', err); return; }
 
         if (fileSize === 0) return;
 
@@ -440,7 +440,7 @@ class SyncManager {
                     try {
                         const body = await res.json();
                         if (body.error) errorMsg = body.error;
-                    } catch { /* use default message */ }
+                    } catch (err) { console.warn('[SyncManager] chunk error parse failed:', err); }
 
                     if (isAuthError(res.status)) {
                         item.error = 'Session expired — please log in again';
@@ -486,7 +486,7 @@ class SyncManager {
                     return 'skip'; // Same or older — skip upload
                 }
             }
-        } catch { /* assume no conflict — upload */ }
+        } catch (err) { console.warn('[SyncManager] checkConflict failed:', err); }
         return 'upload';
     }
 
@@ -535,7 +535,7 @@ class SyncManager {
                         item.progress = 100;
                     }
                 }
-            } catch { /* individual upload fallback */ }
+            } catch (err) { console.warn('[SyncManager] batch upload failed:', err); }
         }
 
         await this.persistQueue();
@@ -551,7 +551,7 @@ class SyncManager {
                 stopOnTerminate: false,
                 startOnBoot: true,
             });
-        } catch { /* Background fetch not available */ }
+        } catch (err) { console.warn('[SyncManager] registerBackgroundTask failed:', err); }
     }
 
     // ─── Notifications ──────────────────────────────────────────

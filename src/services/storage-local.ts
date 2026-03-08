@@ -158,7 +158,7 @@ class LocalStorageService {
             try {
                 const state = require('@/stores/useSettingsStore').useSettingsStore.getState();
                 return state.syncEnabled ?? false;
-            } catch { return false; }
+            } catch (err) { console.warn('[Storage] syncEnabled check failed:', err); return false; }
         })();
         if (syncEnabled) {
             await db.runAsync(
@@ -364,7 +364,7 @@ class LocalStorageService {
                     else if (key === 'text') textBytes = size;
                     else if (key === 'engines') engineBytes = size;
                 }
-            } catch { /* skip */ }
+            } catch (err) { console.warn('[Storage] getStorageUsage dir error:', err); }
         }
 
         const countRow: any = await db.getFirstAsync(
@@ -395,7 +395,8 @@ class LocalStorageService {
 function safeParseQuality(json: string, score: number): any {
     try {
         return JSON.parse(json);
-    } catch {
+    } catch (err) {
+        console.warn('[Storage] safeParseQuality failed:', err);
         return {
             score, label: score >= 80 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'fair' : 'poor',
             snrDb: 0, speechRatio: 0, hasClipping: false, sampleRate: 44100

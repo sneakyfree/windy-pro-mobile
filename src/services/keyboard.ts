@@ -31,7 +31,8 @@ class KeyboardService {
         if (!isAvailable) return false;
         try {
             return await WindyKeyboard.isKeyboardEnabled();
-        } catch {
+        } catch (err) {
+            console.warn('[Keyboard] isEnabled check failed:', err);
             return false;
         }
     }
@@ -78,7 +79,8 @@ class KeyboardService {
         if (!isAvailable) return [];
         try {
             return await WindyKeyboard.getPendingTranscripts();
-        } catch {
+        } catch (err) {
+            console.warn('[Keyboard] getPendingTranscripts failed:', err);
             return [];
         }
     }
@@ -98,7 +100,8 @@ class KeyboardService {
         if (!isAvailable) return false;
         try {
             return await WindyKeyboard.isLiveActivitySupported();
-        } catch {
+        } catch (err) {
+            console.warn('[Keyboard] isLiveActivitySupported check failed:', err);
             return false;
         }
     }

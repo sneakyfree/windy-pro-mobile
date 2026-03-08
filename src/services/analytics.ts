@@ -45,13 +45,13 @@ class AnalyticsService {
             }
             this.summary.lastSessionStart = Date.now();
             this.initialized = true;
-        } catch { /* ignore */ }
+        } catch (err) { console.warn('[Analytics] initialize failed:', err); }
     }
 
     private async save(): Promise<void> {
         try {
             await AsyncStorage.setItem(ANALYTICS_KEY, JSON.stringify(this.summary));
-        } catch { /* ignore */ }
+        } catch (err) { console.warn('[Analytics] save failed:', err); }
     }
 
     /** Track a screen view */

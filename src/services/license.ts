@@ -80,7 +80,7 @@ class LicenseService {
             let token: string | null = null;
             try {
                 token = await SecureStore.getItemAsync(TOKEN_KEY);
-            } catch { /* no token available */ }
+            } catch (err) { console.warn('[License] Failed to get token:', err); }
 
             const headers: Record<string, string> = {
                 'Content-Type': 'application/json',
@@ -194,7 +194,8 @@ class LicenseService {
                 const data = await response.json();
                 if (data.url) return data.url;
             }
-        } catch {
+        } catch (err) {
+            console.warn('[License] getPurchaseUrl failed:', err);
             // Fall back to static URL
         }
         return `${API_BASE_URL}/pricing?device=${encodeURIComponent(deviceId)}`;

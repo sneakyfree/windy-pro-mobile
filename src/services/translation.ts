@@ -231,7 +231,7 @@ class TranslationService {
                 return { language: data.language || 'en', confidence: data.confidence || 0.5 };
             }
             // Non-ok but not a network error — fall through to heuristic
-        } catch { /* network error — fallback below */ }
+        } catch (err) { console.warn('[Translation] detectLanguage network error:', err); }
 
         // Heuristic fallback: check against known patterns
         return this.heuristicDetect(text);

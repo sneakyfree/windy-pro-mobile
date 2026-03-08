@@ -120,7 +120,8 @@ class CloudStorageClient {
                 return true;
             }
             return false;
-        } catch {
+        } catch (err) {
+            console.warn('[CloudStorage] restoreSession failed:', err);
             return false;
         }
     }
@@ -149,7 +150,8 @@ class CloudStorageClient {
             }
 
             return true;
-        } catch {
+        } catch (err) {
+            console.warn('[CloudStorage] refreshAuth failed:', err);
             return false;
         }
     }
@@ -344,7 +346,8 @@ class CloudStorageClient {
                 return null;
             }
             return await response.json();
-        } catch {
+        } catch (err) {
+            console.warn('[CloudStorage] getRecording failed:', err);
             return null;
         }
     }
@@ -372,7 +375,8 @@ class CloudStorageClient {
                 return false;
             }
             return true;
-        } catch {
+        } catch (err) {
+            console.warn('[CloudStorage] deleteRecording failed:', err);
             return false;
         }
     }
