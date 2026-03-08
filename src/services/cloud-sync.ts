@@ -76,6 +76,11 @@ class CloudSyncService {
      * Upload a recording. If offline, queues for later.
      */
     async uploadRecording(sessionId: string): Promise<{ success: boolean; queued?: boolean; error?: string }> {
+        // Input validation
+        if (!sessionId || typeof sessionId !== 'string' || sessionId.length > 200) {
+            return { success: false, error: 'Invalid session ID' };
+        }
+
         if (!networkMonitor.isOnline) {
             await this.addToQueue(sessionId);
             return { success: false, queued: true };

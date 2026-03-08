@@ -105,6 +105,10 @@ class TranslationService {
             return { translated: text, confidence: 1, fromLanguage: from, toLanguage: to };
         }
 
+        // Input validation: limit text length to prevent abuse
+        const MAX_TEXT_LENGTH = 10_000;
+        const safeText = text.length > MAX_TEXT_LENGTH ? text.slice(0, MAX_TEXT_LENGTH) : text;
+
         // Check cache
         const cacheKey = `${from}:${to}:${text.trim().toLowerCase()}`;
         const cached = this.cache.get(cacheKey);
@@ -115,7 +119,7 @@ class TranslationService {
             const response = await fetch(TRANSLATE_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, source: from, target: to }),
+                body: JSON.stringify({ text: safeText, source: from, target: to }),
             });
 
             if (!response.ok) {
