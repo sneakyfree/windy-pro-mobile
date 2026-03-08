@@ -14,7 +14,9 @@ import Speech
  *   - Mini transcript preview with auto-insert
  *   - Globe key for keyboard switching
  *   - App Group shared container for main app IPC
- *   - On-device SFSpeechRecognizer for transcription
+ *   - On-device SFSpeechRecognizer for transcription (primary)
+ *   - Cloud HTTP POST fallback to /api/v1/transcribe
+ *   - Backspace/delete key
  */
 class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate {
 
@@ -35,12 +37,19 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
     // MARK: - Config
     private let appGroupId = "group.uk.thewindstorm.windypro"
     private lazy var sharedDefaults = UserDefaults(suiteName: appGroupId)
+    private let defaultServerUrl = "https://windypro.thewindstorm.uk"
+
+    /// Server URL — configurable via main app settings (shared via App Group)
+    private var serverUrl: String {
+        sharedDefaults?.string(forKey: "windy-server-url") ?? defaultServerUrl
+    }
 
     // MARK: - Colors
     private let colorBackground = UIColor(red: 15/255, green: 23/255, blue: 42/255, alpha: 1)
     private let colorSurface = UIColor(red: 30/255, green: 41/255, blue: 59/255, alpha: 1)
     private let colorAccent = UIColor(red: 163/255, green: 230/255, blue: 53/255, alpha: 1)
     private let colorRecording = UIColor(red: 34/255, green: 197/255, blue: 94/255, alpha: 1)
+    private let colorProcessing = UIColor(red: 234/255, green: 179/255, blue: 8/255, alpha: 1)
     private let colorTextPrimary = UIColor.white
     private let colorTextMuted = UIColor(red: 148/255, green: 163/255, blue: 184/255, alpha: 1)
 
@@ -89,7 +98,6 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
         transcriptPreview.clipsToBounds = true
         transcriptPreview.textAlignment = .left
         transcriptPreview.isHidden = true
-        // Add padding
         let previewWrapper = UIView()
         previewWrapper.backgroundColor = colorSurface
         previewWrapper.layer.cornerRadius = 8
@@ -113,14 +121,12 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
         centerStack.alignment = .center
         centerStack.spacing = 6
 
-        // Status label
         statusLabel = UILabel()
         statusLabel.text = "Tap 🌪️ to Record"
         statusLabel.textColor = colorTextMuted
         statusLabel.font = .systemFont(ofSize: 13, weight: .medium)
         centerStack.addArrangedSubview(statusLabel)
 
-        // Timer label
         timerLabel = UILabel()
         timerLabel.text = ""
         timerLabel.textColor = colorRecording
@@ -136,7 +142,6 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
             buttonContainer.heightAnchor.constraint(equalToConstant: 96),
         ])
 
-        // Strobe ring
         strobeView = UIView()
         strobeView.layer.cornerRadius = 48
         strobeView.layer.borderWidth = 3
@@ -151,7 +156,6 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
             strobeView.heightAnchor.constraint(equalToConstant: 96),
         ])
 
-        // Record button
         recordButton = UIButton(type: .custom)
         recordButton.setTitle("🌪️", for: .normal)
         recordButton.titleLabel?.font = .systemFont(ofSize: 36)
@@ -171,7 +175,7 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
 
         centerStack.addArrangedSubview(buttonContainer)
 
-        // Level meter bar
+        // Level meter
         levelMeterBar = UIView()
         levelMeterBar.backgroundColor = colorSurface
         levelMeterBar.layer.cornerRadius = 3
@@ -192,21 +196,24 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
             levelMeterFill.leadingAnchor.constraint(equalTo: levelMeterBar.leadingAnchor),
             levelMeterFill.topAnchor.constraint(equalTo: levelMeterBar.topAnchor),
             levelMeterFill.bottomAnchor.constraint(equalTo: levelMeterBar.bottomAnchor),
-            levelMeterFill.widthAnchor.constraint(equalToConstant: 0), // Updated dynamically
+            levelMeterFill.widthAnchor.constraint(equalToConstant: 0),
         ])
 
         centerStack.addArrangedSubview(levelMeterBar)
         mainStack.addArrangedSubview(centerStack)
 
-        // Bottom row: globe + space + return
+        // Bottom row: globe + backspace + space + return
         let bottomRow = UIStackView()
         bottomRow.axis = .horizontal
-        bottomRow.spacing = 0
+        bottomRow.spacing = 4
         bottomRow.distribution = .fillEqually
 
         let globeBtn = makeBottomButton(title: "🌐", action: nil)
         globeBtn.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
         bottomRow.addArrangedSubview(globeBtn)
+
+        let deleteBtn = makeBottomButton(title: "⌫", action: #selector(deleteTapped))
+        bottomRow.addArrangedSubview(deleteBtn)
 
         let spaceBtn = makeBottomButton(title: "space", action: #selector(spaceTapped))
         spaceBtn.setTitleColor(colorTextMuted, for: .normal)
@@ -241,11 +248,9 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
         } else {
             startRecording()
         }
-        // Haptic feedback
         if sharedDefaults?.bool(forKey: "hapticFeedback") ?? true {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         }
-        // Scale bounce
         UIView.animate(withDuration: 0.08, animations: {
             self.recordButton.transform = CGAffineTransform(scaleX: 0.85, y: 0.85)
         }) { _ in
@@ -257,6 +262,7 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
 
     @objc private func spaceTapped() { textDocumentProxy.insertText(" ") }
     @objc private func returnTapped() { textDocumentProxy.insertText("\n") }
+    @objc private func deleteTapped() { textDocumentProxy.deleteBackward() }
 
     // MARK: - Recording
 
@@ -287,13 +293,11 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
             strobeView.isHidden = false
             recordingDuration = 0
 
-            // Strobe animation
             UIView.animate(withDuration: 0.8, delay: 0, options: [.repeat, .autoreverse]) {
                 self.strobeView.layer.borderColor = self.colorRecording.cgColor
                 self.strobeView.alpha = 0.3
             }
 
-            // Timer
             recordingTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
                 guard let self = self else { return }
                 self.recordingDuration += 1
@@ -322,25 +326,25 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
     func recorderDidStop(audioURL: URL, duration: TimeInterval) {
         setRecordingUI(false)
         statusLabel.text = "⏳ Transcribing..."
+        statusLabel.textColor = colorProcessing
 
-        // Queue for main app
         let id = UUID().uuidString
         audioBridge.queueForMainApp(id: id, audioPath: audioURL.path, duration: duration)
 
-        // Attempt on-device transcription
+        // Primary: on-device SFSpeech, fallback: cloud HTTP
         performSpeechRecognition(audioURL: audioURL)
     }
 
     func recorderDidFail(error: String) {
         setRecordingUI(false)
         statusLabel.text = "❌ \(error)"
+        statusLabel.textColor = colorTextMuted
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             self?.statusLabel.text = "Tap 🌪️ to Record"
         }
     }
 
     func recorderMeterUpdate(level: Float) {
-        // Update level meter bar width
         let maxWidth: CGFloat = 200
         let fillWidth = maxWidth * CGFloat(level)
         UIView.animate(withDuration: 0.1) {
@@ -349,17 +353,19 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
         }
     }
 
-    // MARK: - Speech Recognition
+    // MARK: - Speech Recognition (On-Device Primary)
 
     private func performSpeechRecognition(audioURL: URL) {
         guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else {
-            statusLabel.text = "Open Windy Pro to transcribe"
+            performCloudTranscription(audioURL: audioURL)
             return
         }
 
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             guard status == .authorized else {
-                DispatchQueue.main.async { self?.statusLabel.text = "⚠️ Speech auth denied" }
+                DispatchQueue.main.async {
+                    self?.performCloudTranscription(audioURL: audioURL)
+                }
                 return
             }
 
@@ -367,31 +373,123 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
             recognizer.recognitionTask(with: request) { [weak self] result, error in
                 DispatchQueue.main.async {
                     if let error = error {
-                        self?.statusLabel.text = "❌ \(error.localizedDescription)"
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                            self?.statusLabel.text = "Tap 🌪️ to Record"
-                        }
+                        print("[WindyKeyboard] SFSpeech failed: \(error.localizedDescription), trying cloud...")
+                        self?.performCloudTranscription(audioURL: audioURL)
                         return
                     }
 
                     guard let result = result else { return }
-
-                    // Show partial transcript in preview
                     let text = result.bestTranscription.formattedString
                     self?.showTranscriptPreview(text)
 
                     if result.isFinal {
-                        // Insert at cursor
                         self?.textDocumentProxy.insertText(text)
                         self?.statusLabel.text = "✅ Inserted"
+                        self?.statusLabel.textColor = self?.colorAccent ?? .green
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                             self?.statusLabel.text = "Tap 🌪️ to Record"
+                            self?.statusLabel.textColor = self?.colorTextMuted ?? .gray
                             self?.hideTranscriptPreview()
                         }
                     }
                 }
             }
         }
+    }
+
+    // MARK: - Cloud Transcription (Fallback)
+
+    /**
+     * 🧬 M5.2 — Cloud transcription fallback
+     * HTTP POST multipart/form-data to /api/v1/transcribe
+     * Used when SFSpeechRecognizer is unavailable or fails.
+     */
+    private func performCloudTranscription(audioURL: URL) {
+        statusLabel.text = "☁️ Cloud transcribing..."
+        statusLabel.textColor = colorProcessing
+
+        let url = URL(string: "\(serverUrl)/api/v1/transcribe")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 30
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+
+        // Language field
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"language\"\r\n\r\n".data(using: .utf8)!)
+        body.append("en\r\n".data(using: .utf8)!)
+
+        // Engine field
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"engine\"\r\n\r\n".data(using: .utf8)!)
+        body.append("cloud-standard\r\n".data(using: .utf8)!)
+
+        // Audio file
+        if let audioData = try? Data(contentsOf: audioURL) {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"audio\"; filename=\"recording.wav\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
+            body.append(audioData)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self?.statusLabel.text = "❌ Cloud: \(error.localizedDescription)"
+                    self?.statusLabel.textColor = self?.colorTextMuted ?? .gray
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        self?.statusLabel.text = "Tap 🌪️ to Record"
+                    }
+                    return
+                }
+
+                guard let data = data,
+                      let httpResponse = response as? HTTPURLResponse,
+                      httpResponse.statusCode == 200 else {
+                    self?.statusLabel.text = "❌ Server error"
+                    self?.statusLabel.textColor = self?.colorTextMuted ?? .gray
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        self?.statusLabel.text = "Tap 🌪️ to Record"
+                    }
+                    return
+                }
+
+                // Parse JSON response { text: "..." }
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let text = json["text"] as? String, !text.isEmpty {
+                    self?.showTranscriptPreview(text)
+                    self?.textDocumentProxy.insertText(text)
+                    self?.statusLabel.text = "✅ Inserted (cloud)"
+                    self?.statusLabel.textColor = self?.colorAccent ?? .green
+                } else {
+                    let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    if !text.isEmpty {
+                        self?.showTranscriptPreview(text)
+                        self?.textDocumentProxy.insertText(text)
+                        self?.statusLabel.text = "✅ Inserted (cloud)"
+                        self?.statusLabel.textColor = self?.colorAccent ?? .green
+                    } else {
+                        self?.statusLabel.text = "⚠️ No text detected"
+                        self?.statusLabel.textColor = self?.colorTextMuted ?? .gray
+                    }
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    self?.statusLabel.text = "Tap 🌪️ to Record"
+                    self?.statusLabel.textColor = self?.colorTextMuted ?? .gray
+                    self?.hideTranscriptPreview()
+                }
+            }
+        }
+        task.resume()
     }
 
     // MARK: - Transcript Preview
