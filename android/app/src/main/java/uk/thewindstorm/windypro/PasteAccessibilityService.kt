@@ -19,6 +19,7 @@ import android.os.Bundle
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
+import android.util.Log
 
 class PasteAccessibilityService : AccessibilityService() {
 
@@ -107,7 +108,7 @@ class PasteAccessibilityService : AccessibilityService() {
         // Save previous clipboard content
         previousClipText = try {
             clipboard.primaryClip?.getItemAt(0)?.text
-        } catch (_: Exception) { null }
+        } catch (e: Exception) { Log.w("WindyPaste", "Failed to read previous clipboard", e); null }
 
         // Set transcript to clipboard
         clipboard.setPrimaryClip(ClipData.newPlainText("Windy Pro Transcript", text))
@@ -134,7 +135,8 @@ class PasteAccessibilityService : AccessibilityService() {
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     restoreClipboard()
                 }, 500)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w("WindyPaste", "Paste via accessibility failed", e)
                 // Fallback: clipboard only
                 showToast("📋 Transcript copied to clipboard")
             }

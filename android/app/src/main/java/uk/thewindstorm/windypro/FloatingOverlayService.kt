@@ -31,6 +31,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import kotlin.math.abs
+import android.util.Log
 
 class FloatingOverlayService : Service() {
 
@@ -109,7 +110,7 @@ class FloatingOverlayService : Service() {
         isRunning = false
         stopPulseAnimation()
         overlayView?.let {
-            try { windowManager.removeView(it) } catch (_: Exception) {}
+            try { windowManager.removeView(it) } catch (e: Exception) { Log.w("WindyOverlay", "removeView in onDestroy failed", e) }
         }
         overlayView = null
         super.onDestroy()
@@ -244,7 +245,7 @@ class FloatingOverlayService : Service() {
                     if (isDragging) {
                         params.x = initialX + dx.toInt()
                         params.y = initialY + dy.toInt()
-                        try { windowManager.updateViewLayout(overlayView, params) } catch (_: Exception) {}
+                        try { windowManager.updateViewLayout(overlayView, params) } catch (e: Exception) { Log.w("WindyOverlay", "updateViewLayout during drag failed", e) }
                     }
                     true
                 }
@@ -274,7 +275,7 @@ class FloatingOverlayService : Service() {
 
         val targetX = if (params.x + viewWidth / 2 < screenWidth / 2) 0 else screenWidth - viewWidth
         params.x = targetX
-        try { windowManager.updateViewLayout(overlayView, params) } catch (_: Exception) {}
+        try { windowManager.updateViewLayout(overlayView, params) } catch (e: Exception) { Log.w("WindyOverlay", "updateViewLayout in snapToEdge failed", e) }
 
         // Save position
         prefs.edit()
@@ -369,7 +370,7 @@ class FloatingOverlayService : Service() {
 
     private fun hideOverlay() {
         overlayView?.let {
-            try { windowManager.removeView(it) } catch (_: Exception) {}
+            try { windowManager.removeView(it) } catch (e: Exception) { Log.w("WindyOverlay", "removeView in hideOverlay failed", e) }
         }
         overlayView = null
     }

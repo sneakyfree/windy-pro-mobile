@@ -38,8 +38,8 @@ class WindyOverlayModule(private val reactContext: ReactApplicationContext) :
             try {
                 ctx.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
                     .emit(eventName, action)
-            } catch (_: Exception) {
-                // React context not ready yet
+            } catch (e: Exception) {
+                android.util.Log.w("WindyOverlay", "emitEvent failed: $eventName", e)
             }
         }
     }
