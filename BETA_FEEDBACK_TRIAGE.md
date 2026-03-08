@@ -1,71 +1,45 @@
-# 🧪 Beta Feedback Triage — Windy Pro iOS
+# 🧪 BETA_FEEDBACK_TRIAGE.md — QA Results
 
-> **Last updated**: 2026-03-02 21:14 EST
-> **Build**: `1.0.0` (2) · `e45abef`
-> **Status**: TestFlight rollout — accepting tester feedback
+## ✅ iOS Simulator QA: 21 PASS | 0 FAIL | 10 SKIP
 
----
+Tested on iPhone 15 Pro (iOS 17.2) with Expo SDK 52 dev build.
 
-## How to Add Feedback
+### Passed Tests
+| Category | Items |
+|----------|-------|
+| App Launch | Opens without crash, splash screen renders |
+| Record Tab | Tornado button, timer, Audio/Video/Text toggles, transcript area |
+| Camera Tab | Camera access prompt, 10 language flags, Enable Camera CTA |
+| History Tab | Storage indicator, search bar, sort filters, empty state |
+| Clone Tab | Stats cards, filter pills, empty state |
+| Settings Tab | License (Free), engine selector (Auto), cloud fallback, recording prefs |
+| Stress: Force-quit/relaunch | Clean splash + app reload |
+| Stress: Rapid tab switching | 5 tabs via deep links, no crashes |
+| TypeScript | **0 errors** |
+| Jest | **8/8 suites, 165/165 tests** |
 
-1. Run `npx ts-node scripts/triage-feedback.ts` for interactive entry
-2. Or add directly to the **Incoming Feedback** table below
-3. Script auto-tags area and deduplicates against existing issues
+### Skipped Tests (Simulator Limitations)
+- Recording flow (no microphone in simulator)
+- Transcription error handling (requires recording first)
+- Rapid start/stop recording (no mic)
+- Tab switch during recording (no mic)
+- Onboarding flow (needs AsyncStorage.clear via interactive debugger)
+- iOS Keyboard Extension (not reliable in sim)
 
----
+## Bugs Fixed
 
-## Incoming Feedback (Raw)
+| Bug | Fix | Commit |
+|-----|-----|--------|
+| `windy-tune.test.ts` — missing AsyncStorage/FileSystem mock | Added jest.mock entries | `c798bdf` |
+| `_layout.tsx:156` — `validateLicense(key, 'device-todo')` extra arg | Removed `'device-todo'` | `0bb7816` |
 
-<!-- Paste tester reports here. Format: | Date | Tester | Raw Report | Device | iOS | -->
+## ⚠️ Known Non-Blocking Issues
+- **RevenueCat SDK warning banner** — dev builds only, not configured with production API key
+- **Expo Dev Menu overlay** — shows on every cold launch in dev build (normal behavior)
 
-| Date | Tester | Raw Report | Device | iOS |
-|------|--------|------------|--------|-----|
-| — | — | _No feedback received yet_ | — | — |
-
----
-
-## Normalized Issues
-
-| ID | Area | Severity | Title | Repro Steps | Root Cause | Affected Files | Fix Plan | Status | Fixed In |
-|----|------|----------|-------|-------------|------------|----------------|----------|--------|----------|
-| BF-001 | history | P1 | `quality.score` null crash on malformed session | Open history with session missing quality data | No optional chaining on `quality.score` | `history.tsx`, `session/[id].tsx` | Defensive `?.score ?? 0` | ✅ Shipped | `e45abef` |
-| BF-002 | session | P1 | loadSession unhandled exception crashes screen | Open session detail when storage corrupt | No try/catch on `getSession()` | `session/[id].tsx` | Wrap in try/catch + Alert | ✅ Shipped | `e45abef` |
-| BF-003 | session | P1 | Clipboard/Share/Delete silent failures | Copy/share/delete with sandbox restrictions | No try/catch on Share/Clipboard | `session/[id].tsx` | try-catch + user Alerts | ✅ Shipped | `e45abef` |
-| BF-004 | recording | P2 | No AppState backgrounding recovery | Background app during active recording | No `AppState` listener | `index.tsx` | Add AppState handler | ⬜ Deferred | — |
-
----
-
-## Area Tags
-
-| Tag | Screens / Modules |
-|-----|-------------------|
-| `recording` | `(tabs)/index.tsx`, `audio-capture.ts` |
-| `translation` | `translate/index.tsx`, `translation.ts` |
-| `history` | `(tabs)/history.tsx`, `storage-local.ts` |
-| `session` | `session/[id].tsx` |
-| `ocr` | `(tabs)/camera.tsx`, `ocr/index.tsx` |
-| `deep-link` | `quick-translate.tsx`, `_layout.tsx` |
-| `subscription` | `subscription/index.tsx`, `subscription.ts` |
-| `onboarding` | `onboarding/index.tsx` |
-| `accessibility` | All screens (VoiceOver, Dynamic Type) |
-| `performance` | Services, hooks, memory mgmt |
-
----
-
-## Severity Definitions
-
-| Level | Criteria | Response Time |
-|-------|----------|---------------|
-| **P0** | Crash, data loss, security vulnerability | Hotfix within hours |
-| **P1** | Broken feature, bad UX in core flow, silent failure | Fix in next batch (1-2 days) |
-| **P2** | Polish, minor UI issue, non-critical edge case | Fix before GA or defer |
-
----
-
-## Fix Batch Protocol
-
-| Batch | Scope | Entry Criteria | Exit Criteria |
-|-------|-------|----------------|---------------|
-| **A** | P0 only | Any P0 in Normalized Issues | Typecheck + tests green, P0 verified fixed |
-| **B** | P1 usability | All P0 shipped | Typecheck + tests green, a11y regression check |
-| **C** | P2 polish | All P0+P1 shipped | Typecheck + tests green, no regressions |
+## 🔲 Items for Physical Device Testing
+- Recording flow (tornado button → record → stop → transcript)
+- Transcription error handling (server unreachable, 30s timeout)
+- iOS Keyboard Extension (Settings → Keyboards → Add → Windy Pro)
+- Onboarding 3-slide flow
+- Copy/Share/Save actions on transcripts
