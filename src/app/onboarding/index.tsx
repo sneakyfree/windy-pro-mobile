@@ -3,7 +3,7 @@
  * 3 swipeable screens: Welcome → Permissions → Engine Setup
  * Animated transitions, dot indicators, beautiful dark design
  */
-import { View, Text, StyleSheet, Pressable, Platform, Alert, FlatList, Animated, Dimensions, type ListRenderItemInfo, type ViewToken } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform, Alert, FlatList, Animated, Dimensions, NativeModules, type ListRenderItemInfo, type ViewToken } from 'react-native';
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
@@ -55,6 +55,8 @@ export default function OnboardingScreen() {
     const { setOnboardingComplete, setSelectedEngine } = useSettingsStore();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [micGranted, setMicGranted] = useState(false);
+    const [overlayGranted, setOverlayGranted] = useState(false);
+    const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
     const [windyTune, setWindyTune] = useState<WindyTuneResult | null>(null);
     const flatListRef = useRef<FlatList>(null);
     const scrollX = useRef(new Animated.Value(0)).current;
@@ -145,6 +147,70 @@ export default function OnboardingScreen() {
                                 </View>
                                 <Text style={styles.permissionStatus}>Optional</Text>
                             </Pressable>
+
+                            {/* Android: Floating Overlay Permission */}
+                            {Platform.OS === 'android' && (
+                                <Pressable
+                                    style={[styles.permissionCard, overlayGranted && styles.permissionGranted]}
+                                    onPress={async () => {
+                                        try {
+                                            const { WindyOverlayModule } = NativeModules;
+                                            if (WindyOverlayModule) {
+                                                const perms = await WindyOverlayModule.checkPermissions();
+                                                if (perms?.canDrawOverlays) {
+                                                    setOverlayGranted(true);
+                                                } else {
+                                                    WindyOverlayModule.requestOverlayPermission();
+                                                }
+                                            }
+                                        } catch { /* module not available in dev */ }
+                                        feedbackService.tap().catch(() => { });
+                                    }}
+                                >
+                                    <Text style={styles.permissionEmoji}>🌪️</Text>
+                                    <View style={styles.permissionTextCol}>
+                                        <Text style={styles.permissionLabel}>Floating Button</Text>
+                                        <Text style={styles.permissionDesc}>Record from any app</Text>
+                                    </View>
+                                    <Text style={styles.permissionStatus}>
+                                        {overlayGranted ? '✅' : 'Grant'}
+                                    </Text>
+                                </Pressable>
+                            )}
+
+                            {/* Android: Accessibility Service */}
+                            {Platform.OS === 'android' && (
+                                <Pressable
+                                    style={[styles.permissionCard, accessibilityEnabled && styles.permissionGranted]}
+                                    onPress={async () => {
+                                        try {
+                                            const { WindyOverlayModule } = NativeModules;
+                                            if (WindyOverlayModule) {
+                                                const perms = await WindyOverlayModule.checkPermissions();
+                                                if (perms?.accessibilityEnabled) {
+                                                    setAccessibilityEnabled(true);
+                                                } else {
+                                                    WindyOverlayModule.openAccessibilitySettings();
+                                                    Alert.alert(
+                                                        'Enable Windy Pro',
+                                                        'Find "Windy Pro" in the list and enable it to paste text at your cursor.',
+                                                    );
+                                                }
+                                            }
+                                        } catch { /* module not available in dev */ }
+                                        feedbackService.tap().catch(() => { });
+                                    }}
+                                >
+                                    <Text style={styles.permissionEmoji}>📋</Text>
+                                    <View style={styles.permissionTextCol}>
+                                        <Text style={styles.permissionLabel}>Paste at Cursor</Text>
+                                        <Text style={styles.permissionDesc}>Optional — auto-paste transcripts</Text>
+                                    </View>
+                                    <Text style={styles.permissionStatus}>
+                                        {accessibilityEnabled ? '✅' : 'Optional'}
+                                    </Text>
+                                </Pressable>
+                            )}
                         </View>
                     )}
 
@@ -160,7 +226,7 @@ export default function OnboardingScreen() {
                 </View>
             </View>
         );
-    }, [micGranted, windyTune]);
+    }, [micGranted, windyTune, overlayGranted, accessibilityEnabled]);
 
     return (
         <ScreenErrorBoundary screenName="Onboarding">
