@@ -11,6 +11,23 @@ jest.mock('expo-device', () => ({
     totalMemory: 8 * 1024 * 1024 * 1024, // 8GB
     modelName: 'iPhone 15 Pro',
 }));
+jest.mock('@react-native-async-storage/async-storage', () => ({
+    __esModule: true,
+    default: {
+        getItem: jest.fn().mockResolvedValue(null),
+        setItem: jest.fn().mockResolvedValue(undefined),
+        removeItem: jest.fn().mockResolvedValue(undefined),
+    },
+}));
+jest.mock('expo-file-system', () => ({
+    documentDirectory: '/mock/documents/',
+    makeDirectoryAsync: jest.fn().mockResolvedValue(undefined),
+    deleteAsync: jest.fn().mockResolvedValue(undefined),
+    getInfoAsync: jest.fn().mockResolvedValue({ exists: true, size: 1000 }),
+    createDownloadResumable: jest.fn().mockReturnValue({
+        downloadAsync: jest.fn().mockResolvedValue({ uri: '/mock/model.bin' }),
+    }),
+}));
 
 import { getWindyTuneRecommendation, ENGINE_REGISTRY } from '../windy-tune';
 import type { DeviceProfile, EngineId } from '@/types';
