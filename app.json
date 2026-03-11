@@ -19,7 +19,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "uk.thewindstorm.windypro",
       "buildNumber": "10",
-      "deploymentTarget": "16.0",
       "associatedDomains": [
         "applinks:windypro.thewindstorm.uk",
         "appclips:windypro.thewindstorm.uk"
@@ -54,9 +53,7 @@
         "CAMERA",
         "POST_NOTIFICATIONS"
       ],
-      "backgroundColor": "#0f172a",
-      "navigationBarColor": "#0f172a",
-      "navigationBarStyle": "light-content"
+      "backgroundColor": "#0f172a"
     },
     "plugins": [
       "expo-router",
@@ -90,7 +87,15 @@
           "defaultChannel": "translation"
         }
       ],
-      "expo-navigation-bar",
+      [
+        "expo-navigation-bar",
+        {
+          "position": "absolute",
+          "visibility": "visible",
+          "backgroundColor": "#0f172a",
+          "borderColor": "#0f172a"
+        }
+      ],
       [
         "expo-build-properties",
         {
@@ -99,6 +104,9 @@
             "targetSdkVersion": 34,
             "minSdkVersion": 24,
             "kotlinVersion": "2.0.21"
+          },
+          "ios": {
+            "deploymentTarget": "16.0"
           }
         }
       ]
