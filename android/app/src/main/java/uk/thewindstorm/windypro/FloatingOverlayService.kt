@@ -269,8 +269,12 @@ class FloatingOverlayService : Service() {
 
     private fun snapToEdge() {
         val params = layoutParams ?: return
-        val display = windowManager.defaultDisplay
-        val screenWidth = display.width
+        val screenWidth = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            windowManager.currentWindowMetrics.bounds.width()
+        } else {
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.width
+        }
         val viewWidth = overlayView?.width ?: 0
 
         val targetX = if (params.x + viewWidth / 2 < screenWidth / 2) 0 else screenWidth - viewWidth

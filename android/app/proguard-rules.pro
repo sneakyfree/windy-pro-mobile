@@ -54,4 +54,12 @@
 -keepattributes *Annotation*
 -keep class com.google.gson.** { *; }
 
-# Add any project specific keep options here:
+# ─── Windy Pro — Custom Native Modules ──────────────────────────
+# Keep all custom Kotlin classes used by AndroidManifest and RN bridge
+-keep class uk.thewindstorm.windypro.FloatingOverlayService { *; }
+-keep class uk.thewindstorm.windypro.PasteAccessibilityService { *; }
+-keep class uk.thewindstorm.windypro.WindyOverlayModule { *; }
+-keep class uk.thewindstorm.windypro.WindyOverlayPackage { *; }
+-keep class uk.thewindstorm.windypro.OverlayPermissionHelper { *; }
+-keep class uk.thewindstorm.windypro.MainActivity { *; }
+-keep class uk.thewindstorm.windypro.MainApplication { *; }
