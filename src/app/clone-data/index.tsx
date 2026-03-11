@@ -10,6 +10,7 @@ import { colors, spacing, borderRadius } from '@/theme';
 import { feedbackService } from '@/services/feedback';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { cloneBundleService, type CloneBundle, type BundleStats } from '@/services/clone-bundle';
+import { cloudApi } from '@/services/cloudApi';
 
 type FilterMode = 'all' | 'video' | 'audio-only' | 'training-ready' | 'synced' | 'pending';
 
@@ -24,7 +25,7 @@ export default function CloneDataDashboard() {
 
     const loadData = useCallback(async () => {
         try {
-            const filterOpts: any = {};
+            const filterOpts: Record<string, boolean | string> = {};
             if (filter === 'video') filterOpts.hasVideo = true;
             if (filter === 'audio-only') filterOpts.hasVideo = false;
             if (filter === 'training-ready') filterOpts.trainingReady = true;
@@ -62,7 +63,7 @@ export default function CloneDataDashboard() {
     const handleUpload = async (bundleId: string) => {
         setUploading(prev => new Set(prev).add(bundleId));
         await feedbackService.tap();
-        const result = await cloneBundleService.uploadBundle(bundleId, ''); // TODO: get auth token
+        const result = await cloneBundleService.uploadBundle(bundleId, cloudApi.getToken() ?? '');
         if (result.success) {
             await feedbackService.success();
         } else {

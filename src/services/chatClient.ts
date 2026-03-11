@@ -126,11 +126,13 @@ class ChatClient {
             await this.initClient();
 
             return { success: true, userId: response.user_id };
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[Chat] Login failed:', err);
+            const errObj = err as Record<string, unknown> | undefined;
+            const dataErr = (errObj as Record<string, Record<string, string>> | undefined)?.data?.error;
             return {
                 success: false,
-                error: err.data?.error || err.message || 'Login failed',
+                error: dataErr || (err instanceof Error ? err.message : 'Login failed'),
             };
         }
     }
@@ -171,11 +173,13 @@ class ChatClient {
             await this.initClient();
 
             return { success: true, userId: response.user_id };
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[Chat] Register failed:', err);
+            const errObj = err as Record<string, unknown> | undefined;
+            const dataErr = (errObj as Record<string, Record<string, string>> | undefined)?.data?.error;
             return {
                 success: false,
-                error: err.data?.error || err.message || 'Registration failed',
+                error: dataErr || (err instanceof Error ? err.message : 'Registration failed'),
             };
         }
     }

@@ -125,14 +125,14 @@ class CloudApiClient {
 
             if (!res.ok) {
                 const body = await this.safeJson(res);
-                return { success: false, error: body?.error || body?.message || `Registration failed (${res.status})` };
+                return { success: false, error: String(body?.error || body?.message || `Registration failed (${res.status})`) };
             }
 
             const data = await res.json();
             await this.persistAuth(data.token, data.userId, email);
             return { success: true, token: data.token, userId: data.userId };
-        } catch (err: any) {
-            return { success: false, error: err.message || 'Network error' };
+        } catch (err: unknown) {
+            return { success: false, error: err instanceof Error ? err.message : 'Network error' };
         }
     }
 
@@ -152,14 +152,14 @@ class CloudApiClient {
 
             if (!res.ok) {
                 const body = await this.safeJson(res);
-                return { success: false, error: body?.error || body?.message || `Login failed (${res.status})` };
+                return { success: false, error: String(body?.error || body?.message || `Login failed (${res.status})`) };
             }
 
             const data = await res.json();
             await this.persistAuth(data.token, data.userId, email);
             return { success: true, token: data.token, userId: data.userId };
-        } catch (err: any) {
-            return { success: false, error: err.message || 'Network error' };
+        } catch (err: unknown) {
+            return { success: false, error: err instanceof Error ? err.message : 'Network error' };
         }
     }
 
@@ -206,6 +206,10 @@ class CloudApiClient {
 
     getEmail(): string | null {
         return this.email;
+    }
+
+    getToken(): string | null {
+        return this.jwt;
     }
 
     /**
@@ -276,10 +280,10 @@ class CloudApiClient {
                 errorMsg = body.error || body.message || errorMsg;
             } catch {}
             return { success: false, error: errorMsg };
-        } catch (err: any) {
+        } catch (err: unknown) {
             // Queue for retry on network errors
             this.queueUpload(fileUri, filename, contentType, metadata);
-            return { success: false, error: err.message || 'Network error — queued for retry' };
+            return { success: false, error: (err instanceof Error ? err.message : 'Network error') + ' — queued for retry' };
         }
     }
 
@@ -295,15 +299,15 @@ class CloudApiClient {
 
             if (!res.ok) {
                 const body = await this.safeJson(res);
-                return { files: [], error: body?.error || `List failed (${res.status})` };
+                return { files: [], error: String(body?.error || `List failed (${res.status})`) };
             }
 
             const data = await res.json();
             // API may return { files: [...] } or direct array
             const files: CloudFile[] = Array.isArray(data) ? data : (data.files || []);
             return { files };
-        } catch (err: any) {
-            return { files: [], error: err.message || 'Network error' };
+        } catch (err: unknown) {
+            return { files: [], error: err instanceof Error ? err.message : 'Network error' };
         }
     }
 
@@ -359,9 +363,9 @@ class CloudApiClient {
             if (res.ok) return { success: true };
 
             const body = await this.safeJson(res);
-            return { success: false, error: body?.error || `Delete failed (${res.status})` };
-        } catch (err: any) {
-            return { success: false, error: err.message || 'Network error' };
+            return { success: false, error: String(body?.error || `Delete failed (${res.status})`) };
+        } catch (err: unknown) {
+            return { success: false, error: err instanceof Error ? err.message : 'Network error' };
         }
     }
 
@@ -557,7 +561,7 @@ class CloudApiClient {
     /**
      * Safely parse JSON from a response (returns null on failure).
      */
-    private async safeJson(res: Response): Promise<any> {
+    private async safeJson(res: Response): Promise<Record<string, unknown> | null> {
         try {
             return await res.json();
         } catch {

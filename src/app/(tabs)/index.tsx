@@ -139,7 +139,7 @@ export default function RecordScreen() {
     useEffect(() => {
         const subscription = AppState.addEventListener('change', (nextAppState) => {
             if (nextAppState === 'background' && recordingStateRef.current === 'recording') {
-                console.log('[AppState] App backgrounded during recording — auto-stopping');
+                if (__DEV__) console.warn('[AppState] App backgrounded during recording — auto-stopping');
                 handleStopRecording().catch((err) => {
                     console.error('[AppState] Auto-stop failed:', err);
                 });
@@ -249,13 +249,13 @@ export default function RecordScreen() {
                         handleStopRecording();
                     }
                 }, 100);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error('[Record] Start failed:', err);
                 setError();
                 feedbackService.error().catch(() => { });
                 Alert.alert(
                     'Recording Error',
-                    err.message || 'Could not start recording. Check microphone permissions.'
+                    (err instanceof Error ? err.message : String(err)) || 'Could not start recording. Check microphone permissions.'
                 );
             }
         } else if (state === 'recording') {
@@ -329,9 +329,9 @@ export default function RecordScreen() {
                     await Clipboard.setStringAsync(transcriptText);
                     feedbackService.success().catch(() => { });
                 }
-            } catch (transcribeErr: any) {
+            } catch (transcribeErr: unknown) {
                 console.warn('[Record] Transcription failed:', transcribeErr);
-                setTranscriptionError(transcribeErr?.message || 'Transcription failed — check your connection');
+                setTranscriptionError((transcribeErr instanceof Error ? transcribeErr.message : String(transcribeErr)) || 'Transcription failed — check your connection');
             }
 
             // Save session to local database
@@ -392,7 +392,7 @@ export default function RecordScreen() {
                 Alert.alert('Save Warning', 'Recording completed but could not be saved to history. Try exporting manually.');
             }
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[Record] Stop failed:', err);
             feedbackService.error().catch(() => { });
             Alert.alert(
@@ -633,7 +633,7 @@ export default function RecordScreen() {
                 {mediaCapture.video && state !== 'recording' && (
                     <View style={styles.cameraContainer}>
                         <CameraView
-                            ref={(ref: any) => videoCaptureService.setCameraRef(ref)}
+                            ref={(ref: unknown) => videoCaptureService.setCameraRef(ref as never)}
                             style={styles.cameraPreview}
                             facing="front"
                         />
