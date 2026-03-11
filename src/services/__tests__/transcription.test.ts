@@ -28,6 +28,27 @@ jest.mock('expo-file-system', () => ({
     EncodingType: { Base64: 'base64' },
 }));
 
+// Mock WebSocket — triggers onerror after a 10ms delay (controlled by fake timers)
+class MockWebSocket {
+    onopen: (() => void) | null = null;
+    onclose: (() => void) | null = null;
+    onerror: ((err: unknown) => void) | null = null;
+    onmessage: ((msg: unknown) => void) | null = null;
+    close() { this.onclose?.(); }
+    send() {}
+    constructor() {
+        // Use setTimeout (will be controlled by fake timers)
+        setTimeout(() => {
+            if (this.onerror) {
+                this.onerror({ message: 'Mock WS error' });
+            } else if (this.onclose) {
+                this.onclose();
+            }
+        }, 10);
+    }
+}
+(global as any).WebSocket = MockWebSocket;
+
 import { transcriptionService } from '../transcription';
 
 describe('TranscriptionService', () => {
@@ -84,25 +105,40 @@ describe('TranscriptionService', () => {
         });
 
         it('should handle server errors', async () => {
+            jest.useFakeTimers();
             mockGetInfoAsync.mockResolvedValue({ exists: true, size: 1024 });
             mockUploadAsync.mockResolvedValue({
                 status: 500,
                 body: JSON.stringify({ error: 'Internal Server Error' }),
             });
 
+            const promise = transcriptionService.transcribeFile('file:///audio.wav', 'cloud-standard');
+
+            // Race: advance timers while waiting for the rejection
             await expect(
-                transcriptionService.transcribeFile('file:///audio.wav', 'cloud-standard')
+                Promise.all([
+                    promise,
+                    jest.advanceTimersByTimeAsync(31000),
+                ])
             ).rejects.toThrow();
-        });
+            jest.useRealTimers();
+        }, 15000);
 
         it('should handle network timeout', async () => {
+            jest.useFakeTimers();
             mockGetInfoAsync.mockResolvedValue({ exists: true, size: 1024 });
             mockUploadAsync.mockRejectedValue(new Error('Network request failed'));
 
+            const promise = transcriptionService.transcribeFile('file:///audio.wav', 'cloud-standard');
+
             await expect(
-                transcriptionService.transcribeFile('file:///audio.wav', 'cloud-standard')
+                Promise.all([
+                    promise,
+                    jest.advanceTimersByTimeAsync(31000),
+                ])
             ).rejects.toThrow();
-        });
+            jest.useRealTimers();
+        }, 15000);
     });
 
     // ─── Cancellation ──────────────────────────────────────────
