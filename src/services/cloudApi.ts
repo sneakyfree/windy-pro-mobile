@@ -1,0 +1,569 @@
+/**
+ * 🧬 Cloud API Client
+ * Typed client for windypro.thewindstorm.uk R2 cloud storage API.
+ *
+ * Endpoints:
+ *   POST /api/auth/register       → { email, password } → { token, userId }
+ *   POST /api/auth/login          → { email, password } → { token, userId }
+ *   GET  /api/storage/health      → R2 health
+ *   POST /api/storage/files/upload→ multipart file upload (auth)
+ *   GET  /api/storage/files       → list files (auth)
+ *   GET  /api/storage/files/:id   → download file (auth)
+ *   DELETE /api/storage/files/:id → delete file (auth)
+ *
+ * Features:
+ *   - JWT stored in expo-secure-store (NOT AsyncStorage)
+ *   - Auto-redirect to login on 401
+ *   - FormData multipart for uploads
+ *   - 30s request timeout
+ *   - Retry queue for failed uploads
+ */
+import * as SecureStore from 'expo-secure-store';
+import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
+import { API_BASE_URL, ENDPOINTS, apiUrl } from '@/config/api';
+import type { LicenseTier } from '@/types';
+
+// ─── Secure Store Keys ──────────────────────────────────────────
+const TOKEN_KEY = 'windy_cloud_jwt';
+const USER_ID_KEY = 'windy_cloud_user_id';
+const USER_EMAIL_KEY = 'windy_cloud_email';
+
+// ─── Timeout ────────────────────────────────────────────────────
+const REQUEST_TIMEOUT_MS = 30_000;
+
+// ─── Storage Tiers (bytes) ──────────────────────────────────────
+export const STORAGE_TIERS: Record<LicenseTier, { label: string; limitBytes: number }> = {
+    free:          { label: 'Free',           limitBytes: 500 * 1024 * 1024 },       // 500 MB
+    pro:           { label: 'Pro',            limitBytes: 5 * 1024 * 1024 * 1024 },   // 5 GB
+    translate:     { label: 'Translate',      limitBytes: 10 * 1024 * 1024 * 1024 },  // 10 GB
+    translate_pro: { label: 'Translate Pro',  limitBytes: 25 * 1024 * 1024 * 1024 },  // 25 GB
+};
+
+// ─── Types ──────────────────────────────────────────────────────
+
+export interface CloudFile {
+    id: string;
+    filename: string;
+    size: number;
+    contentType: string;
+    uploadedAt: string;
+    metadata?: Record<string, string>;
+}
+
+export interface AuthResult {
+    success: boolean;
+    token?: string;
+    userId?: string;
+    error?: string;
+}
+
+export interface UploadResult {
+    success: boolean;
+    fileId?: string;
+    error?: string;
+}
+
+export interface HealthResult {
+    ok: boolean;
+    status?: string;
+    nodeId?: string;
+    version?: string;
+    disk?: {
+        totalHuman: string;
+        usedHuman: string;
+        availableHuman: string;
+        usedPercent: number;
+    };
+}
+
+export interface StorageUsageResult {
+    usedBytes: number;
+    limitBytes: number;
+    fileCount: number;
+    tierLabel: string;
+    percentUsed: number;
+}
+
+/** Queued upload for retry */
+interface QueuedUpload {
+    fileUri: string;
+    filename: string;
+    contentType: string;
+    metadata?: Record<string, string>;
+    addedAt: string;
+    retries: number;
+}
+
+// ─── Callbacks ──────────────────────────────────────────────────
+type AuthExpiredCallback = () => void;
+
+// ─── Client ─────────────────────────────────────────────────────
+
+class CloudApiClient {
+    private jwt: string | null = null;
+    private userId: string | null = null;
+    private email: string | null = null;
+    private uploadQueue: QueuedUpload[] = [];
+    private onAuthExpired: AuthExpiredCallback | null = null;
+
+    // ─── Auth ───────────────────────────────────────────────────
+
+    /**
+     * Register a new account.
+     */
+    async register(email: string, password: string): Promise<AuthResult> {
+        try {
+            const res = await this.fetchWithTimeout(
+                apiUrl(ENDPOINTS.AUTH_REGISTER),
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                }
+            );
+
+            if (!res.ok) {
+                const body = await this.safeJson(res);
+                return { success: false, error: body?.error || body?.message || `Registration failed (${res.status})` };
+            }
+
+            const data = await res.json();
+            await this.persistAuth(data.token, data.userId, email);
+            return { success: true, token: data.token, userId: data.userId };
+        } catch (err: any) {
+            return { success: false, error: err.message || 'Network error' };
+        }
+    }
+
+    /**
+     * Login with email + password.
+     */
+    async login(email: string, password: string): Promise<AuthResult> {
+        try {
+            const res = await this.fetchWithTimeout(
+                apiUrl(ENDPOINTS.AUTH_LOGIN_LIVE),
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                }
+            );
+
+            if (!res.ok) {
+                const body = await this.safeJson(res);
+                return { success: false, error: body?.error || body?.message || `Login failed (${res.status})` };
+            }
+
+            const data = await res.json();
+            await this.persistAuth(data.token, data.userId, email);
+            return { success: true, token: data.token, userId: data.userId };
+        } catch (err: any) {
+            return { success: false, error: err.message || 'Network error' };
+        }
+    }
+
+    /**
+     * Restore session from secure store on app launch.
+     */
+    async restoreSession(): Promise<boolean> {
+        try {
+            const token = await SecureStore.getItemAsync(TOKEN_KEY);
+            const userId = await SecureStore.getItemAsync(USER_ID_KEY);
+            const email = await SecureStore.getItemAsync(USER_EMAIL_KEY);
+
+            if (token) {
+                this.jwt = token;
+                this.userId = userId;
+                this.email = email;
+                return true;
+            }
+            return false;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Logout — clear all stored auth state.
+     */
+    async logout(): Promise<void> {
+        this.jwt = null;
+        this.userId = null;
+        this.email = null;
+        await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+        await SecureStore.deleteItemAsync(USER_ID_KEY).catch(() => {});
+        await SecureStore.deleteItemAsync(USER_EMAIL_KEY).catch(() => {});
+    }
+
+    isAuthenticated(): boolean {
+        return !!this.jwt;
+    }
+
+    getUserId(): string | null {
+        return this.userId;
+    }
+
+    getEmail(): string | null {
+        return this.email;
+    }
+
+    /**
+     * Register a callback for when auth expires (401).
+     * Used to redirect to login screen.
+     */
+    setAuthExpiredHandler(handler: AuthExpiredCallback): void {
+        this.onAuthExpired = handler;
+    }
+
+    // ─── Storage: Upload ────────────────────────────────────────
+
+    /**
+     * Upload a file to cloud storage using multipart FormData.
+     * @param fileUri - Local file URI (React Native file://)
+     * @param filename - Display filename
+     * @param contentType - MIME type (e.g. 'audio/wav')
+     * @param metadata - Optional key-value metadata
+     */
+    async uploadFile(
+        fileUri: string,
+        filename: string,
+        contentType: string = 'application/octet-stream',
+        metadata?: Record<string, string>,
+    ): Promise<UploadResult> {
+        if (!this.jwt) {
+            return { success: false, error: 'Not authenticated' };
+        }
+
+        try {
+            // Use expo-file-system uploadAsync for React Native file URIs
+            const uploadUrl = apiUrl(ENDPOINTS.STORAGE_UPLOAD);
+
+            const parameters: Record<string, string> = {};
+            if (metadata) {
+                // Send metadata as JSON string in a form field
+                parameters['metadata'] = JSON.stringify(metadata);
+            }
+
+            const result = await FileSystem.uploadAsync(uploadUrl, fileUri, {
+                httpMethod: 'POST',
+                uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+                fieldName: 'file',
+                mimeType: contentType,
+                headers: {
+                    'Authorization': `Bearer ${this.jwt}`,
+                },
+                parameters,
+            });
+
+            if (result.status === 401) {
+                this.handleAuthExpired();
+                return { success: false, error: 'Session expired — please log in again' };
+            }
+
+            if (result.status >= 200 && result.status < 300) {
+                let fileId: string | undefined;
+                try {
+                    const body = JSON.parse(result.body);
+                    fileId = body.fileId || body.id;
+                } catch {}
+                return { success: true, fileId };
+            }
+
+            let errorMsg = `Upload failed (${result.status})`;
+            try {
+                const body = JSON.parse(result.body);
+                errorMsg = body.error || body.message || errorMsg;
+            } catch {}
+            return { success: false, error: errorMsg };
+        } catch (err: any) {
+            // Queue for retry on network errors
+            this.queueUpload(fileUri, filename, contentType, metadata);
+            return { success: false, error: err.message || 'Network error — queued for retry' };
+        }
+    }
+
+    // ─── Storage: List ──────────────────────────────────────────
+
+    /**
+     * List all files in cloud storage.
+     */
+    async listFiles(): Promise<{ files: CloudFile[]; error?: string }> {
+        try {
+            const res = await this.authedFetch(apiUrl(ENDPOINTS.STORAGE_LIST));
+            if (!res) return { files: [], error: 'Not authenticated' };
+
+            if (!res.ok) {
+                const body = await this.safeJson(res);
+                return { files: [], error: body?.error || `List failed (${res.status})` };
+            }
+
+            const data = await res.json();
+            // API may return { files: [...] } or direct array
+            const files: CloudFile[] = Array.isArray(data) ? data : (data.files || []);
+            return { files };
+        } catch (err: any) {
+            return { files: [], error: err.message || 'Network error' };
+        }
+    }
+
+    // ─── Storage: Download ──────────────────────────────────────
+
+    /**
+     * Download a file from cloud storage.
+     * @returns Local file path, or null on failure.
+     */
+    async downloadFile(fileId: string, destFilename?: string): Promise<string | null> {
+        if (!this.jwt) return null;
+
+        try {
+            const url = `${apiUrl(ENDPOINTS.STORAGE_FILE)}/${fileId}`;
+            const destDir = (FileSystem.documentDirectory || '') + 'cloud-downloads/';
+            await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
+            const destPath = destDir + (destFilename || fileId);
+
+            const download = await FileSystem.downloadAsync(url, destPath, {
+                headers: { 'Authorization': `Bearer ${this.jwt}` },
+            });
+
+            if (download.status === 401) {
+                this.handleAuthExpired();
+                return null;
+            }
+
+            return download.status >= 200 && download.status < 300 ? destPath : null;
+        } catch (err) {
+            console.warn('[CloudApi] downloadFile failed:', err);
+            return null;
+        }
+    }
+
+    // ─── Storage: Delete ────────────────────────────────────────
+
+    /**
+     * Delete a file from cloud storage.
+     */
+    async deleteFile(fileId: string): Promise<{ success: boolean; error?: string }> {
+        try {
+            const res = await this.authedFetch(
+                `${apiUrl(ENDPOINTS.STORAGE_FILE)}/${fileId}`,
+                { method: 'DELETE' }
+            );
+            if (!res) return { success: false, error: 'Not authenticated' };
+
+            if (res.status === 401) {
+                this.handleAuthExpired();
+                return { success: false, error: 'Session expired' };
+            }
+
+            if (res.ok) return { success: true };
+
+            const body = await this.safeJson(res);
+            return { success: false, error: body?.error || `Delete failed (${res.status})` };
+        } catch (err: any) {
+            return { success: false, error: err.message || 'Network error' };
+        }
+    }
+
+    // ─── Storage Usage ──────────────────────────────────────────
+
+    /**
+     * Calculate storage usage from file list + current tier.
+     */
+    async getStorageUsage(tier: LicenseTier = 'free'): Promise<StorageUsageResult> {
+        const { files } = await this.listFiles();
+        const usedBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
+        const tierInfo = STORAGE_TIERS[tier] || STORAGE_TIERS.free;
+
+        return {
+            usedBytes,
+            limitBytes: tierInfo.limitBytes,
+            fileCount: files.length,
+            tierLabel: tierInfo.label,
+            percentUsed: tierInfo.limitBytes > 0
+                ? Math.round((usedBytes / tierInfo.limitBytes) * 100)
+                : 0,
+        };
+    }
+
+    // ─── Health ─────────────────────────────────────────────────
+
+    /**
+     * Check cloud storage health.
+     */
+    async getHealth(): Promise<HealthResult> {
+        try {
+            const res = await this.fetchWithTimeout(apiUrl(ENDPOINTS.STORAGE_HEALTH));
+            if (!res.ok) return { ok: false };
+
+            const data = await res.json();
+            return {
+                ok: data.status === 'ok',
+                status: data.status,
+                nodeId: data.nodeId,
+                version: data.version,
+                disk: data.disk ? {
+                    totalHuman: data.disk.totalHuman,
+                    usedHuman: data.disk.usedHuman,
+                    availableHuman: data.disk.availableHuman,
+                    usedPercent: data.disk.usedPercent,
+                } : undefined,
+            };
+        } catch {
+            return { ok: false };
+        }
+    }
+
+    /**
+     * Check gateway health.
+     */
+    async getGatewayHealth(): Promise<boolean> {
+        try {
+            const res = await this.fetchWithTimeout(apiUrl(ENDPOINTS.HEALTH));
+            if (!res.ok) return false;
+            const data = await res.json();
+            return data.status === 'ok';
+        } catch {
+            return false;
+        }
+    }
+
+    // ─── Retry Queue ────────────────────────────────────────────
+
+    private queueUpload(
+        fileUri: string,
+        filename: string,
+        contentType: string,
+        metadata?: Record<string, string>,
+    ): void {
+        // Prevent duplicates
+        if (this.uploadQueue.some(q => q.fileUri === fileUri)) return;
+
+        this.uploadQueue.push({
+            fileUri,
+            filename,
+            contentType,
+            metadata,
+            addedAt: new Date().toISOString(),
+            retries: 0,
+        });
+    }
+
+    /**
+     * Process the retry queue — call when network comes back.
+     */
+    async processRetryQueue(): Promise<{ succeeded: number; failed: number }> {
+        if (!this.jwt || this.uploadQueue.length === 0) {
+            return { succeeded: 0, failed: 0 };
+        }
+
+        let succeeded = 0;
+        let failed = 0;
+        const toProcess = [...this.uploadQueue];
+        this.uploadQueue = [];
+
+        for (const item of toProcess) {
+            const result = await this.uploadFile(
+                item.fileUri,
+                item.filename,
+                item.contentType,
+                item.metadata,
+            );
+
+            if (result.success) {
+                succeeded++;
+            } else {
+                item.retries++;
+                if (item.retries < 5) {
+                    this.uploadQueue.push(item);
+                }
+                failed++;
+            }
+        }
+
+        return { succeeded, failed };
+    }
+
+    getRetryQueueLength(): number {
+        return this.uploadQueue.length;
+    }
+
+    // ─── Internal Helpers ───────────────────────────────────────
+
+    private async persistAuth(token: string, userId: string, email: string): Promise<void> {
+        this.jwt = token;
+        this.userId = userId;
+        this.email = email;
+
+        await SecureStore.setItemAsync(TOKEN_KEY, token).catch(() => {});
+        if (userId) await SecureStore.setItemAsync(USER_ID_KEY, userId).catch(() => {});
+        await SecureStore.setItemAsync(USER_EMAIL_KEY, email).catch(() => {});
+    }
+
+    private handleAuthExpired(): void {
+        this.jwt = null;
+        SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+        this.onAuthExpired?.();
+    }
+
+    /**
+     * Fetch with auth header + 401 handling.
+     * Returns null if not authenticated.
+     */
+    private async authedFetch(
+        url: string,
+        init?: RequestInit,
+    ): Promise<Response | null> {
+        if (!this.jwt) {
+            this.onAuthExpired?.();
+            return null;
+        }
+
+        const res = await this.fetchWithTimeout(url, {
+            ...init,
+            headers: {
+                ...init?.headers,
+                'Authorization': `Bearer ${this.jwt}`,
+            },
+        });
+
+        if (res.status === 401) {
+            this.handleAuthExpired();
+        }
+
+        return res;
+    }
+
+    /**
+     * Fetch with 30s timeout via AbortController.
+     */
+    private async fetchWithTimeout(
+        url: string,
+        init?: RequestInit,
+    ): Promise<Response> {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+        try {
+            return await fetch(url, {
+                ...init,
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+
+    /**
+     * Safely parse JSON from a response (returns null on failure).
+     */
+    private async safeJson(res: Response): Promise<any> {
+        try {
+            return await res.json();
+        } catch {
+            return null;
+        }
+    }
+}
+
+export const cloudApi = new CloudApiClient();

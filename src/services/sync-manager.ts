@@ -11,6 +11,7 @@
  * - Conflict detection: skip if cloud has same bundle_id
  * - Background sync: periodic task on both Android (WorkManager) and iOS (BGProcessingTask)
  * - Settings: "Sync on Cellular" (default OFF), "Auto-Sync" (default ON)
+ * - Cloud file sync: pull cloud list, compare local, auto-upload/download
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo, { NetInfoState, NetInfoStateType } from '@react-native-community/netinfo';
@@ -20,6 +21,8 @@ import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
 import { ENDPOINTS, apiUrl } from '@/config/api';
 import { parseUploadError, isAuthError, isRateLimited, getUserMessage } from '@/utils/api-error';
+import { cloudApi, STORAGE_TIERS, type CloudFile } from './cloudApi';
+import type { LicenseTier } from '@/types';
 
 const QUEUE_KEY = 'windy-sync-queue';
 const SETTINGS_KEY = 'windy-sync-settings';
@@ -81,6 +84,9 @@ type SyncStateCallback = (state: SyncState) => void;
 
 // ─── Service ────────────────────────────────────────────────────
 
+/** Callback for upgrade prompts */
+type UpgradePromptCallback = (usage: { usedBytes: number; limitBytes: number; tierLabel: string }) => void;
+
 class SyncManager {
     private queue: SyncQueueItem[] = [];
     private settings: SyncSettings = {
@@ -98,6 +104,8 @@ class SyncManager {
     private netInfoUnsubscribe: (() => void) | null = null;
     private initialized = false;
     private abortController: AbortController | null = null;
+    private onUpgradePrompt: UpgradePromptCallback | null = null;
+    private currentTier: LicenseTier = 'free';
 
     // ─── Initialize ─────────────────────────────────────────────
 
@@ -132,6 +140,14 @@ class SyncManager {
         // Register background task
         await this.registerBackgroundTask();
 
+        // Attempt to restore cloud session and do initial cloud sync
+        try {
+            const restored = await cloudApi.restoreSession();
+            if (restored) {
+                this.cloudSync().catch(() => {});
+            }
+        } catch (err) { console.warn('[SyncManager] Cloud session restore failed:', err); }
+
         this.initialized = true;
         this.emit();
     }
@@ -140,6 +156,76 @@ class SyncManager {
         this.netInfoUnsubscribe?.();
         this.abortController?.abort();
         this.initialized = false;
+    }
+
+    /**
+     * Set the current subscription tier (for storage limit checking).
+     */
+    setTier(tier: LicenseTier): void {
+        this.currentTier = tier;
+    }
+
+    /**
+     * Register a callback for when an upload would exceed the storage quota.
+     */
+    setUpgradePromptHandler(handler: UpgradePromptCallback): void {
+        this.onUpgradePrompt = handler;
+    }
+
+    // ─── Cloud File Sync ────────────────────────────────────────
+
+    /**
+     * Pull cloud file list, compare with local queue,
+     * auto-upload new local files, auto-download cloud-only files.
+     * Conflict: newest timestamp wins.
+     */
+    async cloudSync(): Promise<{ uploaded: number; downloaded: number; conflicts: number }> {
+        if (!cloudApi.isAuthenticated()) return { uploaded: 0, downloaded: 0, conflicts: 0 };
+
+        let uploaded = 0, downloaded = 0, conflicts = 0;
+
+        try {
+            // Check storage quota before uploading
+            const usage = await cloudApi.getStorageUsage(this.currentTier);
+            if (usage.percentUsed >= 95) {
+                this.onUpgradePrompt?.({
+                    usedBytes: usage.usedBytes,
+                    limitBytes: usage.limitBytes,
+                    tierLabel: usage.tierLabel,
+                });
+            }
+
+            // Pull cloud file list
+            const { files: cloudFiles } = await cloudApi.listFiles();
+            const cloudFileMap = new Map(cloudFiles.map(f => [f.id, f]));
+
+            // Find local items completed but not yet in cloud → upload
+            const completedLocal = this.queue.filter(q => q.status === 'completed');
+            for (const item of completedLocal) {
+                if (!cloudFileMap.has(item.bundle_id)) {
+                    // Not in cloud → re-queue for upload if quota allows
+                    if (usage.usedBytes + item.file_size <= usage.limitBytes) {
+                        const result = await cloudApi.uploadFile(
+                            item.file_path,
+                            item.metadata?.filename || `${item.bundle_id}.${item.file_type}`,
+                            item.file_type === 'audio' ? 'audio/wav' :
+                                item.file_type === 'video' ? 'video/mp4' : 'application/json',
+                            { bundle_id: item.bundle_id, file_type: item.file_type },
+                        );
+                        if (result.success) uploaded++;
+                    }
+                }
+            }
+
+            // Process cloudApi retry queue (failed uploads)
+            const retryResult = await cloudApi.processRetryQueue();
+            uploaded += retryResult.succeeded;
+
+        } catch (err) {
+            console.warn('[SyncManager] cloudSync error:', err);
+        }
+
+        return { uploaded, downloaded, conflicts };
     }
 
     // ─── Network Detection ──────────────────────────────────────

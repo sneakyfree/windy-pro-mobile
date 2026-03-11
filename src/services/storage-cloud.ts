@@ -1,14 +1,25 @@
 /**
  * 🧬 M8 — Cloud Storage Client (Account Server API)
- * Syncs mobile recordings to windypro.thewindstorm.uk backend
+ * @deprecated Use `cloudApi` from `@/services/cloudApi` for new code.
+ * This file is kept for backward compatibility with existing consumers.
  *
- * API Endpoints:
+ * Legacy API Endpoints (v1):
  *   POST /api/v1/auth/login         → JWT token
  *   POST /api/v1/recordings/upload  → upload recording + metadata
  *   GET  /api/v1/recordings/list    → list all recordings
  *   GET  /api/v1/recordings/:id     → get single recording
  *   DELETE /api/v1/recordings/:id   → delete recording
+ *
+ * New live API (use cloudApi instead):
+ *   POST /api/auth/register | /api/auth/login
+ *   POST /api/storage/files/upload
+ *   GET  /api/storage/files
+ *   GET  /api/storage/files/:id
+ *   DELETE /api/storage/files/:id
  */
+
+// Re-export the new client for gradual migration
+export { cloudApi } from './cloudApi';
 import * as FileSystem from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 import { ENDPOINTS, apiUrl } from '@/config/api';

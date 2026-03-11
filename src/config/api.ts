@@ -9,11 +9,22 @@ export const API_BASE_URL = 'https://windypro.thewindstorm.uk';
 // ─── Endpoint paths (relative to API_BASE_URL) ────────────────
 
 export const ENDPOINTS = {
-    // Auth
+    // Auth (live API)
+    AUTH_REGISTER: '/api/auth/register',
+    AUTH_LOGIN_LIVE: '/api/auth/login',
+
+    // Storage (live API — R2 cloud storage)
+    STORAGE_HEALTH: '/api/storage/health',
+    STORAGE_UPLOAD: '/api/storage/files/upload',
+    STORAGE_LIST: '/api/storage/files',
+    /** Use with /:fileId — e.g. `${STORAGE_FILE}/${fileId}` */
+    STORAGE_FILE: '/api/storage/files',
+
+    // Auth (legacy v1 — kept for backward compat)
     AUTH_LOGIN: '/api/v1/auth/login',
     AUTH_REFRESH: '/api/v1/auth/refresh',
 
-    // Recordings
+    // Recordings (legacy v1)
     RECORDINGS_UPLOAD: '/api/v1/recordings/upload',
     RECORDINGS_LIST: '/api/v1/recordings/list',
     RECORDINGS_CHECK: '/api/v1/recordings/check',

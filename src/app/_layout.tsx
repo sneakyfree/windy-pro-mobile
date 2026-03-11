@@ -22,6 +22,7 @@ import { pushNotificationService } from '@/services/push-notifications';
 import { offlinePackService } from '@/services/offline-packs';
 import { subscriptionService } from '@/services/subscription';
 import { networkMonitor } from '@/services/network-monitor';
+import { cloudApi } from '@/services/cloudApi';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkBanner } from '@/components/NetworkBanner';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -64,6 +65,9 @@ export default function RootLayout() {
         offlinePackService.initialize().catch(() => { });
         // Initialize RevenueCat subscriptions
         subscriptionService.initialize().catch(() => { });
+
+        // Auto-restore cloud API session
+        cloudApi.restoreSession().catch(() => { });
 
         // Android-specific: theme navigation bar
         if (Platform.OS === 'android') {
