@@ -121,8 +121,12 @@ class ChatTranslateService {
         let sourceLang = message.originalLang || null;
 
         if (!sourceLang && message.body.trim()) {
-            const detected = await translationService.detectLanguage(message.body);
-            sourceLang = detected.language;
+            try {
+                const detected = await translationService.detectLanguage(message.body);
+                sourceLang = detected.language;
+            } catch (err) {
+                console.warn('[ChatTranslate] Language detection failed:', err);
+            }
         }
 
         // Same language — no translation needed
