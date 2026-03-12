@@ -3,7 +3,7 @@
  * Shows direct message rooms with unread badges, last message preview,
  * online/offline indicators, pull-to-refresh, and connection status.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity, StyleSheet,
     RefreshControl, ActivityIndicator, TextInput, Alert,
@@ -59,6 +59,12 @@ export default function ChatHomeScreen() {
         return unsub;
     }, []);
 
+    // ML-1: Register/unregister screen with chat client
+    useEffect(() => {
+        chatClient.incrementActiveScreens();
+        return () => { chatClient.decrementActiveScreens(); };
+    }, []);
+
     const isOffline = syncState === 'reconnecting' || syncState === 'error';
 
     // ─── Load ───────────────────────────────────────────────────
@@ -97,18 +103,23 @@ export default function ChatHomeScreen() {
         setRefreshing(false);
     }, [loadRooms]);
 
-    // ─── Search ─────────────────────────────────────────────────
+    // ML-4: Debounced search (300ms delay)
+    const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const handleSearch = async (query: string) => {
+    const handleSearch = (query: string) => {
         setSearchQuery(query);
+        if (searchDebounce.current) clearTimeout(searchDebounce.current);
         if (query.trim().length < 2) {
             setSearchResults([]);
+            setSearching(false);
             return;
         }
         setSearching(true);
-        const results = await chatClient.searchUsers(query.trim());
-        setSearchResults(results);
-        setSearching(false);
+        searchDebounce.current = setTimeout(async () => {
+            const results = await chatClient.searchUsers(query.trim());
+            setSearchResults(results);
+            setSearching(false);
+        }, 300);
     };
 
     const startChat = async (userId: string) => {
@@ -287,11 +298,18 @@ export default function ChatHomeScreen() {
                                     {(item.name || '?')[0].toUpperCase()}
                                 </Text>
                             </View>
-                            {/* Presence dot */}
-                            <View
-                                style={[styles.presenceDot, { backgroundColor: '#22c55e' }]}
-                                accessibilityLabel="Online"
-                            />
+                            {/* Presence dot — RC-4: use actual member presence */}
+                            {(() => {
+                                const contacts = chatClient.getContacts();
+                                const contact = contacts.find(c => item.members.includes(c.userId));
+                                const memberPresence = contact?.presence || 'offline';
+                                return (
+                                    <View
+                                        style={[styles.presenceDot, { backgroundColor: presenceColor(memberPresence) }]}
+                                        accessibilityLabel={memberPresence === 'online' ? 'Online' : memberPresence === 'unavailable' ? 'Away' : 'Offline'}
+                                    />
+                                );
+                            })()}
                         </View>
 
                         {/* Info */}

@@ -41,6 +41,7 @@ export type ChatErrorCode =
     | 'NETWORK_ERROR'
     | 'SDK_UNAVAILABLE'
     | 'INVALID_HOMESERVER'
+    | 'UIAA_REQUIRED'
     | 'UNKNOWN';
 
 /** Maps Matrix error codes to our ChatErrorCode */
@@ -215,6 +216,14 @@ class ChatClient {
     private pendingMessages: PendingMessage[] = [];
     private currentSyncState: SyncState = 'stopped';
 
+    // ML-1: Screen reference counter — sync stops when no chat screens are mounted
+    private activeScreens = 0;
+
+    // ML-2: Stored event handler refs for cleanup
+    private timelineHandler: ((...args: any[]) => void) | null = null;
+    private typingHandler: ((...args: any[]) => void) | null = null;
+    private syncHandler: ((...args: any[]) => void) | null = null;
+
     // ─── SDK Loading ────────────────────────────────────────────
 
     /**
@@ -315,6 +324,19 @@ class ChatClient {
             return { success: true, userId: response.user_id };
         } catch (err: unknown) {
             console.warn('[Chat] Register failed:', sanitizeError(err));
+
+            // PC-3: Detect UIAA interactive auth (401 with flows)
+            const errObj = err as Record<string, any> | undefined;
+            const httpStatus = errObj?.httpStatus ?? errObj?.data?.httpStatus;
+            const flows = errObj?.data?.flows;
+            if (httpStatus === 401 && Array.isArray(flows)) {
+                return {
+                    success: false,
+                    error: 'This server requires browser verification to register. Please register at the homeserver\'s web interface (e.g. element.io) and then sign in here.',
+                    errorCode: 'UIAA_REQUIRED',
+                };
+            }
+
             const classified = classifyMatrixError(err);
             return { success: false, error: classified.message, errorCode: classified.code };
         }
@@ -353,6 +375,8 @@ class ChatClient {
     async logout(): Promise<void> {
         try {
             if (this.client) {
+                // ML-2: Remove stored event handlers before stopping
+                this.removeClientListeners();
                 await this.client.logout().catch((e: unknown) => {
                     console.warn('[Chat] logout API call failed:', sanitizeError(e));
                 });
@@ -366,6 +390,7 @@ class ChatClient {
         this.started = false;
         this.cryptoEnabled = false;
         this.pendingMessages = [];
+        this.activeScreens = 0;
         this.setSyncState('stopped');
         await SecureStore.deleteItemAsync(MATRIX_TOKEN_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(MATRIX_USER_KEY).catch(() => {});
@@ -419,8 +444,20 @@ class ChatClient {
             this.cryptoEnabled = false;
         }
 
+        // ML-2: Remove any existing handlers before re-registering
+        this.removeClientListeners();
+
+        // PC-1/PC-2: Try SDK enum event names, fall back to deprecated strings
+        let timelineEvent: string | any = 'Room.timeline';
+        let typingEvent: string | any = 'RoomMember.typing';
+        try {
+            const { RoomEvent, RoomMemberEvent } = this.sdk;
+            if (RoomEvent?.Timeline) timelineEvent = RoomEvent.Timeline;
+            if (RoomMemberEvent?.Typing) typingEvent = RoomMemberEvent.Typing;
+        } catch { /* SDK may not export enums — use string fallback */ }
+
         // ── Listen for messages ─────────────────────────────────
-        this.client.on('Room.timeline', (event: any, room: any) => {
+        this.timelineHandler = (event: any, room: any) => {
             if (event.getType() !== 'm.room.message') return;
             const content = event.getContent();
             const msg: ChatMessage = {
@@ -437,10 +474,11 @@ class ChatClient {
             this.messageListeners.forEach(cb => {
                 try { cb(msg); } catch (e) { console.warn('[Chat] Listener error:', sanitizeError(e)); }
             });
-        });
+        };
+        this.client.on(timelineEvent, this.timelineHandler);
 
         // ── Listen for typing ───────────────────────────────────
-        this.client.on('RoomMember.typing', (_event: any, member: any) => {
+        this.typingHandler = (_event: any, member: any) => {
             const roomId = member.roomId;
             const room = this.client.getRoom(roomId);
             if (!room) return;
@@ -450,10 +488,11 @@ class ChatClient {
             this.typingListeners.forEach(cb => {
                 try { cb(roomId, typingMembers); } catch (e) { console.warn('[Chat] Typing listener error:', sanitizeError(e)); }
             });
-        });
+        };
+        this.client.on(typingEvent, this.typingHandler);
 
         // ── Listen for sync state changes ───────────────────────
-        this.client.on('sync', (state: string, _prevState: string, _data: any) => {
+        this.syncHandler = (state: string, _prevState: string, _data: any) => {
             switch (state) {
                 case 'SYNCING':
                 case 'PREPARED':
@@ -471,12 +510,39 @@ class ChatClient {
                     this.setSyncState('stopped');
                     break;
             }
-        });
+        };
+        this.client.on('sync', this.syncHandler);
 
         // Start syncing
         if (!this.started) {
             await this.client.startClient({ initialSyncLimit: 20 });
             this.started = true;
+        }
+    }
+
+    // ML-2: Remove stored event handlers from client
+    private removeClientListeners(): void {
+        if (!this.client) return;
+        if (this.timelineHandler) {
+            this.client.removeListener?.('Room.timeline', this.timelineHandler);
+            // Also try removing from enum-based name
+            try {
+                const { RoomEvent } = this.sdk;
+                if (RoomEvent?.Timeline) this.client.removeListener?.(RoomEvent.Timeline, this.timelineHandler);
+            } catch {}
+            this.timelineHandler = null;
+        }
+        if (this.typingHandler) {
+            this.client.removeListener?.('RoomMember.typing', this.typingHandler);
+            try {
+                const { RoomMemberEvent } = this.sdk;
+                if (RoomMemberEvent?.Typing) this.client.removeListener?.(RoomMemberEvent.Typing, this.typingHandler);
+            } catch {}
+            this.typingHandler = null;
+        }
+        if (this.syncHandler) {
+            this.client.removeListener?.('sync', this.syncHandler);
+            this.syncHandler = null;
         }
     }
 
@@ -507,6 +573,29 @@ class ChatClient {
                 console.warn('[Chat] Resume sync failed:', sanitizeError(e));
                 this.setSyncState('error');
             }
+        }
+    }
+
+    // ML-1: Screen reference counter — auto-stop sync when no chat screens are active
+
+    /**
+     * Increment active screen count. Starts sync if needed.
+     */
+    incrementActiveScreens(): void {
+        this.activeScreens++;
+        if (this.activeScreens === 1 && this.client && !this.started) {
+            this.resumeSync();
+        }
+    }
+
+    /**
+     * Decrement active screen count. Stops sync when 0 screens are active.
+     */
+    decrementActiveScreens(): void {
+        this.activeScreens = Math.max(0, this.activeScreens - 1);
+        if (this.activeScreens <= 0 && this.started) {
+            this.pauseSync();
+            console.log('[Chat] All chat screens unmounted — sync stopped');
         }
     }
 

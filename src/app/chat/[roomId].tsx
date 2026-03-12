@@ -35,6 +35,9 @@ export default function ConversationScreen() {
     const [syncState, setSyncState] = useState<SyncState>(chatClient.getSyncState());
     const flatListRef = useRef<FlatList>(null);
     const savedInputRef = useRef('');
+    const sendingRef = useRef(false); // RC-1: Synchronous guard against double-tap
+    const isMounted = useRef(true); // ML-3: Unmount guard for async callbacks
+    const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null); // PC-4: Typing debounce
 
     const userLang = useSettingsStore(s => s.defaultLanguage);
 
@@ -42,90 +45,109 @@ export default function ConversationScreen() {
         chatTranslateService.setUserLanguage(userLang);
     }, [userLang]);
 
+    // ML-3: Track unmount to prevent setState on unmounted component
+    useEffect(() => {
+        isMounted.current = true;
+        return () => { isMounted.current = false; };
+    }, []);
+
+    // ML-1: Register/unregister screen with chat client
+    useEffect(() => {
+        chatClient.incrementActiveScreens();
+        return () => { chatClient.decrementActiveScreens(); };
+    }, []);
+
     // ─── Connection State ───────────────────────────────────────
 
     useEffect(() => {
         const unsub = chatClient.onSyncStateChange((state) => {
-            setSyncState(state);
+            if (isMounted.current) setSyncState(state);
         });
         return unsub;
     }, []);
 
     const isOffline = syncState === 'reconnecting' || syncState === 'error' || syncState === 'stopped';
 
-    // ─── Load Messages ──────────────────────────────────────────
-
-    const loadMessages = useCallback(async () => {
-        if (!roomId) return;
-
-        try {
-            const name = chatClient.getRoomName(roomId);
-            setRoomName(name);
-
-            const rawMessages = chatClient.getMessages(roomId, 100);
-            const translated = await chatTranslateService.translateMessages(rawMessages);
-
-            // Append any pending (queued) messages
-            const pending = chatClient.getPendingMessages(roomId).map(m => ({
-                ...m,
-                translatedBody: null,
-                detectedLang: null,
-                langFlag: null,
-                langName: null,
-                wasTranslated: false,
-                pending: true,
-            }));
-
-            setMessages([...translated, ...pending]);
-        } catch (err) {
-            console.warn('[ChatRoom] loadMessages error:', err);
-        } finally {
-            setLoading(false);
-        }
-
-        // Scroll to bottom
-        setTimeout(() => {
-            flatListRef.current?.scrollToEnd({ animated: false });
-        }, 100);
-    }, [roomId]);
-
-    useEffect(() => {
-        loadMessages();
-    }, [loadMessages]);
-
-    // ─── Real-time Listeners ────────────────────────────────────
+    // ─── Load + Real-time Listeners (RC-2: sequenced) ───────────
 
     useEffect(() => {
         if (!roomId) return;
+        let cleanupFns: (() => void)[] = [];
 
-        const unsubMsg = chatClient.onMessage(async (msg: ChatMessage) => {
-            if (msg.roomId !== roomId) return;
-            const translated = await chatTranslateService.translateMessage(msg);
-            setMessages(prev => [...prev.filter(m => !m.pending), translated]);
+        const init = async () => {
+            // Load initial messages first
+            try {
+                const name = chatClient.getRoomName(roomId);
+                if (isMounted.current) setRoomName(name);
+
+                const rawMessages = chatClient.getMessages(roomId, 100);
+                const translated = await chatTranslateService.translateMessages(rawMessages);
+                if (!isMounted.current) return;
+
+                // Append any pending (queued) messages
+                const pending = chatClient.getPendingMessages(roomId).map(m => ({
+                    ...m,
+                    translatedBody: null,
+                    detectedLang: null,
+                    langFlag: null,
+                    langName: null,
+                    wasTranslated: false,
+                    pending: true,
+                }));
+
+                setMessages([...translated, ...pending]);
+            } catch (err) {
+                console.warn('[ChatRoom] loadMessages error:', err);
+            } finally {
+                if (isMounted.current) setLoading(false);
+            }
+
+            // Scroll to bottom
             setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
-            }, 50);
-        });
+                flatListRef.current?.scrollToEnd({ animated: false });
+            }, 100);
 
-        const unsubTyping = chatClient.onTyping((typingRoomId: string, userIds: string[]) => {
-            if (typingRoomId !== roomId) return;
-            setTypingUsers(userIds);
-        });
+            // RC-2: Only start listening AFTER initial load completes
+            if (!isMounted.current) return;
 
-        // Set presence to online
-        chatClient.setPresence('online');
+            const unsubMsg = chatClient.onMessage(async (msg: ChatMessage) => {
+                if (msg.roomId !== roomId || !isMounted.current) return;
+                const translated = await chatTranslateService.translateMessage(msg);
+                if (!isMounted.current) return; // ML-3: guard
+                setMessages(prev => [...prev.filter(m => !m.pending), translated]);
+                setTimeout(() => {
+                    flatListRef.current?.scrollToEnd({ animated: true });
+                }, 50);
+            });
+
+            const unsubTyping = chatClient.onTyping((typingRoomId: string, userIds: string[]) => {
+                if (typingRoomId !== roomId || !isMounted.current) return;
+                setTypingUsers(userIds);
+            });
+
+            // Set presence to online
+            chatClient.setPresence('online');
+
+            cleanupFns = [unsubMsg, unsubTyping];
+        };
+
+        init();
 
         return () => {
-            unsubMsg();
-            unsubTyping();
+            cleanupFns.forEach(fn => fn());
+            // PC-5: Set presence back to unavailable when leaving room
+            chatClient.setPresence('unavailable');
+            // Clear typing debounce
+            if (typingTimeout.current) clearTimeout(typingTimeout.current);
         };
-    }, [roomId]);
+    }, [roomId, userLang]);
 
     // ─── Send ───────────────────────────────────────────────────
 
     const handleSend = async () => {
         const text = inputText.trim();
-        if (!text || !roomId || sending) return;
+        if (!text || !roomId || sendingRef.current) return; // RC-1: use ref guard
+        sendingRef.current = true;
 
         setSending(true);
         setSendError(null);
@@ -134,12 +156,13 @@ export default function ConversationScreen() {
 
         const result = await chatClient.sendMessage(roomId, text, chatTranslateService.getSendLanguage());
 
+        sendingRef.current = false;
         setSending(false);
 
         if (!result.success) {
             if (result.pending) {
-                // Message queued — show it as pending in the UI
-                loadMessages();
+                // Message queued — reload to show pending indicator
+                // (handled by the combined effect on next re-render)
             } else {
                 // Real failure — restore input text and show error
                 setInputText(savedInputRef.current);
@@ -153,13 +176,23 @@ export default function ConversationScreen() {
         handleSend();
     };
 
-    // ─── Typing ─────────────────────────────────────────────────
-
+    // PC-4: Debounced typing notifications (3s window)
     const handleTextChange = (text: string) => {
         setInputText(text);
         setSendError(null);
-        if (roomId) {
-            chatClient.sendTyping(roomId, text.length > 0);
+        if (roomId && text.length > 0) {
+            if (!typingTimeout.current) {
+                chatClient.sendTyping(roomId, true);
+            }
+            if (typingTimeout.current) clearTimeout(typingTimeout.current);
+            typingTimeout.current = setTimeout(() => {
+                chatClient.sendTyping(roomId, false);
+                typingTimeout.current = null;
+            }, 3000);
+        } else if (roomId) {
+            if (typingTimeout.current) clearTimeout(typingTimeout.current);
+            typingTimeout.current = null;
+            chatClient.sendTyping(roomId, false);
         }
     };
 

@@ -311,7 +311,9 @@ export default function ChatProfileScreen() {
                     <Text style={styles.sectionTitle} accessibilityRole="header">About</Text>
                     <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>Protocol</Text>
-                        <Text style={styles.infoValue}>Matrix (E2E encrypted)</Text>
+                        <Text style={styles.infoValue}>
+                            {chatClient.isCryptoEnabled() ? 'Matrix (E2E encrypted)' : 'Matrix (transit encrypted via TLS)'}
+                        </Text>
                     </View>
                     <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>Homeserver</Text>

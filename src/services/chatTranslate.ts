@@ -179,9 +179,17 @@ class ChatTranslateService {
 
     /**
      * Batch-translate multiple messages.
+     * RC-3: Process in batches of 5 to avoid overwhelming the translation engine.
      */
     async translateMessages(messages: ChatMessage[]): Promise<TranslatedMessage[]> {
-        return Promise.all(messages.map(m => this.translateMessage(m)));
+        const BATCH_SIZE = 5;
+        const results: TranslatedMessage[] = [];
+        for (let i = 0; i < messages.length; i += BATCH_SIZE) {
+            const batch = messages.slice(i, i + BATCH_SIZE);
+            const translated = await Promise.all(batch.map(m => this.translateMessage(m)));
+            results.push(...translated);
+        }
+        return results;
     }
 
     /**
