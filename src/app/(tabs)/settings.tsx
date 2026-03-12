@@ -6,7 +6,7 @@
  * Navigation features, translation prefs, voice selection
  */
 import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert, TextInput } from 'react-native';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -404,18 +404,6 @@ export default function SettingsScreen() {
             <SettingsToggle label="Audio feedback" subtitle="Blip sounds on record start/stop" value={settings.audioFeedback} onToggle={settings.setAudioFeedback} />
           </SettingsSection>
 
-          {/* Cloud Sync */}
-          <SettingsSection title="Cloud Sync">
-            <SettingsToggle label="Enable sync" value={settings.syncEnabled} onToggle={settings.setSyncEnabled} />
-            {settings.syncEnabled && (
-              <>
-                <SettingsToggle label="Wi-Fi only" value={settings.wifiOnlySync} onToggle={settings.setWifiOnlySync} />
-                <SettingsToggle label="While plugged in only" value={settings.pluggedInOnlySync} onToggle={settings.setPluggedInOnlySync} />
-                <SyncStatusBanner />
-              </>
-            )}
-          </SettingsSection>
-
           {/* Notifications */}
           <SettingsSection title="Notifications">
             <SettingsToggle label="Recording complete" subtitle="When a transcription finishes" value={settings.notifyRecordingComplete} onToggle={settings.setNotifyRecordingComplete} />
@@ -749,16 +737,18 @@ export default function SettingsScreen() {
   );
 }
 
-function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+// 🚀 Perf: memoized sub-components to prevent re-renders on parent state change
+const SettingsSection = memo(function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section} accessibilityRole="none" accessible={true} accessibilityLabel={title}>
       <Text style={styles.sectionTitle} accessibilityRole="header">{title}</Text>
       <View style={styles.sectionContent}>{children}</View>
     </View>
   );
-}
+});
+SettingsSection.displayName = 'SettingsSection';
 
-function SettingsRow({ label, value, valueColor, chevron }: {
+const SettingsRow = memo(function SettingsRow({ label, value, valueColor, chevron }: {
   label: string; value?: string; valueColor?: string; chevron?: boolean;
 }) {
   return (
@@ -768,9 +758,10 @@ function SettingsRow({ label, value, valueColor, chevron }: {
       {chevron && <Text style={styles.chevron} importantForAccessibility="no">›</Text>}
     </View>
   );
-}
+});
+SettingsRow.displayName = 'SettingsRow';
 
-function SettingsToggle({ label, subtitle, value, onToggle }: {
+const SettingsToggle = memo(function SettingsToggle({ label, subtitle, value, onToggle }: {
   label: string; subtitle?: string; value: boolean; onToggle: (v: boolean) => void;
 }) {
   return (
@@ -786,7 +777,8 @@ function SettingsToggle({ label, subtitle, value, onToggle }: {
       />
     </View>
   );
-}
+});
+SettingsToggle.displayName = 'SettingsToggle';
 
 function formatTier(tier: string): string {
   return { pro: 'Pro', translate: 'Translate', translate_pro: 'Translate Pro' }[tier] || tier;

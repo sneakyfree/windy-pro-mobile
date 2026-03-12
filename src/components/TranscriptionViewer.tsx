@@ -3,8 +3,8 @@
  * Real-time progress indicator, word-level confidence highlighting,
  * speaker diarization labels, SRT/VTT export, transcript analytics
  */
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Share, Animated } from 'react-native';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, FlatList, ScrollView, Pressable, Alert, Share, Animated } from 'react-native';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -97,6 +97,9 @@ interface TranscriptionViewerProps {
     currentTime?: number;  // playback position in seconds
     totalDuration?: number;
 }
+
+// 🚀 Perf: stable key extractor for FlatList
+const segmentKeyExtractor = (seg: TranscriptSegment) => seg.id;
 
 export default function TranscriptionViewer({
     segments,
@@ -253,17 +256,17 @@ export default function TranscriptionViewer({
                 </Pressable>
             </View>
 
-            {/* Transcript segments */}
-            <ScrollView
-                ref={scrollRef}
+            {/* Transcript segments — 🚀 Perf: FlatList for windowed rendering */}
+            <FlatList
+                ref={scrollRef as any}
                 style={styles.segmentsList}
                 contentContainerStyle={styles.segmentsContent}
-            >
-                {segments.map((seg) => {
+                data={segments}
+                keyExtractor={segmentKeyExtractor}
+                renderItem={({ item: seg }) => {
                     const isActive = currentTime >= seg.startTime && currentTime <= seg.endTime;
                     return (
                         <View
-                            key={seg.id}
                             style={[
                                 styles.segmentRow,
                                 seg.isPartial && styles.segmentPartial,
@@ -311,8 +314,11 @@ export default function TranscriptionViewer({
                             </View>
                         </View>
                     );
-                })}
-            </ScrollView>
+                }}
+                maxToRenderPerBatch={15}
+                windowSize={7}
+                initialNumToRender={20}
+            />
 
             {/* Analytics bar */}
             {analytics && !isStreaming && (

@@ -8,7 +8,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Alert, Platform, BackHandler, AppState, AppStateStatus } from 'react-native';
+import { View, StyleSheet, Alert, Platform, BackHandler, AppState, AppStateStatus, InteractionManager } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -90,19 +90,10 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Initialize local database
+        // Initialize local database — required before UI renders
         await localStorageService.initialize();
-        // Initialize push notifications
-        pushNotificationService.initialize().catch(() => { });
-        // Initialize offline language packs
-        offlinePackService.initialize().catch(() => { });
-        // Initialize RevenueCat subscriptions
-        subscriptionService.initialize().catch(() => { });
 
-        // Auto-restore cloud API session
-        cloudApi.restoreSession().catch(() => { });
-
-        // Android-specific: theme navigation bar
+        // Android-specific: theme navigation bar (lightweight, can run immediately)
         if (Platform.OS === 'android') {
           NavigationBar.setBackgroundColorAsync(colors.background).catch(() => { });
           NavigationBar.setButtonStyleAsync('light').catch(() => { });
@@ -114,6 +105,17 @@ export default function RootLayout() {
       }
     }
     prepare();
+
+    // 🚀 Perf: defer non-critical services until after first frame renders
+    const handle = InteractionManager.runAfterInteractions(() => {
+      Promise.allSettled([
+        pushNotificationService.initialize(),
+        offlinePackService.initialize(),
+        subscriptionService.initialize(),
+        cloudApi.restoreSession(),
+      ]).catch(() => { });
+    });
+    return () => handle.cancel();
   }, []);
 
   // Safety timeout: force-dismiss splash after 5 seconds no matter what

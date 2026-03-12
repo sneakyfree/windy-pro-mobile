@@ -4,7 +4,7 @@
  * Backend sync, favorites, swipe-to-delete, language filter, CSV export
  */
 import { View, Text, StyleSheet, FlatList, Pressable, Platform, TextInput, Alert, Animated, PanResponder } from 'react-native';
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Sharing from 'expo-sharing';
@@ -181,14 +181,22 @@ export default function HistoryScreen() {
     }
   };
 
-  const handleSearch = (text: string) => {
+  // 🚀 Perf: debounce search to avoid firing loadSessions on every keystroke
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearch = useCallback((text: string) => {
     setSearchQuery(text);
-    if (text.length > 2) {
-      loadSessions(text);
-    } else if (text.length === 0) {
-      loadSessions();
-    }
-  };
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      if (text.length > 2) {
+        loadSessions(text);
+      } else if (text.length === 0) {
+        loadSessions();
+      }
+    }, 300);
+  }, []);
+
+  // 🚀 Perf: stable callback for FlatList onRefresh
+  const handleRefresh = useCallback(() => { loadSessions(); loadStorage(); }, []);
 
   const handleDelete = (id: string) => {
     Alert.alert('Delete Session', 'This cannot be undone.', [
@@ -502,12 +510,17 @@ export default function HistoryScreen() {
           <FlatList
             data={filteredSessions}
             renderItem={renderSession}
-            keyExtractor={(item) => item.id}
+            keyExtractor={keyExtractor}
             contentContainerStyle={styles.listContent}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ItemSeparatorComponent={ListSeparator}
             refreshing={loading}
-            onRefresh={() => { loadSessions(); loadStorage(); }}
+            onRefresh={handleRefresh}
             keyboardDismissMode="on-drag"
+            // 🚀 Perf: virtualization props
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
+            initialNumToRender={10}
           />
         )}
       </SafeAreaView>
@@ -515,9 +528,14 @@ export default function HistoryScreen() {
   );
 }
 
+// 🚀 Perf: Stable references for FlatList performance
+const keyExtractor = (item: SessionSummary) => item.id;
+const ListSeparator = memo(() => <View style={styles.separator} />);
+ListSeparator.displayName = 'ListSeparator';
+
 // ─── Swipeable Row Component ────────────────────────────────────
 
-function SwipeableRow({ children, onDelete }: { children: React.ReactNode; onDelete: () => void }) {
+const SwipeableRow = memo(function SwipeableRow({ children, onDelete }: { children: React.ReactNode; onDelete: () => void }) {
   const translateX = useRef(new Animated.Value(0)).current;
 
   const panResponder = useRef(
@@ -564,7 +582,8 @@ function SwipeableRow({ children, onDelete }: { children: React.ReactNode; onDel
       </Animated.View>
     </View>
   );
-}
+});
+SwipeableRow.displayName = 'SwipeableRow';
 
 const swipeStyles = StyleSheet.create({
   container: { position: 'relative' },

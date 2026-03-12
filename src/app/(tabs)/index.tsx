@@ -217,9 +217,9 @@ export default function RecordScreen() {
                     waveformLevels.current[waveformIndex.current % WAVEFORM_BARS] = level;
                     waveformIndex.current += 1;
 
-                    // Snapshot every 3rd sample for rendering
-                    if (waveformIndex.current % 3 === 0) {
-                        setWaveformSnapshot([...waveformLevels.current]);
+                    // 🚀 Perf: snapshot every 6th sample (~7.5×/sec) to reduce re-renders
+                    if (waveformIndex.current % 6 === 0) {
+                        setWaveformSnapshot(waveformLevels.current.slice());
                     }
                 };
 
@@ -240,7 +240,7 @@ export default function RecordScreen() {
                 announce('Recording started');
                 clearTranscript();
 
-                // Duration timer
+                // 🚀 Perf: 250ms timer (4×/sec) — still smooth for display, 60% fewer re-renders
                 const startTime = Date.now();
                 durationInterval.current = setInterval(() => {
                     const elapsed = (Date.now() - startTime) / 1000;
@@ -251,7 +251,7 @@ export default function RecordScreen() {
                     if (elapsed >= maxDuration) {
                         handleStopRecording();
                     }
-                }, 100);
+                }, 250);
             } catch (err: unknown) {
                 console.error('[Record] Start failed:', err);
                 setError();

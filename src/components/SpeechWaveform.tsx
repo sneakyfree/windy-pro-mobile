@@ -51,7 +51,7 @@ export function SpeechWaveform({
                     toValue: 0.08,
                     duration: 300,
                     easing: Easing.out(Easing.quad),
-                    useNativeDriver: false,
+                    useNativeDriver: true,
                 }).start();
             });
             return;
@@ -66,7 +66,7 @@ export function SpeechWaveform({
                 toValue: targetHeight,
                 duration: 80 + Math.random() * 40,
                 easing: Easing.out(Easing.quad),
-                useNativeDriver: false,
+                useNativeDriver: true,
             }).start();
         });
     }, [isActive, level, phaseOffsets]);
@@ -84,7 +84,7 @@ export function SpeechWaveform({
                     toValue: target,
                     duration: 800 + Math.random() * 400,
                     easing: Easing.inOut(Easing.sin),
-                    useNativeDriver: false,
+                    useNativeDriver: true,
                 });
             });
             Animated.stagger(30, animations).start(() => {
@@ -104,10 +104,9 @@ export function SpeechWaveform({
                         styles.bar,
                         {
                             backgroundColor: color,
-                            height: bar.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [4, height],
-                            }),
+                            height: height,
+                            // 🚀 Perf: use scaleY + opacity with useNativeDriver: true
+                            transform: [{ scaleY: bar }],
                             opacity: bar.interpolate({
                                 inputRange: [0, 0.3, 1],
                                 outputRange: [0.3, 0.6, 1],
