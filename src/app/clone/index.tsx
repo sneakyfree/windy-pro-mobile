@@ -501,7 +501,9 @@ export default function CloneDashboardScreen() {
                                 </View>
                                 <Text style={styles.countdownText}>{cloneCountdown}s</Text>
                                 <Text style={styles.recordHint}>🔴 Recording... speak naturally</Text>
-                                <Pressable style={styles.recordStopBtn} onPress={finishCloneRecording}>
+                                <Pressable style={styles.recordStopBtn} onPress={finishCloneRecording}
+                                    accessibilityLabel="Stop recording voice sample" accessibilityRole="button"
+                                >
                                     <Text style={styles.recordStopText}>⏹ Stop Early</Text>
                                 </Pressable>
                             </View>
@@ -532,7 +534,10 @@ export default function CloneDashboardScreen() {
                                 <Text style={styles.recordReadyDesc}>
                                     Record a 30-second voice sample. Speak naturally — read aloud or talk about your day.
                                 </Text>
-                                <Pressable style={styles.recordStartBtn} onPress={startCloneRecording}>
+                                <Pressable style={styles.recordStartBtn} onPress={startCloneRecording}
+                                    accessibilityLabel={cloneVoiceId ? 'Record a new voice sample' : 'Start recording voice sample'}
+                                    accessibilityRole="button"
+                                >
                                     <Text style={styles.recordStartText}>
                                         {cloneVoiceId ? '🔄 Record New Sample' : '🎙️ Start Recording'}
                                     </Text>
@@ -787,7 +792,7 @@ const styles = StyleSheet.create({
     samplePreview: { fontSize: 13, color: colors.textPrimary, marginBottom: 2 },
     sampleMeta: { fontSize: 11, color: colors.textTertiary, fontVariant: ['tabular-nums'] },
     sampleDeleteBtn: {
-        width: 28, height: 28, borderRadius: 14,
+        width: 44, height: 44, borderRadius: 22,
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         alignItems: 'center', justifyContent: 'center',
     },

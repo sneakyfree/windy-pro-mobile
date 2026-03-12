@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     bundleMetaRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
     bundleMeta: { fontSize: 11, color: colors.textTertiary },
 
-    uploadBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.accentTransparent, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+    uploadBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accentTransparent, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
     uploadBtnText: { fontSize: 16 },
 
     empty: { alignItems: 'center', paddingTop: 80 },

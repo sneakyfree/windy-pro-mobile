@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
     },
     stopSquare: {
         width: 32,
-        height: 32,
+        height: 44,
         borderRadius: 4,
         backgroundColor: colors.stateRecording,
     },

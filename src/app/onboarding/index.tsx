@@ -279,12 +279,17 @@ export default function OnboardingScreen() {
                             currentIndex === 1 && !micGranted && styles.buttonDisabled,
                         ]}
                         onPress={currentIndex === 1 && !micGranted ? requestMicrophone : handleNext}
+                        accessibilityLabel={currentIndex === 0 ? 'Get started' : currentIndex === 1 ? 'Grant microphone permission' : 'Continue'}
+                        accessibilityRole="button"
                     >
                         <Text style={styles.primaryButtonText}>{getButtonText()}</Text>
                     </Pressable>
 
                     {currentIndex === 1 && (
-                        <Pressable onPress={handleNext} style={styles.skipButton}>
+                        <Pressable onPress={handleNext} style={styles.skipButton}
+                            accessibilityLabel="Skip microphone setup"
+                            accessibilityRole="button"
+                        >
                             <Text style={styles.skipText}>Skip for now</Text>
                         </Pressable>
                     )}

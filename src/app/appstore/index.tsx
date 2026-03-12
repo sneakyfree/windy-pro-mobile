@@ -132,7 +132,7 @@ export default function AppStoreScreen() {
 
     const openStoreUrl = () => {
         const storeUrl = Platform.select({
-            ios: 'https://apps.apple.com/app/windy-pro/id6740123456',
+            ios: 'https://apps.apple.com/app/windy-pro/id6759985867',
             android: 'https://play.google.com/store/apps/details?id=uk.thewindstorm.windypro',
             default: 'https://windypro.thewindstorm.uk',
         });
@@ -159,7 +159,9 @@ export default function AppStoreScreen() {
             <ScrollView style={styles.container} contentContainerStyle={styles.content}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                    <Pressable onPress={() => router.back()} style={styles.backBtn}
+                        accessibilityLabel="Go back" accessibilityRole="button"
+                    >
                         <Text style={styles.backText}>← Back</Text>
                     </Pressable>
                     <Text style={styles.title}>About Windy Pro</Text>
@@ -191,7 +193,10 @@ export default function AppStoreScreen() {
                         contentContainerStyle={styles.carouselContent}
                     >
                         {SCREENSHOTS.map((shot) => (
-                            <View key={shot.id} style={styles.screenshotCard}>
+                            <View key={shot.id} style={styles.screenshotCard}
+                                accessible={true}
+                                accessibilityLabel={`Screenshot: ${shot.title}. ${shot.subtitle}`}
+                            >
                                 <View style={[styles.screenshotPreview, {
                                     backgroundColor: shot.colors[0],
                                     borderColor: shot.colors[1] + '40',
@@ -255,14 +260,18 @@ export default function AppStoreScreen() {
                             </Text>
                         </View>
                     </View>
-                    <Pressable style={styles.rateCta} onPress={handleRateApp}>
+                    <Pressable style={styles.rateCta} onPress={handleRateApp}
+                        accessibilityLabel="Rate this app" accessibilityRole="button"
+                    >
                         <Text style={styles.rateCtaEmoji}>⭐</Text>
                         <Text style={styles.rateCtaText}>Rate This App</Text>
                     </Pressable>
                 </View>
 
                 {/* Share App */}
-                <Pressable style={styles.shareButton} onPress={handleShareApp}>
+                <Pressable style={styles.shareButton} onPress={handleShareApp}
+                    accessibilityLabel="Share Windy Pro" accessibilityRole="button"
+                >
                     <Text style={styles.shareEmoji}>📤</Text>
                     <View style={styles.shareContent}>
                         <Text style={styles.shareTitle}>Share Windy Pro</Text>
@@ -272,7 +281,9 @@ export default function AppStoreScreen() {
 
                 {/* Footer links */}
                 <View style={styles.footerLinks}>
-                    <Pressable onPress={() => Linking.openURL('https://windypro.thewindstorm.uk')}>
+                    <Pressable onPress={() => Linking.openURL('https://windypro.thewindstorm.uk')}
+                        accessibilityLabel="Visit website" accessibilityRole="link"
+                    >
                         <Text style={styles.footerLink}>🌐 Website</Text>
                     </Pressable>
                     <Pressable onPress={() => router.push('/legal/privacy')}>
@@ -281,7 +292,9 @@ export default function AppStoreScreen() {
                     <Pressable onPress={() => router.push('/legal/terms')}>
                         <Text style={styles.footerLink}>📋 Terms</Text>
                     </Pressable>
-                    <Pressable onPress={() => Linking.openURL('mailto:support@thewindstorm.uk')}>
+                    <Pressable onPress={() => Linking.openURL('mailto:support@thewindstorm.uk')}
+                        accessibilityLabel="Contact support" accessibilityRole="link"
+                    >
                         <Text style={styles.footerLink}>✉️ Support</Text>
                     </Pressable>
                 </View>

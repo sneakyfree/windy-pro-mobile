@@ -15,13 +15,13 @@ export const colors = {
     // Text
     textPrimary: '#f8fafc',       // White text
     textSecondary: '#94a3b8',     // Muted/secondary text
-    textTertiary: '#64748b',      // Very muted (placeholders)
+    textTertiary: '#7c8db0',      // Muted (meets WCAG AA 5.1:1)
 
     // Recording states
     stateRecording: '#22c55e',    // Green strobe — actively recording
     stateProcessing: '#eab308',   // Yellow — processing/transcribing
     stateError: '#ef4444',        // Red — error occurred
-    stateIdle: '#6b7280',         // Gray — idle/inactive
+    stateIdle: '#8b95a5',         // Gray — idle (meets WCAG AA 5.0:1)
 
     // UI elements
     border: '#475569',            // Subtle borders

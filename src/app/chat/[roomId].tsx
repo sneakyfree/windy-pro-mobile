@@ -132,7 +132,9 @@ export default function ConversationScreen() {
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}
+                    accessibilityLabel="Go back" accessibilityRole="button"
+                >
                     <Text style={styles.backText}>←</Text>
                 </TouchableOpacity>
                 <View style={styles.headerInfo}>
@@ -223,6 +225,7 @@ export default function ConversationScreen() {
                         multiline
                         maxLength={4000}
                         returnKeyType="default"
+                        accessibilityLabel="Type a message"
                     />
                     <TouchableOpacity
                         style={[
@@ -231,6 +234,7 @@ export default function ConversationScreen() {
                         ]}
                         onPress={handleSend}
                         disabled={!inputText.trim() || sending}
+                        accessibilityLabel="Send message" accessibilityRole="button"
                     >
                         {sending ? (
                             <ActivityIndicator size="small" color={colors.background} />
@@ -345,7 +349,7 @@ const styles = StyleSheet.create({
     },
     sendButton: {
         width: 36,
-        height: 36,
+        height: 44,
         borderRadius: 18,
         backgroundColor: colors.accent,
         justifyContent: 'center',

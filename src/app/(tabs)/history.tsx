@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
   exportBtn: {
     marginLeft: 'auto',
     paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
+    paddingVertical: 2, minHeight: 44, justifyContent: 'center',
   },
   exportBtnText: { fontSize: 16 },
 
@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   filterChip: {
-    paddingVertical: 3,
+    paddingVertical: 3, minHeight: 44, justifyContent: 'center',
     paddingHorizontal: 10,
     borderRadius: 12,
     borderWidth: 1,
@@ -796,7 +796,7 @@ const styles = StyleSheet.create({
   filterChipText: { fontSize: 11, color: colors.textTertiary },
   filterChipTextActive: { color: colors.accent, fontWeight: '600' },
   csvExportBtn: {
-    paddingVertical: 3,
+    paddingVertical: 3, minHeight: 44, justifyContent: 'center',
     paddingHorizontal: 10,
     borderRadius: 12,
     backgroundColor: 'rgba(99,102,241,0.1)',

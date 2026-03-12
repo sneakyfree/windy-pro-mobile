@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     },
     swapBtn: {
         width: 36,
-        height: 36,
+        height: 44,
         borderRadius: 18,
         backgroundColor: colors.surfaceLight,
         alignItems: 'center',

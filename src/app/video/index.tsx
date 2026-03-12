@@ -273,7 +273,9 @@ export default function VideoRecordScreen() {
             <View style={styles.container}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Pressable onPress={() => router.back()} style={styles.backBtn}>
+                    <Pressable onPress={() => router.back()} style={styles.backBtn}
+                        accessibilityLabel="Go back" accessibilityRole="button"
+                    >
                         <Text style={styles.backText}>← Back</Text>
                     </Pressable>
                     <Text style={styles.title}>Video Recorder</Text>
@@ -285,6 +287,7 @@ export default function VideoRecordScreen() {
                     <Pressable
                         style={[styles.modeBtn, mode === 'audio-only' && styles.modeBtnActive]}
                         onPress={() => { setMode('audio-only'); feedbackService.tap(); }}
+                        accessibilityLabel="Switch to audio only mode" accessibilityRole="button"
                     >
                         <Text style={styles.modeBtnEmoji}>🎤</Text>
                         <Text style={[styles.modeBtnText, mode === 'audio-only' && styles.modeBtnTextActive]}>
@@ -294,6 +297,7 @@ export default function VideoRecordScreen() {
                     <Pressable
                         style={[styles.modeBtn, mode === 'video' && styles.modeBtnActive]}
                         onPress={() => { setMode('video'); feedbackService.tap(); }}
+                        accessibilityLabel="Switch to video mode" accessibilityRole="button"
                     >
                         <Text style={styles.modeBtnEmoji}>📹</Text>
                         <Text style={[styles.modeBtnText, mode === 'video' && styles.modeBtnTextActive]}>
@@ -325,7 +329,9 @@ export default function VideoRecordScreen() {
                                 }}
                             />
                             {/* Playback overlay */}
-                            <Pressable style={styles.playOverlay} onPress={handlePlayback}>
+                            <Pressable style={styles.playOverlay} onPress={handlePlayback}
+                                accessibilityLabel={isPlaying ? 'Pause playback' : 'Play recorded video'} accessibilityRole="button"
+                            >
                                 {!isPlaying && (
                                     <View style={styles.playCircle}>
                                         <Text style={styles.playIcon}>▶</Text>
@@ -357,7 +363,9 @@ export default function VideoRecordScreen() {
                                 </View>
                             )}
                             {state !== 'recording' && (
-                                <Pressable style={styles.flipButton} onPress={toggleCamera}>
+                                <Pressable style={styles.flipButton} onPress={toggleCamera}
+                                    accessibilityLabel="Flip camera" accessibilityRole="button"
+                                >
                                     <Text style={styles.flipEmoji}>🔄</Text>
                                 </Pressable>
                             )}
@@ -442,6 +450,7 @@ export default function VideoRecordScreen() {
                             state === 'recording' && styles.recordButtonActive,
                         ]}
                         onPress={handleRecordPress}
+                        accessibilityLabel={state === 'recording' ? 'Stop recording' : 'Start recording'} accessibilityRole="button"
                     >
                         {state === 'recording' ? (
                             <View style={styles.stopSquare} />

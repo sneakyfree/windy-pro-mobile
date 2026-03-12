@@ -556,6 +556,7 @@ export default function SettingsScreen() {
                 style={styles.serverUrlInput}
                 value={serverUrl}
                 onChangeText={setServerUrl}
+                accessibilityLabel="Transcription server URL"
                 onEndEditing={async () => {
                   const url = serverUrl.trim() || 'https://windypro.thewindstorm.uk';
                   setServerUrl(url);
@@ -672,7 +673,7 @@ export default function SettingsScreen() {
 
 function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={styles.section} accessibilityRole="summary">
+    <View style={styles.section} accessibilityRole="none" accessible={true} accessibilityLabel={title}>
       <Text style={styles.sectionTitle} accessibilityRole="header">{title}</Text>
       <View style={styles.sectionContent}>{children}</View>
     </View>
