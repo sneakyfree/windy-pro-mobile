@@ -418,6 +418,77 @@ class ChatClient {
         return this.cryptoEnabled;
     }
 
+    // ─── K2: Pre-provisioned Credentials Login ──────────────────
+
+    /**
+     * Login with pre-provisioned Matrix credentials from the Windy Chat
+     * custom registration API. Unlike login(), this doesn't authenticate
+     * against the homeserver — the token is already valid.
+     */
+    async loginWithCredentials(
+        accessToken: string,
+        userId: string,
+        deviceId: string,
+        homeserverUrl: string,
+    ): Promise<AuthResult> {
+        try {
+            this.session = { accessToken, userId, deviceId, homeserverUrl };
+            await this.persistSession();
+            await this.initClient();
+            return { success: true, userId };
+        } catch (err: unknown) {
+            console.warn('[Chat] loginWithCredentials failed:', sanitizeError(err));
+            return {
+                success: false,
+                error: 'Failed to initialize chat connection',
+                errorCode: 'UNKNOWN',
+            };
+        }
+    }
+
+    /**
+     * Set user's display name on the Matrix homeserver.
+     */
+    async setDisplayName(name: string): Promise<{ success: boolean; error?: string }> {
+        if (!this.client || !this.session) {
+            return { success: false, error: 'Not connected to chat' };
+        }
+        try {
+            await this.client.setDisplayName(name.trim());
+            return { success: true };
+        } catch (err: unknown) {
+            console.warn('[Chat] setDisplayName failed:', sanitizeError(err));
+            return { success: false, error: 'Could not update display name' };
+        }
+    }
+
+    /**
+     * Upload and set avatar on the Matrix homeserver.
+     */
+    async setAvatar(uri: string): Promise<{ success: boolean; error?: string }> {
+        if (!this.client || !this.session) {
+            return { success: false, error: 'Not connected to chat' };
+        }
+        try {
+            // Upload file to Matrix content repository
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            const uploadResult = await this.client.uploadContent(blob, {
+                name: 'avatar.jpg',
+                type: 'image/jpeg',
+            });
+            // Set the uploaded MXC URI as avatar
+            const mxcUri = uploadResult?.content_uri || uploadResult;
+            if (mxcUri) {
+                await this.client.setAvatarUrl(mxcUri);
+            }
+            return { success: true };
+        } catch (err: unknown) {
+            console.warn('[Chat] setAvatar failed:', sanitizeError(err));
+            return { success: false, error: 'Could not update avatar' };
+        }
+    }
+
     // ─── Client Initialization ──────────────────────────────────
 
     private async initClient(): Promise<void> {

@@ -51,7 +51,15 @@ export const ENDPOINTS = {
 
     // Health
     HEALTH: '/health',
+
+    // Chat Onboarding (K2 — Windy Chat custom registration)
+    CHAT_REGISTER: '/api/v1/chat/register',
+    CHAT_VERIFY_OTP: '/api/v1/chat/verify',
+    CHAT_SET_PROFILE: '/api/v1/chat/profile',
 } as const;
+
+/** Windy Chat Matrix homeserver — users never see this URL */
+export const CHAT_HOMESERVER = 'https://chat.windypro.com';
 
 // ─── Helper to build full URL ──────────────────────────────────
 

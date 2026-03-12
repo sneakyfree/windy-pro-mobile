@@ -1,9 +1,10 @@
 /**
- * 🧬 Chat Profile — Account setup, settings, and user info
- * Login/register with Matrix homeserver, set display name,
- * manage availability preferences.
+ * 🧬 Chat Profile — K2 WhatsApp-style account setup
+ * Default: Simple "Get Started with Windy Chat" card → navigates to onboarding.
+ * Hidden: Triple-tap subtitle reveals raw Matrix login for developers.
+ * Logged-in: Shows display name (not Matrix userId), settings, encryption info.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     ScrollView, ActivityIndicator, Switch, Alert,
@@ -12,6 +13,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
 import { chatClient, validateHomeserverUrl } from '@/services/chatClient';
+import { chatOnboarding } from '@/services/chatOnboarding';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { TIER_1_LANGUAGES } from '@/services/translation';
 
@@ -21,13 +23,21 @@ export default function ChatProfileScreen() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    // Login form
+    // Display name (user-facing, not Matrix @user:server)
+    const [displayName, setDisplayNameState] = useState('');
+
+    // Advanced (hidden) Matrix login form
+    const [showAdvanced, setShowAdvanced] = useState(false);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [homeserver, setHomeserver] = useState('https://matrix.org');
     const [isRegister, setIsRegister] = useState(false);
     const [authLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState('');
+
+    // Triple-tap to reveal Advanced
+    const tapCountRef = useRef(0);
+    const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Profile
     const [userId, setUserId] = useState('');
@@ -46,6 +56,9 @@ export default function ChatProfileScreen() {
                 if (restored) {
                     setUserId(chatClient.getUserId() || '');
                     chatClient.setPresence('online');
+                    // Get user-facing display name
+                    const name = await chatOnboarding.getDisplayName();
+                    setDisplayNameState(name || chatClient.getUserId()?.replace(/^@/, '').split(':')[0] || '');
                 }
             } catch (err) {
                 console.warn('[ChatProfile] restoreSession error:', err);
@@ -55,7 +68,20 @@ export default function ChatProfileScreen() {
         checkLogin();
     }, []);
 
-    // ─── Auth ───────────────────────────────────────────────────
+    // ─── Triple-tap handler ─────────────────────────────────────
+
+    const handleSubtitleTap = () => {
+        tapCountRef.current++;
+        if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+        if (tapCountRef.current >= 3) {
+            setShowAdvanced(true);
+            tapCountRef.current = 0;
+            return;
+        }
+        tapTimerRef.current = setTimeout(() => { tapCountRef.current = 0; }, 600);
+    };
+
+    // ─── Advanced Auth ──────────────────────────────────────────
 
     const handleAuth = async () => {
         if (!username.trim() || !password.trim()) {
@@ -63,7 +89,6 @@ export default function ChatProfileScreen() {
             return;
         }
 
-        // Validate homeserver URL before attempting auth
         const urlError = validateHomeserverUrl(homeserver.trim());
         if (urlError) {
             setAuthError(urlError);
@@ -83,6 +108,7 @@ export default function ChatProfileScreen() {
             if (result.success) {
                 setIsLoggedIn(true);
                 setUserId(result.userId || '');
+                setDisplayNameState(result.userId?.replace(/^@/, '').split(':')[0] || '');
                 chatClient.setPresence('online');
             } else {
                 setAuthError(result.error || 'Authentication failed');
@@ -106,11 +132,13 @@ export default function ChatProfileScreen() {
                     onPress: async () => {
                         try {
                             await chatClient.logout();
+                            await chatOnboarding.resetOnboarding();
                         } catch (err) {
                             console.warn('[ChatProfile] logout error:', err);
                         }
                         setIsLoggedIn(false);
                         setUserId('');
+                        setDisplayNameState('');
                     },
                 },
             ]
@@ -136,7 +164,7 @@ export default function ChatProfileScreen() {
         );
     }
 
-    // ─── Login / Register Form ──────────────────────────────────
+    // ─── Not Logged In — WhatsApp-style CTA ─────────────────────
 
     if (!isLoggedIn) {
         return (
@@ -149,102 +177,145 @@ export default function ChatProfileScreen() {
                         <Text style={styles.backText}>← Back</Text>
                     </TouchableOpacity>
 
-                    <View style={styles.authHeader}>
-                        <Text style={styles.icon}>💬</Text>
-                        <Text style={styles.title}>
-                            {isRegister ? 'Create Chat Account' : 'Sign In to Chat'}
-                        </Text>
-                        <Text style={styles.subtitle}>
-                            Connect to Matrix homeserver for encrypted messaging
-                        </Text>
-                    </View>
+                    {/* Welcome CTA */}
+                    <View style={styles.welcomeSection}>
+                        <Text style={styles.welcomeEmoji}>💬</Text>
+                        <Text style={styles.welcomeTitle}>Windy Chat</Text>
+                        <TouchableOpacity onPress={handleSubtitleTap} activeOpacity={1}>
+                            <Text style={styles.welcomeSubtitle}>
+                                Encrypted messaging with auto-translation.{'\n'}
+                                Set up in 30 seconds.
+                            </Text>
+                        </TouchableOpacity>
 
-                    {authError ? (
-                        <View style={styles.errorBox}
-                            accessibilityRole="alert"
-                        >
-                            <Text style={styles.errorText}>{authError}</Text>
+                        <View style={styles.featureChips}>
+                            <View style={styles.chip}>
+                                <Text style={styles.chipText}>🔐 End-to-end encrypted</Text>
+                            </View>
+                            <View style={styles.chip}>
+                                <Text style={styles.chipText}>🌍 Auto-translates</Text>
+                            </View>
+                            <View style={styles.chip}>
+                                <Text style={styles.chipText}>⚡ Syncs with desktop</Text>
+                            </View>
                         </View>
-                    ) : null}
-
-                    <View style={styles.form}>
-                        <Text style={styles.label}>Homeserver</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={homeserver}
-                            onChangeText={(text) => { setHomeserver(text); setAuthError(''); }}
-                            placeholder="https://matrix.org"
-                            placeholderTextColor={colors.textTertiary}
-                            autoCapitalize="none"
-                            editable={!authLoading}
-                            accessibilityLabel="Homeserver URL"
-                            accessibilityHint="Enter your Matrix homeserver URL, must start with https"
-                        />
-
-                        <Text style={styles.label}>Username</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={username}
-                            onChangeText={(text) => { setUsername(text); setAuthError(''); }}
-                            placeholder="your_username"
-                            placeholderTextColor={colors.textTertiary}
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            editable={!authLoading}
-                            accessibilityLabel="Username"
-                        />
-
-                        <Text style={styles.label}>Password</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={password}
-                            onChangeText={(text) => { setPassword(text); setAuthError(''); }}
-                            placeholder="••••••••"
-                            placeholderTextColor={colors.textTertiary}
-                            secureTextEntry
-                            editable={!authLoading}
-                            accessibilityLabel="Password"
-                        />
 
                         <TouchableOpacity
-                            style={[styles.authButton, authLoading && styles.authButtonDisabled]}
-                            onPress={handleAuth}
-                            disabled={authLoading}
-                            accessibilityLabel={isRegister ? 'Create account' : 'Sign in'}
+                            style={styles.getStartedButton}
+                            onPress={() => router.push('/chat/onboarding')}
+                            accessibilityLabel="Get started with Windy Chat"
                             accessibilityRole="button"
                         >
-                            {authLoading ? (
-                                <ActivityIndicator color={colors.background} />
-                            ) : (
-                                <Text style={styles.authButtonText}>
-                                    {isRegister ? 'Create Account' : 'Sign In'}
-                                </Text>
-                            )}
+                            <Text style={styles.getStartedText}>Get Started</Text>
                         </TouchableOpacity>
                     </View>
 
-                    <TouchableOpacity
-                        onPress={() => { setIsRegister(!isRegister); setAuthError(''); }}
-                        style={styles.switchAuth}
-                        accessibilityLabel={isRegister ? 'Switch to sign in form' : 'Switch to registration form'}
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.switchText}>
-                            {isRegister ? 'Already have an account? ' : "Don't have an account? "}
-                            <Text style={styles.switchAccent}>
-                                {isRegister ? 'Sign In' : 'Register'}
-                            </Text>
-                        </Text>
-                    </TouchableOpacity>
+                    {/* Hidden Advanced Option — revealed by triple-tap or long-press */}
+                    {!showAdvanced ? (
+                        <TouchableOpacity
+                            style={styles.advancedLink}
+                            onLongPress={() => setShowAdvanced(true)}
+                            delayLongPress={800}
+                            accessibilityLabel="Advanced login options"
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.advancedLinkText}>Advanced</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={styles.advancedSection}>
+                            <View style={styles.advancedHeader}>
+                                <Text style={styles.advancedTitle}>⚙️ Advanced — Matrix Login</Text>
+                                <Text style={styles.advancedHint}>
+                                    For developers: Connect directly to any Matrix homeserver.
+                                </Text>
+                            </View>
 
-                    <View style={styles.infoBox}>
-                        <Text style={styles.infoTitle}>💡 What is Matrix?</Text>
-                        <Text style={styles.infoText}>
-                            Matrix is an open, decentralized protocol for secure messaging.
-                            Your messages sync across Windy Pro desktop and mobile automatically.
-                            End-to-end encryption is built in.
-                        </Text>
-                    </View>
+                            {authError ? (
+                                <View style={styles.errorBox} accessibilityRole="alert">
+                                    <Text style={styles.errorText}>{authError}</Text>
+                                </View>
+                            ) : null}
+
+                            <View style={styles.form}>
+                                <Text style={styles.label}>Homeserver</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={homeserver}
+                                    onChangeText={(text) => { setHomeserver(text); setAuthError(''); }}
+                                    placeholder="https://matrix.org"
+                                    placeholderTextColor={colors.textTertiary}
+                                    autoCapitalize="none"
+                                    editable={!authLoading}
+                                    accessibilityLabel="Homeserver URL"
+                                    accessibilityHint="Enter your Matrix homeserver URL, must start with https"
+                                />
+
+                                <Text style={styles.label}>Username</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={username}
+                                    onChangeText={(text) => { setUsername(text); setAuthError(''); }}
+                                    placeholder="your_username"
+                                    placeholderTextColor={colors.textTertiary}
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                    editable={!authLoading}
+                                    accessibilityLabel="Username"
+                                />
+
+                                <Text style={styles.label}>Password</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={password}
+                                    onChangeText={(text) => { setPassword(text); setAuthError(''); }}
+                                    placeholder="••••••••"
+                                    placeholderTextColor={colors.textTertiary}
+                                    secureTextEntry
+                                    editable={!authLoading}
+                                    accessibilityLabel="Password"
+                                />
+
+                                <TouchableOpacity
+                                    style={[styles.authButton, authLoading && styles.authButtonDisabled]}
+                                    onPress={handleAuth}
+                                    disabled={authLoading}
+                                    accessibilityLabel={isRegister ? 'Create account' : 'Sign in'}
+                                    accessibilityRole="button"
+                                >
+                                    {authLoading ? (
+                                        <ActivityIndicator color={colors.background} />
+                                    ) : (
+                                        <Text style={styles.authButtonText}>
+                                            {isRegister ? 'Create Account' : 'Sign In'}
+                                        </Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={() => { setIsRegister(!isRegister); setAuthError(''); }}
+                                style={styles.switchAuth}
+                                accessibilityLabel={isRegister ? 'Switch to sign in form' : 'Switch to registration form'}
+                                accessibilityRole="button"
+                            >
+                                <Text style={styles.switchText}>
+                                    {isRegister ? 'Already have an account? ' : "Don't have an account? "}
+                                    <Text style={styles.switchAccent}>
+                                        {isRegister ? 'Sign In' : 'Register'}
+                                    </Text>
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => setShowAdvanced(false)}
+                                style={styles.hideAdvanced}
+                                accessibilityLabel="Hide advanced options"
+                                accessibilityRole="button"
+                            >
+                                <Text style={styles.hideAdvancedText}>Hide Advanced</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </ScrollView>
             </SafeAreaView>
         );
@@ -266,10 +337,10 @@ export default function ChatProfileScreen() {
                 <View style={styles.profileHeader}>
                     <View style={styles.avatarLarge}>
                         <Text style={styles.avatarLargeText}>
-                            {(userId.replace(/^@/, '') || '?')[0].toUpperCase()}
+                            {(displayName || '?')[0].toUpperCase()}
                         </Text>
                     </View>
-                    <Text style={styles.profileName}>{userId}</Text>
+                    <Text style={styles.profileName}>{displayName || 'User'}</Text>
                     <Text style={styles.profileServer}>{chatClient.getHomeserver()}</Text>
                     {chatClient.isCryptoEnabled() && (
                         <Text style={styles.cryptoBadge}
@@ -352,14 +423,100 @@ const styles = StyleSheet.create({
     backLink: { paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
     backText: { fontSize: 15, color: colors.accent, fontWeight: '600' },
 
-    // Auth Header
-    authHeader: { alignItems: 'center', marginVertical: 24 },
-    icon: { fontSize: 48, marginBottom: 12 },
-    title: { fontSize: 24, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
-    subtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
+    // ─── Welcome CTA (not logged in) ───────────────────────────
+    welcomeSection: {
+        alignItems: 'center',
+        marginTop: 40,
+        marginBottom: 32,
+    },
+    welcomeEmoji: { fontSize: 64, marginBottom: 16 },
+    welcomeTitle: {
+        fontSize: 28,
+        fontWeight: '700',
+        color: colors.textPrimary,
+        marginBottom: 10,
+    },
+    welcomeSubtitle: {
+        fontSize: 15,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 28,
+    },
+    featureChips: {
+        gap: 10,
+        marginBottom: 28,
+        alignItems: 'center',
+    },
+    chip: {
+        backgroundColor: colors.surface,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+    },
+    chipText: {
+        fontSize: 14,
+        color: colors.textPrimary,
+        fontWeight: '500',
+    },
+    getStartedButton: {
+        width: '100%',
+        backgroundColor: colors.accent,
+        borderRadius: 14,
+        paddingVertical: 16,
+        alignItems: 'center',
+        minHeight: 54,
+        justifyContent: 'center',
+    },
+    getStartedText: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: colors.background,
+    },
 
-    // Form
-    form: { marginBottom: 16 },
+    // ─── Advanced Link ──────────────────────────────────────────
+    advancedLink: {
+        alignItems: 'center',
+        paddingVertical: 12,
+        minHeight: 44,
+        justifyContent: 'center',
+    },
+    advancedLinkText: {
+        fontSize: 13,
+        color: colors.textTertiary,
+    },
+    advancedSection: {
+        marginTop: 8,
+        padding: 16,
+        backgroundColor: colors.surface,
+        borderRadius: 14,
+    },
+    advancedHeader: { marginBottom: 12 },
+    advancedTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.textPrimary,
+        marginBottom: 4,
+    },
+    advancedHint: {
+        fontSize: 12,
+        color: colors.textTertiary,
+        lineHeight: 17,
+    },
+    hideAdvanced: {
+        alignItems: 'center',
+        paddingVertical: 10,
+        marginTop: 8,
+        minHeight: 44,
+        justifyContent: 'center',
+    },
+    hideAdvancedText: {
+        fontSize: 13,
+        color: colors.textTertiary,
+    },
+
+    // ─── Auth Form (inside Advanced) ────────────────────────────
+    form: { marginBottom: 8 },
     label: {
         fontSize: 13,
         fontWeight: '600',
@@ -368,7 +525,7 @@ const styles = StyleSheet.create({
         marginTop: 14,
     },
     input: {
-        backgroundColor: colors.surface,
+        backgroundColor: colors.background,
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
@@ -402,16 +559,7 @@ const styles = StyleSheet.create({
     switchText: { fontSize: 14, color: colors.textSecondary },
     switchAccent: { color: colors.accent, fontWeight: '600' },
 
-    infoBox: {
-        marginTop: 20,
-        padding: 16,
-        backgroundColor: colors.surface,
-        borderRadius: 12,
-    },
-    infoTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 6 },
-    infoText: { fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
-
-    // Profile
+    // ─── Profile (logged in) ────────────────────────────────────
     profileHeader: { alignItems: 'center', marginVertical: 28 },
     avatarLarge: {
         width: 80,
