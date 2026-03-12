@@ -58,14 +58,14 @@ Upgrade to unlock voice cloning, unlimited translations, priority cloud processi
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**WHAT'S NEW IN v1.0:**
-• Beautiful swipeable onboarding
-• Adaptive Android icons
-• Material Design 3 interface
-• Haptic feedback on recording
-• App rating prompts
-• Comprehensive error handling
-• HTTPS deep link support
+**WHAT'S NEW IN v2.0:**
+• Cloud sync with offline fallback
+• Camera OCR live scan mode
+• Voice clone technology
+• 15-language real-time translation
+• Quality scoring for recordings
+• Comprehensive accessibility (TalkBack)
+• Performance optimizations for faster launch
 
 Download Windy Pro today and break every language barrier.
 
