@@ -1,17 +1,17 @@
 /**
  * 🧬 Chat Home — Contact list with DMs
  * Shows direct message rooms with unread badges, last message preview,
- * online/offline indicators, and pull-to-refresh.
+ * online/offline indicators, pull-to-refresh, and connection status.
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity, StyleSheet,
-    RefreshControl, ActivityIndicator, TextInput,
+    RefreshControl, ActivityIndicator, TextInput, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
-import { chatClient, type ChatRoom, type ChatContact } from '@/services/chatClient';
+import { chatClient, type ChatRoom, type ChatContact, type SyncState } from '@/services/chatClient';
 import { chatTranslateService } from '@/services/chatTranslate';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 
@@ -41,12 +41,25 @@ export default function ChatHomeScreen() {
     const [searchResults, setSearchResults] = useState<ChatContact[]>([]);
     const [searching, setSearching] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [syncState, setSyncState] = useState<SyncState>(chatClient.getSyncState());
+    const [createError, setCreateError] = useState<string | null>(null);
 
     const userLang = useSettingsStore(s => s.defaultLanguage);
 
     useEffect(() => {
         chatTranslateService.setUserLanguage(userLang);
     }, [userLang]);
+
+    // ─── Connection State ───────────────────────────────────────
+
+    useEffect(() => {
+        const unsub = chatClient.onSyncStateChange((state) => {
+            setSyncState(state);
+        });
+        return unsub;
+    }, []);
+
+    const isOffline = syncState === 'reconnecting' || syncState === 'error';
 
     // ─── Load ───────────────────────────────────────────────────
 
@@ -99,11 +112,15 @@ export default function ChatHomeScreen() {
     };
 
     const startChat = async (userId: string) => {
-        const roomId = await chatClient.getOrCreateDM(userId);
-        if (roomId) {
+        setCreateError(null);
+        const result = await chatClient.getOrCreateDM(userId);
+        if (result.roomId) {
             setSearchQuery('');
             setSearchResults([]);
-            router.push(`/chat/${roomId}`);
+            router.push(`/chat/${result.roomId}`);
+        } else {
+            setCreateError(result.error || 'Failed to start conversation');
+            Alert.alert('Error', result.error || 'Failed to start conversation');
         }
     };
 
@@ -113,7 +130,9 @@ export default function ChatHomeScreen() {
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>💬 Chat</Text>
+                    <Text style={styles.headerTitle}
+                        accessibilityRole="header"
+                    >💬 Chat</Text>
                 </View>
                 <View style={styles.emptyContainer}>
                     <Text style={styles.emptyIcon}>💬</Text>
@@ -125,6 +144,8 @@ export default function ChatHomeScreen() {
                     <TouchableOpacity
                         style={styles.loginButton}
                         onPress={() => router.push('/chat/profile')}
+                        accessibilityLabel="Set up chat account"
+                        accessibilityRole="button"
                     >
                         <Text style={styles.loginButtonText}>Set Up Chat</Text>
                     </TouchableOpacity>
@@ -138,7 +159,9 @@ export default function ChatHomeScreen() {
     if (loading) {
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
-                <View style={styles.loadingContainer}>
+                <View style={styles.loadingContainer}
+                    accessibilityLabel="Connecting to chat" accessibilityRole="none"
+                >
                     <ActivityIndicator size="large" color={colors.accent} />
                     <Text style={styles.loadingText}>Connecting to chat...</Text>
                 </View>
@@ -152,14 +175,28 @@ export default function ChatHomeScreen() {
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>💬 Chat</Text>
+                <Text style={styles.headerTitle} accessibilityRole="header">💬 Chat</Text>
                 <TouchableOpacity
                     onPress={() => router.push('/chat/profile')}
                     style={styles.profileButton}
+                    accessibilityLabel="Chat settings and profile"
+                    accessibilityRole="button"
                 >
                     <Text style={styles.profileIcon}>⚙️</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Offline Banner */}
+            {isOffline && (
+                <View style={styles.offlineBanner}
+                    accessibilityLabel="Connection issues. Trying to reconnect."
+                    accessibilityRole="alert"
+                >
+                    <Text style={styles.offlineBannerText}>
+                        {syncState === 'reconnecting' ? '⏳ Reconnecting...' : '📡 Connection lost'}
+                    </Text>
+                </View>
+            )}
 
             {/* Search Bar */}
             <View style={styles.searchContainer}>
@@ -171,6 +208,7 @@ export default function ChatHomeScreen() {
                     placeholderTextColor={colors.textTertiary}
                     autoCapitalize="none"
                     autoCorrect={false}
+                    accessibilityLabel="Search for users to start a conversation"
                 />
             </View>
 
@@ -180,13 +218,17 @@ export default function ChatHomeScreen() {
                     {searching ? (
                         <ActivityIndicator color={colors.accent} style={{ padding: 12 }} />
                     ) : searchResults.length === 0 ? (
-                        <Text style={styles.noResults}>No users found</Text>
+                        <Text style={styles.noResults}
+                            accessibilityRole="text"
+                        >No users found</Text>
                     ) : (
                         searchResults.map(user => (
                             <TouchableOpacity
                                 key={user.userId}
                                 style={styles.searchResultRow}
                                 onPress={() => startChat(user.userId)}
+                                accessibilityLabel={`Start conversation with ${user.displayName}`}
+                                accessibilityRole="button"
                             >
                                 <View style={styles.avatar}>
                                     <Text style={styles.avatarText}>
@@ -229,6 +271,14 @@ export default function ChatHomeScreen() {
                         style={styles.roomRow}
                         onPress={() => router.push(`/chat/${item.roomId}`)}
                         activeOpacity={0.6}
+                        accessibilityLabel={
+                            `${item.name}. ` +
+                            (item.lastMessage ? `Last message: ${item.lastMessage}. ` : 'No messages. ') +
+                            (item.unreadCount > 0 ? `${item.unreadCount} unread. ` : '') +
+                            (item.lastMessageTime ? timeAgo(item.lastMessageTime) + ' ago' : '')
+                        }
+                        accessibilityRole="button"
+                        accessibilityHint="Opens conversation"
                     >
                         {/* Avatar */}
                         <View style={styles.avatarContainer}>
@@ -237,8 +287,11 @@ export default function ChatHomeScreen() {
                                     {(item.name || '?')[0].toUpperCase()}
                                 </Text>
                             </View>
-                            {/* Presence dot — infer from contacts if available */}
-                            <View style={[styles.presenceDot, { backgroundColor: '#22c55e' }]} />
+                            {/* Presence dot */}
+                            <View
+                                style={[styles.presenceDot, { backgroundColor: '#22c55e' }]}
+                                accessibilityLabel="Online"
+                            />
                         </View>
 
                         {/* Info */}
@@ -258,7 +311,9 @@ export default function ChatHomeScreen() {
                                     {item.lastMessage || 'No messages yet'}
                                 </Text>
                                 {item.unreadCount > 0 && (
-                                    <View style={styles.badge}>
+                                    <View style={styles.badge}
+                                        accessibilityLabel={`${item.unreadCount} unread messages`}
+                                    >
                                         <Text style={styles.badgeText}>
                                             {item.unreadCount > 99 ? '99+' : item.unreadCount}
                                         </Text>
@@ -288,8 +343,17 @@ const styles = StyleSheet.create({
         borderBottomColor: colors.border,
     },
     headerTitle: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
-    profileButton: { padding: 4 },
+    profileButton: { padding: 10, minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
     profileIcon: { fontSize: 22 },
+
+    // Offline banner
+    offlineBanner: {
+        backgroundColor: '#fbbf24',
+        paddingVertical: 6,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+    },
+    offlineBannerText: { fontSize: 12, fontWeight: '600', color: '#1a1a1a' },
 
     searchContainer: { paddingHorizontal: 16, paddingVertical: 8 },
     searchInput: {
@@ -314,6 +378,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 12,
+        minHeight: 44,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: colors.borderLight,
     },
@@ -327,6 +392,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 14,
+        minHeight: 64,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: colors.borderLight,
     },
@@ -395,6 +461,8 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         paddingHorizontal: 48,
         marginTop: 24,
+        minHeight: 48,
+        justifyContent: 'center',
     },
     loginButtonText: { fontSize: 16, fontWeight: '700', color: colors.background },
 

@@ -10,6 +10,11 @@
  *   - Real-time message events
  *   - Presence (online/offline)
  *   - Contact list with presence status
+ *   - Homeserver URL validation
+ *   - Message content sanitization
+ *   - Offline message queue with auto-retry
+ *   - App lifecycle (pause/resume sync)
+ *   - E2E encryption foundation (when Olm is available)
  */
 import * as SecureStore from 'expo-secure-store';
 
@@ -21,6 +26,106 @@ const MATRIX_DEVICE_KEY = 'windy_matrix_device';
 
 // ─── Default Homeserver ─────────────────────────────────────────
 const DEFAULT_HOMESERVER = 'https://matrix.org';
+
+// ─── Constants ──────────────────────────────────────────────────
+const MAX_MESSAGE_LENGTH = 4000;
+const MAX_PENDING_MESSAGES = 50;
+
+// ─── Error Codes ────────────────────────────────────────────────
+
+export type ChatErrorCode =
+    | 'WRONG_PASSWORD'
+    | 'SERVER_UNREACHABLE'
+    | 'RATE_LIMITED'
+    | 'USER_EXISTS'
+    | 'NETWORK_ERROR'
+    | 'SDK_UNAVAILABLE'
+    | 'INVALID_HOMESERVER'
+    | 'UNKNOWN';
+
+/** Maps Matrix error codes to our ChatErrorCode */
+function classifyMatrixError(err: unknown): { code: ChatErrorCode; message: string } {
+    const errObj = err as Record<string, unknown> | undefined;
+    const errcode = (errObj as Record<string, Record<string, string>> | undefined)?.data?.errcode;
+    const dataErr = (errObj as Record<string, Record<string, string>> | undefined)?.data?.error;
+
+    switch (errcode) {
+        case 'M_FORBIDDEN':
+            return { code: 'WRONG_PASSWORD', message: 'Incorrect username or password' };
+        case 'M_USER_IN_USE':
+            return { code: 'USER_EXISTS', message: 'Username is already taken' };
+        case 'M_LIMIT_EXCEEDED':
+            return { code: 'RATE_LIMITED', message: 'Too many attempts — try again in a minute' };
+        case 'M_UNKNOWN_TOKEN':
+        case 'M_MISSING_TOKEN':
+            return { code: 'WRONG_PASSWORD', message: 'Session expired — please sign in again' };
+        default:
+            break;
+    }
+
+    if (err instanceof TypeError && (err.message?.includes('fetch') || err.message?.includes('Network'))) {
+        return { code: 'NETWORK_ERROR', message: 'Network error — check your connection' };
+    }
+
+    if (err instanceof Error && err.message?.includes('ECONNREFUSED')) {
+        return { code: 'SERVER_UNREACHABLE', message: 'Server unavailable — check the homeserver URL' };
+    }
+
+    return {
+        code: 'UNKNOWN',
+        message: dataErr || (err instanceof Error ? err.message : 'An unexpected error occurred'),
+    };
+}
+
+// ─── Security Helpers ───────────────────────────────────────────
+
+/**
+ * Validate homeserver URL. Must be HTTPS (except localhost for dev).
+ * Returns error message or null if valid.
+ */
+export function validateHomeserverUrl(url: string): string | null {
+    const trimmed = url.trim();
+    if (!trimmed) return 'Homeserver URL is required';
+
+    try {
+        const parsed = new URL(trimmed);
+        const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+        if (parsed.protocol !== 'https:' && !isLocalhost) {
+            return 'Homeserver must use HTTPS for security';
+        }
+        if (!parsed.hostname) return 'Invalid URL — no hostname';
+        return null;
+    } catch {
+        return 'Invalid URL format';
+    }
+}
+
+/**
+ * Sanitize message body before sending or displaying.
+ * Strips control characters, trims whitespace, enforces max length.
+ */
+function sanitizeMessageBody(body: string): string {
+    if (!body) return '';
+    // Strip control chars (keep newlines and tabs)
+    const cleaned = body.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    // Collapse excessive newlines (>3 consecutive)
+    const collapsed = cleaned.replace(/\n{4,}/g, '\n\n\n');
+    // Trim and enforce max length
+    return collapsed.trim().slice(0, MAX_MESSAGE_LENGTH);
+}
+
+/**
+ * Strip sensitive data from error messages before logging.
+ */
+function sanitizeError(err: unknown): string {
+    if (err instanceof Error) {
+        // Never log tokens or passwords
+        return err.message
+            .replace(/access_token["\s:=]+[^\s,}"]*/gi, 'access_token=[REDACTED]')
+            .replace(/password["\s:=]+[^\s,}"]*/gi, 'password=[REDACTED]');
+    }
+    return String(err);
+}
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -55,6 +160,8 @@ export interface ChatMessage {
     originalLang?: string;
     /** Whether this message was sent by the local user */
     isOwn: boolean;
+    /** Whether this message is still pending (queued offline) */
+    pending?: boolean;
 }
 
 export interface ChatContact {
@@ -65,8 +172,32 @@ export interface ChatContact {
     lastActiveAgo?: number;
 }
 
+interface PendingMessage {
+    id: string;
+    roomId: string;
+    text: string;
+    lang: string;
+    timestamp: number;
+}
+
+export type SyncState = 'syncing' | 'reconnecting' | 'error' | 'stopped';
+
 type MessageCallback = (message: ChatMessage) => void;
 type TypingCallback = (roomId: string, userIds: string[]) => void;
+type SyncStateCallback = (state: SyncState) => void;
+
+interface AuthResult {
+    success: boolean;
+    userId?: string;
+    error?: string;
+    errorCode?: ChatErrorCode;
+}
+
+interface SendResult {
+    success: boolean;
+    error?: string;
+    pending?: boolean;
+}
 
 // ─── Client ─────────────────────────────────────────────────────
 
@@ -76,7 +207,13 @@ class ChatClient {
     private session: MatrixSession | null = null;
     private messageListeners = new Set<MessageCallback>();
     private typingListeners = new Set<TypingCallback>();
+    private syncStateListeners = new Set<SyncStateCallback>();
     private started = false;
+    private cryptoEnabled = false;
+
+    // Offline message queue
+    private pendingMessages: PendingMessage[] = [];
+    private currentSyncState: SyncState = 'stopped';
 
     // ─── SDK Loading ────────────────────────────────────────────
 
@@ -90,7 +227,7 @@ class ChatClient {
             this.sdk = require('matrix-js-sdk');
             return this.sdk;
         } catch (err) {
-            console.error('[Chat] Failed to load matrix-js-sdk:', err);
+            console.error('[Chat] Failed to load matrix-js-sdk:', sanitizeError(err));
             throw new Error('Chat SDK not available');
         }
     }
@@ -104,10 +241,16 @@ class ChatClient {
         username: string,
         password: string,
         homeserverUrl: string = DEFAULT_HOMESERVER,
-    ): Promise<{ success: boolean; userId?: string; error?: string }> {
+    ): Promise<AuthResult> {
+        // Validate homeserver URL
+        const urlError = validateHomeserverUrl(homeserverUrl);
+        if (urlError) {
+            return { success: false, error: urlError, errorCode: 'INVALID_HOMESERVER' };
+        }
+
         try {
             const sdk = await this.loadSdk();
-            const tempClient = sdk.createClient({ baseUrl: homeserverUrl });
+            const tempClient = sdk.createClient({ baseUrl: homeserverUrl.trim() });
 
             const response = await tempClient.login('m.login.password', {
                 user: username,
@@ -119,7 +262,7 @@ class ChatClient {
                 accessToken: response.access_token,
                 userId: response.user_id,
                 deviceId: response.device_id,
-                homeserverUrl,
+                homeserverUrl: homeserverUrl.trim(),
             };
 
             await this.persistSession();
@@ -127,13 +270,9 @@ class ChatClient {
 
             return { success: true, userId: response.user_id };
         } catch (err: unknown) {
-            console.error('[Chat] Login failed:', err);
-            const errObj = err as Record<string, unknown> | undefined;
-            const dataErr = (errObj as Record<string, Record<string, string>> | undefined)?.data?.error;
-            return {
-                success: false,
-                error: dataErr || (err instanceof Error ? err.message : 'Login failed'),
-            };
+            console.warn('[Chat] Login failed:', sanitizeError(err));
+            const classified = classifyMatrixError(err);
+            return { success: false, error: classified.message, errorCode: classified.code };
         }
     }
 
@@ -144,29 +283,30 @@ class ChatClient {
         username: string,
         password: string,
         homeserverUrl: string = DEFAULT_HOMESERVER,
-    ): Promise<{ success: boolean; userId?: string; error?: string }> {
+    ): Promise<AuthResult> {
+        // Validate homeserver URL
+        const urlError = validateHomeserverUrl(homeserverUrl);
+        if (urlError) {
+            return { success: false, error: urlError, errorCode: 'INVALID_HOMESERVER' };
+        }
+
         try {
             const sdk = await this.loadSdk();
-            const tempClient = sdk.createClient({ baseUrl: homeserverUrl });
+            const tempClient = sdk.createClient({ baseUrl: homeserverUrl.trim() });
 
             const response = await tempClient.register(
                 username,
                 password,
                 null, // session ID
-                {
-                    type: 'm.login.dummy',
-                },
-                undefined, // bind_email
-                undefined, // bind_msisdn
-                undefined, // guest_access_token
-                undefined  // inhibit_login
+                { type: 'm.login.dummy' },
+                undefined, undefined, undefined, undefined
             );
 
             this.session = {
                 accessToken: response.access_token,
                 userId: response.user_id,
                 deviceId: response.device_id,
-                homeserverUrl,
+                homeserverUrl: homeserverUrl.trim(),
             };
 
             await this.persistSession();
@@ -174,13 +314,9 @@ class ChatClient {
 
             return { success: true, userId: response.user_id };
         } catch (err: unknown) {
-            console.error('[Chat] Register failed:', err);
-            const errObj = err as Record<string, unknown> | undefined;
-            const dataErr = (errObj as Record<string, Record<string, string>> | undefined)?.data?.error;
-            return {
-                success: false,
-                error: dataErr || (err instanceof Error ? err.message : 'Registration failed'),
-            };
+            console.warn('[Chat] Register failed:', sanitizeError(err));
+            const classified = classifyMatrixError(err);
+            return { success: false, error: classified.message, errorCode: classified.code };
         }
     }
 
@@ -205,7 +341,8 @@ class ChatClient {
                 return true;
             }
             return false;
-        } catch {
+        } catch (err) {
+            console.warn('[Chat] restoreSession failed:', sanitizeError(err));
             return false;
         }
     }
@@ -216,13 +353,20 @@ class ChatClient {
     async logout(): Promise<void> {
         try {
             if (this.client) {
-                await this.client.logout().catch(() => {});
+                await this.client.logout().catch((e: unknown) => {
+                    console.warn('[Chat] logout API call failed:', sanitizeError(e));
+                });
                 this.client.stopClient();
             }
-        } catch {}
+        } catch (e) {
+            console.warn('[Chat] logout cleanup error:', sanitizeError(e));
+        }
         this.client = null;
         this.session = null;
         this.started = false;
+        this.cryptoEnabled = false;
+        this.pendingMessages = [];
+        this.setSyncState('stopped');
         await SecureStore.deleteItemAsync(MATRIX_TOKEN_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(MATRIX_USER_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(MATRIX_SERVER_KEY).catch(() => {});
@@ -241,6 +385,14 @@ class ChatClient {
         return this.session?.homeserverUrl || DEFAULT_HOMESERVER;
     }
 
+    getSyncState(): SyncState {
+        return this.currentSyncState;
+    }
+
+    isCryptoEnabled(): boolean {
+        return this.cryptoEnabled;
+    }
+
     // ─── Client Initialization ──────────────────────────────────
 
     private async initClient(): Promise<void> {
@@ -254,7 +406,20 @@ class ChatClient {
             deviceId: this.session.deviceId,
         });
 
-        // Listen for messages
+        // ── Attempt E2E encryption initialization ───────────────
+        try {
+            if (typeof this.client.initCrypto === 'function') {
+                await this.client.initCrypto();
+                this.client.setCryptoTrustCrossSignedDevices?.(true);
+                this.cryptoEnabled = true;
+                console.log('[Chat] E2E encryption enabled');
+            }
+        } catch (e) {
+            console.warn('[Chat] Crypto init not available (Olm not bundled):', sanitizeError(e));
+            this.cryptoEnabled = false;
+        }
+
+        // ── Listen for messages ─────────────────────────────────
         this.client.on('Room.timeline', (event: any, room: any) => {
             if (event.getType() !== 'm.room.message') return;
             const content = event.getContent();
@@ -263,19 +428,19 @@ class ChatClient {
                 roomId: room.roomId,
                 sender: event.getSender(),
                 senderName: room.getMember(event.getSender())?.name,
-                body: content.body || '',
+                body: sanitizeMessageBody(content.body || ''),
                 timestamp: event.getTs(),
                 type: this.mapMsgType(content.msgtype),
                 originalLang: content['uk.windypro.lang'],
                 isOwn: event.getSender() === this.session?.userId,
             };
             this.messageListeners.forEach(cb => {
-                try { cb(msg); } catch (e) { console.warn('[Chat] Listener error:', e); }
+                try { cb(msg); } catch (e) { console.warn('[Chat] Listener error:', sanitizeError(e)); }
             });
         });
 
-        // Listen for typing
-        this.client.on('RoomMember.typing', (event: any, member: any) => {
+        // ── Listen for typing ───────────────────────────────────
+        this.client.on('RoomMember.typing', (_event: any, member: any) => {
             const roomId = member.roomId;
             const room = this.client.getRoom(roomId);
             if (!room) return;
@@ -283,8 +448,29 @@ class ChatClient {
                 ?.filter((m: any) => m.typing && m.userId !== this.session?.userId)
                 ?.map((m: any) => m.userId) || [];
             this.typingListeners.forEach(cb => {
-                try { cb(roomId, typingMembers); } catch (e) { console.warn('[Chat] Typing listener error:', e); }
+                try { cb(roomId, typingMembers); } catch (e) { console.warn('[Chat] Typing listener error:', sanitizeError(e)); }
             });
+        });
+
+        // ── Listen for sync state changes ───────────────────────
+        this.client.on('sync', (state: string, _prevState: string, _data: any) => {
+            switch (state) {
+                case 'SYNCING':
+                case 'PREPARED':
+                    this.setSyncState('syncing');
+                    // Flush pending messages when we reconnect
+                    this.flushPendingMessages();
+                    break;
+                case 'RECONNECTING':
+                    this.setSyncState('reconnecting');
+                    break;
+                case 'ERROR':
+                    this.setSyncState('error');
+                    break;
+                case 'STOPPED':
+                    this.setSyncState('stopped');
+                    break;
+            }
         });
 
         // Start syncing
@@ -292,6 +478,52 @@ class ChatClient {
             await this.client.startClient({ initialSyncLimit: 20 });
             this.started = true;
         }
+    }
+
+    // ─── Sync Lifecycle ─────────────────────────────────────────
+
+    /**
+     * Pause sync (call when app goes to background).
+     */
+    pauseSync(): void {
+        if (this.client && this.started) {
+            this.client.stopClient();
+            this.started = false;
+            this.setSyncState('stopped');
+            console.log('[Chat] Sync paused (app backgrounded)');
+        }
+    }
+
+    /**
+     * Resume sync (call when app comes to foreground).
+     */
+    async resumeSync(): Promise<void> {
+        if (this.client && !this.started) {
+            try {
+                await this.client.startClient({ initialSyncLimit: 10 });
+                this.started = true;
+                console.log('[Chat] Sync resumed (app foregrounded)');
+            } catch (e) {
+                console.warn('[Chat] Resume sync failed:', sanitizeError(e));
+                this.setSyncState('error');
+            }
+        }
+    }
+
+    private setSyncState(state: SyncState): void {
+        if (this.currentSyncState === state) return;
+        this.currentSyncState = state;
+        this.syncStateListeners.forEach(cb => {
+            try { cb(state); } catch (e) { console.warn('[Chat] Sync state listener error:', sanitizeError(e)); }
+        });
+    }
+
+    /**
+     * Subscribe to sync state changes.
+     */
+    onSyncStateChange(callback: SyncStateCallback): () => void {
+        this.syncStateListeners.add(callback);
+        return () => { this.syncStateListeners.delete(callback); };
     }
 
     // ─── Rooms / DMs ────────────────────────────────────────────
@@ -314,21 +546,32 @@ class ChatClient {
     /**
      * Get or create a DM room with a user.
      */
-    async getOrCreateDM(userId: string): Promise<string | null> {
-        if (!this.client) return null;
+    async getOrCreateDM(userId: string): Promise<{ roomId: string | null; error?: string }> {
+        if (!this.client) return { roomId: null, error: 'Not connected to chat' };
 
         // Check existing DMs
         const dms = this.getDMs();
         const existing = dms.find(dm => dm.members.includes(userId));
-        if (existing) return existing.roomId;
+        if (existing) return { roomId: existing.roomId };
 
         // Create new DM room
         try {
-            const result = await this.client.createRoom({
+            const createOpts: any = {
                 is_direct: true,
                 invite: [userId],
                 preset: 'trusted_private_chat',
-            });
+            };
+
+            // Enable encryption if crypto is available
+            if (this.cryptoEnabled) {
+                createOpts.initial_state = [{
+                    type: 'm.room.encryption',
+                    state_key: '',
+                    content: { algorithm: 'm.megolm.v1.aes-sha2' },
+                }];
+            }
+
+            const result = await this.client.createRoom(createOpts);
 
             // Mark as direct message
             const directMap = this.client.getAccountData('m.direct')?.getContent() || {};
@@ -336,10 +579,11 @@ class ChatClient {
             directMap[userId].push(result.room_id);
             await this.client.setAccountData('m.direct', directMap);
 
-            return result.room_id;
+            return { roomId: result.room_id };
         } catch (err) {
-            console.error('[Chat] createDM failed:', err);
-            return null;
+            console.warn('[Chat] createDM failed:', sanitizeError(err));
+            const classified = classifyMatrixError(err);
+            return { roomId: null, error: classified.message };
         }
     }
 
@@ -348,25 +592,90 @@ class ChatClient {
     /**
      * Send a text message to a room.
      * Attaches language metadata for translation.
+     * Queues message if offline.
      */
     async sendMessage(
         roomId: string,
         text: string,
         lang?: string,
-    ): Promise<boolean> {
-        if (!this.client) return false;
+    ): Promise<SendResult> {
+        if (!this.client) return { success: false, error: 'Not connected to chat' };
+
+        const sanitized = sanitizeMessageBody(text);
+        if (!sanitized) return { success: false, error: 'Message is empty' };
 
         try {
             await this.client.sendEvent(roomId, 'm.room.message', {
                 msgtype: 'm.text',
-                body: text,
+                body: sanitized,
                 // Windy-specific metadata for translation
                 'uk.windypro.lang': lang || 'en',
             });
-            return true;
+            return { success: true };
         } catch (err) {
-            console.error('[Chat] sendMessage failed:', err);
-            return false;
+            console.warn('[Chat] sendMessage failed:', sanitizeError(err));
+
+            // Queue for offline retry if it's a network error
+            const classified = classifyMatrixError(err);
+            if (classified.code === 'NETWORK_ERROR' || this.currentSyncState !== 'syncing') {
+                this.queuePendingMessage(roomId, sanitized, lang || 'en');
+                return { success: false, pending: true, error: 'Message queued — will send when connected' };
+            }
+
+            return { success: false, error: classified.message };
+        }
+    }
+
+    /**
+     * Get pending (queued) messages for a room.
+     */
+    getPendingMessages(roomId: string): ChatMessage[] {
+        return this.pendingMessages
+            .filter(m => m.roomId === roomId)
+            .map(m => ({
+                eventId: `pending-${m.id}`,
+                roomId: m.roomId,
+                sender: this.session?.userId || '',
+                body: m.text,
+                timestamp: m.timestamp,
+                type: 'text' as const,
+                originalLang: m.lang,
+                isOwn: true,
+                pending: true,
+            }));
+    }
+
+    private queuePendingMessage(roomId: string, text: string, lang: string): void {
+        if (this.pendingMessages.length >= MAX_PENDING_MESSAGES) {
+            this.pendingMessages.shift(); // Drop oldest
+        }
+        this.pendingMessages.push({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            roomId,
+            text,
+            lang,
+            timestamp: Date.now(),
+        });
+    }
+
+    private async flushPendingMessages(): Promise<void> {
+        if (this.pendingMessages.length === 0) return;
+        const toSend = [...this.pendingMessages];
+        this.pendingMessages = [];
+
+        for (const msg of toSend) {
+            try {
+                await this.client?.sendEvent(msg.roomId, 'm.room.message', {
+                    msgtype: 'm.text',
+                    body: msg.text,
+                    'uk.windypro.lang': msg.lang,
+                });
+                console.log('[Chat] Flushed pending message:', msg.id);
+            } catch (err) {
+                console.warn('[Chat] Failed to flush pending message:', sanitizeError(err));
+                // Re-queue failed messages
+                this.pendingMessages.push(msg);
+            }
         }
     }
 
@@ -391,7 +700,7 @@ class ChatClient {
                 roomId,
                 sender: event.getSender(),
                 senderName: room.getMember(event.getSender())?.name,
-                body: content.body || '',
+                body: sanitizeMessageBody(content.body || ''),
                 timestamp: event.getTs(),
                 type: this.mapMsgType(content.msgtype),
                 originalLang: content['uk.windypro.lang'],
@@ -423,7 +732,9 @@ class ChatClient {
         if (!this.client) return;
         try {
             await this.client.sendTyping(roomId, isTyping, isTyping ? 20000 : undefined);
-        } catch {}
+        } catch (e) {
+            console.warn('[Chat] sendTyping failed:', sanitizeError(e));
+        }
     }
 
     // ─── Presence ───────────────────────────────────────────────
@@ -436,7 +747,7 @@ class ChatClient {
         try {
             await this.client.setPresence({ presence });
         } catch (err) {
-            console.warn('[Chat] setPresence failed:', err);
+            console.warn('[Chat] setPresence failed:', sanitizeError(err));
         }
     }
 
@@ -465,7 +776,9 @@ class ChatClient {
                         presence = (user.presence as any) || 'offline';
                         lastActiveAgo = user.lastActiveAgo;
                     }
-                } catch {}
+                } catch (e) {
+                    console.warn('[Chat] getUser presence failed:', sanitizeError(e));
+                }
 
                 seenUsers.set(member.userId, {
                     userId: member.userId,
@@ -500,7 +813,7 @@ class ChatClient {
                 presence: 'offline' as const,
             }));
         } catch (err) {
-            console.warn('[Chat] searchUsers failed:', err);
+            console.warn('[Chat] searchUsers failed:', sanitizeError(err));
             return [];
         }
     }
@@ -522,10 +835,18 @@ class ChatClient {
 
     private async persistSession(): Promise<void> {
         if (!this.session) return;
-        await SecureStore.setItemAsync(MATRIX_TOKEN_KEY, this.session.accessToken).catch(() => {});
-        await SecureStore.setItemAsync(MATRIX_USER_KEY, this.session.userId).catch(() => {});
-        await SecureStore.setItemAsync(MATRIX_SERVER_KEY, this.session.homeserverUrl).catch(() => {});
-        await SecureStore.setItemAsync(MATRIX_DEVICE_KEY, this.session.deviceId).catch(() => {});
+        await SecureStore.setItemAsync(MATRIX_TOKEN_KEY, this.session.accessToken).catch((e) => {
+            console.warn('[Chat] persistSession token failed:', sanitizeError(e));
+        });
+        await SecureStore.setItemAsync(MATRIX_USER_KEY, this.session.userId).catch((e) => {
+            console.warn('[Chat] persistSession user failed:', sanitizeError(e));
+        });
+        await SecureStore.setItemAsync(MATRIX_SERVER_KEY, this.session.homeserverUrl).catch((e) => {
+            console.warn('[Chat] persistSession server failed:', sanitizeError(e));
+        });
+        await SecureStore.setItemAsync(MATRIX_DEVICE_KEY, this.session.deviceId).catch((e) => {
+            console.warn('[Chat] persistSession device failed:', sanitizeError(e));
+        });
     }
 
     private getDirectRoomIds(): Set<string> {
