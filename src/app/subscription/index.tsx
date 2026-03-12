@@ -155,15 +155,22 @@ export default function SubscriptionScreen() {
             );
 
             if (pkg) {
-                const tier = await subscriptionService.purchasePackage(pkg.rcPackage);
-                if (tier && tier !== 'free') {
-                    useSettingsStore.getState().setLicense(tier, `rc-${Date.now()}`);
+                // RC-AUDIT: purchasePackage now returns PurchaseResult
+                const result = await subscriptionService.purchasePackage(pkg.rcPackage);
+
+                if (result.cancelled) {
+                    // User cancelled — do nothing
+                } else if (result.success && result.tier && result.tier !== 'free') {
+                    useSettingsStore.getState().setLicense(result.tier, `rc-${Date.now()}`);
                     haptic.success();
                     Alert.alert(
                         '🎉 Welcome!',
                         `You now have ${plan.name} access!`,
                         [{ text: 'Awesome!', onPress: () => router.back() }]
                     );
+                } else if (result.error) {
+                    haptic.error();
+                    Alert.alert('Purchase Failed', result.error);
                 }
             } else {
                 // Fallback: Stripe Checkout via web API
@@ -188,12 +195,9 @@ export default function SubscriptionScreen() {
                 }
             }
         } catch (err: unknown) {
-            const e = err as Record<string, unknown> | null;
-            if (!e?.userCancelled) {
-                haptic.error();
-                const msg = (e?.message as string) || 'Could not complete purchase. Please try again.';
-                Alert.alert('Purchase Failed', msg);
-            }
+            haptic.error();
+            const msg = (err instanceof Error ? err.message : null) || 'Could not complete purchase. Please try again.';
+            Alert.alert('Purchase Failed', msg);
         } finally {
             setPurchasing(null);
         }

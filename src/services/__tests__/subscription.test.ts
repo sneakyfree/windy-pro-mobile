@@ -1,6 +1,7 @@
 /**
  * 🧪 Unit tests for SubscriptionService
- * Tests RevenueCat initialization, offerings, purchases, restore, entitlements
+ * Tests RevenueCat initialization, offerings, purchases, restore, entitlements,
+ * and audit fixes (mutex, init guards, error sanitization, edge cases).
  */
 
 // Mock react-native-purchases
@@ -33,6 +34,22 @@ jest.mock('react-native', () => ({
     Platform: { OS: 'ios' },
 }));
 
+// Mock expo-constants
+jest.mock('expo-constants', () => ({
+    __esModule: true,
+    default: {
+        expoConfig: {
+            extra: {
+                revenueCatIosKey: 'test_ios_key',
+                revenueCatAndroidKey: 'test_android_key',
+            },
+        },
+    },
+}));
+
+// We need a fresh instance for each test group to reset `initialized`
+// Use `jest.isolateModules` for tests that need fresh state.
+
 import { subscriptionService } from '../subscription';
 
 describe('SubscriptionService', () => {
@@ -52,16 +69,23 @@ describe('SubscriptionService', () => {
 
         it('should not initialize twice (idempotent)', async () => {
             // Singleton is already initialized from the first test
-            // Calling again should be a no-op
             await subscriptionService.initialize();
             await subscriptionService.initialize();
             // Should not throw — just returns early
         });
 
         it('should handle initialization failure gracefully', async () => {
-            // This test just verifies the error path doesn't crash
             // The singleton is already initialized, so it will short-circuit
             await expect(subscriptionService.initialize()).resolves.not.toThrow();
+        });
+
+        it('should return true when initialized', async () => {
+            const result = await subscriptionService.initialize();
+            expect(result).toBe(true);
+        });
+
+        it('should report isInitialized()', () => {
+            expect(subscriptionService.isInitialized()).toBe(true);
         });
     });
 
@@ -109,7 +133,7 @@ describe('SubscriptionService', () => {
 
     // ─── Purchase ──────────────────────────────────────────────
     describe('purchasePackage()', () => {
-        it('should return tier on successful purchase', async () => {
+        it('should return success result on successful purchase', async () => {
             mockPurchasePackage.mockResolvedValue({
                 customerInfo: {
                     entitlements: {
@@ -120,22 +144,82 @@ describe('SubscriptionService', () => {
                 },
             });
 
-            const tier = await subscriptionService.purchasePackage({} as any);
-            expect(tier).toBe('pro');
+            const result = await subscriptionService.purchasePackage({} as any);
+            expect(result.success).toBe(true);
+            expect(result.tier).toBe('pro');
         });
 
-        it('should return null when user cancels', async () => {
+        it('should return cancelled result when user cancels', async () => {
             const cancelError = new Error('User cancelled') as any;
             cancelError.userCancelled = true;
             mockPurchasePackage.mockRejectedValue(cancelError);
 
-            const tier = await subscriptionService.purchasePackage({} as any);
-            expect(tier).toBeNull();
+            const result = await subscriptionService.purchasePackage({} as any);
+            expect(result.success).toBe(false);
+            expect(result.cancelled).toBe(true);
+            expect(result.tier).toBeNull();
         });
 
-        it('should throw on non-cancel error', async () => {
+        it('should return error result on payment failure', async () => {
             mockPurchasePackage.mockRejectedValue(new Error('Payment failed'));
-            await expect(subscriptionService.purchasePackage({} as any)).rejects.toThrow('Payment failed');
+            const result = await subscriptionService.purchasePackage({} as any);
+            expect(result.success).toBe(false);
+            expect(result.error).toBeDefined();
+            expect(result.tier).toBeNull();
+        });
+
+        // RC-AUDIT: Test purchase mutex (double-tap prevention)
+        it('should prevent concurrent purchases (mutex)', async () => {
+            // Simulate a slow purchase that takes 100ms
+            mockPurchasePackage.mockImplementation(() =>
+                new Promise(resolve =>
+                    setTimeout(() => resolve({
+                        customerInfo: {
+                            entitlements: { active: { pro: { isActive: true } } },
+                        },
+                    }), 100)
+                )
+            );
+
+            // Fire two purchases simultaneously
+            const [result1, result2] = await Promise.all([
+                subscriptionService.purchasePackage({} as any),
+                subscriptionService.purchasePackage({} as any),
+            ]);
+
+            // One should succeed, the other should be blocked
+            const successCount = [result1, result2].filter(r => r.success).length;
+            const blockedCount = [result1, result2].filter(r => r.error === 'Purchase already in progress').length;
+            expect(successCount).toBe(1);
+            expect(blockedCount).toBe(1);
+        });
+
+        it('should release mutex after failed purchase', async () => {
+            mockPurchasePackage.mockRejectedValue(new Error('fail'));
+            const result1 = await subscriptionService.purchasePackage({} as any);
+            expect(result1.success).toBe(false);
+
+            // Second purchase should work (mutex released)
+            mockPurchasePackage.mockResolvedValue({
+                customerInfo: { entitlements: { active: { pro: { isActive: true } } } },
+            });
+            const result2 = await subscriptionService.purchasePackage({} as any);
+            expect(result2.success).toBe(true);
+        });
+
+        // ERR-AUDIT: Test error classification
+        it('should classify network errors with helpful message', async () => {
+            const err = new Error('network request failed') as any;
+            err.code = 2;
+            mockPurchasePackage.mockRejectedValue(err);
+            const result = await subscriptionService.purchasePackage({} as any);
+            expect(result.error).toContain('Network error');
+        });
+
+        it('should classify declined payment with helpful message', async () => {
+            mockPurchasePackage.mockRejectedValue(new Error('payment declined'));
+            const result = await subscriptionService.purchasePackage({} as any);
+            expect(result.error).toContain('declined');
         });
     });
 
@@ -163,9 +247,11 @@ describe('SubscriptionService', () => {
             expect(tier).toBe('free');
         });
 
-        it('should throw on restore failure', async () => {
+        it('should throw user-friendly error on restore failure', async () => {
             mockRestorePurchases.mockRejectedValue(new Error('Restore failed'));
-            await expect(subscriptionService.restorePurchases()).rejects.toThrow();
+            await expect(subscriptionService.restorePurchases()).rejects.toThrow(
+                'Could not restore purchases'
+            );
         });
     });
 
@@ -205,15 +291,26 @@ describe('SubscriptionService', () => {
 
     // ─── Identify / Logout ─────────────────────────────────────
     describe('identify()', () => {
-        it('should call Purchases.logIn', async () => {
+        it('should call Purchases.logIn with trimmed userId', async () => {
             mockLogIn.mockResolvedValue(undefined);
-            await subscriptionService.identify('user@example.com');
+            await subscriptionService.identify('  user@example.com  ');
             expect(mockLogIn).toHaveBeenCalledWith('user@example.com');
         });
 
         it('should not throw on identify failure', async () => {
             mockLogIn.mockRejectedValue(new Error('fail'));
             await expect(subscriptionService.identify('test')).resolves.not.toThrow();
+        });
+
+        // EC-AUDIT: Empty userId should be rejected
+        it('should reject empty userId', async () => {
+            await subscriptionService.identify('');
+            expect(mockLogIn).not.toHaveBeenCalled();
+        });
+
+        it('should reject whitespace-only userId', async () => {
+            await subscriptionService.identify('   ');
+            expect(mockLogIn).not.toHaveBeenCalled();
         });
     });
 
@@ -227,6 +324,21 @@ describe('SubscriptionService', () => {
         it('should not throw on logout failure', async () => {
             mockLogOut.mockRejectedValue(new Error('fail'));
             await expect(subscriptionService.logout()).resolves.not.toThrow();
+        });
+    });
+
+    // ─── Error Sanitization ─────────────────────────────────────
+    describe('error sanitization', () => {
+        it('should not leak long tokens in error logs', async () => {
+            const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+            mockGetOfferings.mockRejectedValue(
+                new Error('Request failed with token abc123456789012345678901234567890')
+            );
+            await subscriptionService.getOfferings();
+            const loggedMessage = consoleSpy.mock.calls[0]?.[1];
+            expect(loggedMessage).not.toContain('abc123456789012345678901234567890');
+            expect(loggedMessage).toContain('[REDACTED]');
+            consoleSpy.mockRestore();
         });
     });
 });
