@@ -5,6 +5,9 @@
  * Data stored in AsyncStorage for future backend sync.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createLogger } from './logger';
+
+const log = createLogger('Analytics');
 
 const ANALYTICS_KEY = 'windy-analytics';
 

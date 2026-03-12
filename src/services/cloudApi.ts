@@ -23,6 +23,9 @@ import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 import { API_BASE_URL, ENDPOINTS, apiUrl } from '@/config/api';
 import type { LicenseTier } from '@/types';
+import { createLogger } from './logger';
+
+const log = createLogger('CloudApi');
 
 // ─── Secure Store Keys ──────────────────────────────────────────
 const TOKEN_KEY = 'windy_cloud_jwt';
@@ -337,7 +340,7 @@ class CloudApiClient {
 
             return download.status >= 200 && download.status < 300 ? destPath : null;
         } catch (err) {
-            console.warn('[CloudApi] downloadFile failed:', err);
+            log.warn('downloadFile', 'downloadFile failed', err);
             return null;
         }
     }

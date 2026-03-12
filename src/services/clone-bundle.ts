@@ -12,6 +12,9 @@ import { networkMonitor } from './network-monitor';
 
 const BUNDLES_KEY = 'windy-clone-bundles';
 import { apiUrl } from '@/config/api';
+import { createLogger } from './logger';
+
+const log = createLogger('CloneBundle');
 
 const UPLOAD_API = apiUrl('/api/v1/recordings/upload');
 

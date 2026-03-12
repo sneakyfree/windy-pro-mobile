@@ -12,6 +12,9 @@ import type {
 import { ENGINE_REGISTRY } from './windy-tune';
 import { API_BASE_URL, ENDPOINTS, apiUrl, wsUrl } from '@/config/api';
 import { parseUploadError, isAuthError, isRateLimited } from '@/utils/api-error';
+import { createLogger } from './logger';
+
+const log = createLogger('Transcription');
 
 /** Default server URL — configurable via Settings */
 let SERVER_URL = API_BASE_URL;
@@ -89,7 +92,7 @@ class TranscriptionService {
             await whisperManager.release();
             return segments;
         } catch (err) {
-            console.warn('[Transcription] Local failed, falling back to cloud:', err);
+            log.warn('Local_failed_falling_back_to_c', 'Local failed, falling back to cloud', err);
             return this.cloudTranscribe(uri, 'cloud-standard');
         }
     }
@@ -106,7 +109,7 @@ class TranscriptionService {
             const segments = await this.httpTranscribe(uri, engine);
             if (segments.length > 0) return segments;
         } catch (httpErr) {
-            console.warn('[Transcription] HTTP POST failed:', httpErr);
+            log.warn('HTTP_POST', 'HTTP POST failed', httpErr);
         }
 
         // Fallback: WebSocket streaming
@@ -114,7 +117,7 @@ class TranscriptionService {
             const segments = await this.wsTranscribe(uri, engine);
             if (segments.length > 0) return segments;
         } catch (wsErr) {
-            console.warn('[Transcription] WebSocket failed:', wsErr);
+            log.warn('WebSocket', 'WebSocket failed', wsErr);
         }
 
         // Both failed — throw so the caller can handle it

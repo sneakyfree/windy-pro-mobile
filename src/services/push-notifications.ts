@@ -7,6 +7,9 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import { createLogger } from './logger';
+
+const log = createLogger('PushNotifications');
 
 const API_BASE = 'https://windypro.thewindstorm.uk';
 const REGISTER_TOKEN_URL = `${API_BASE}/api/register-push-token`;
@@ -56,7 +59,7 @@ class PushNotificationService {
             }
 
             if (finalStatus !== 'granted') {
-                console.warn('[Push] Permission not granted');
+                log.warn('Permission_not_granted', 'Permission not granted');
                 return null;
             }
 
@@ -122,7 +125,7 @@ class PushNotificationService {
                 }),
             });
         } catch (err) {
-            console.warn('[Push] Backend registration failed:', err);
+            log.warn('Backend_registration', 'Backend registration failed', err);
         }
     }
 

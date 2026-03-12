@@ -7,6 +7,9 @@
 import { translationService } from './translation';
 import { ENDPOINTS, apiUrl } from '@/config/api';
 import { parseApiError, isAuthError, isRateLimited } from '@/utils/api-error';
+import { createLogger } from './logger';
+
+const log = createLogger('OCR');
 
 const OCR_API = 'https://vision.googleapis.com/v1/images:annotate';
 
@@ -41,7 +44,7 @@ class OcrService {
         try {
             return await this.cloudOcr(base64Image);
         } catch (error) {
-            console.warn('[OCR] Cloud OCR failed, using fallback:', error);
+            log.warn('Cloud_OCR_failed_using_fallbac', 'Cloud OCR failed, using fallback', error);
             return this.fallbackOcr(base64Image);
         }
     }
@@ -122,7 +125,7 @@ class OcrService {
                 toLang: targetLang,
             };
         } catch (err) {
-            console.warn('[OCR] Backend OCR failed, falling back to local:', err);
+            log.warn('Backend_OCR_failed_falling_bac', 'Backend OCR failed, falling back to local', err);
             return this.extractAndTranslate(base64Frame, targetLang);
         }
     }

@@ -5,6 +5,9 @@
  */
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createLogger } from './logger';
+
+const log = createLogger('OfflinePacks');
 
 const PACKS_DIR = (FileSystem.documentDirectory || '') + 'language-packs/';
 const PACKS_META_KEY = 'windy-offline-packs';

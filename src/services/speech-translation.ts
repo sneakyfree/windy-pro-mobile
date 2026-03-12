@@ -12,6 +12,9 @@ import * as Speech from 'expo-speech';
 import { TIER_1_LANGUAGES } from './translation';
 import { ENDPOINTS, apiUrl } from '@/config/api';
 import { parseUploadError, isAuthError, isRateLimited } from '@/utils/api-error';
+import { createLogger } from './logger';
+
+const log = createLogger('SpeechTranslation');
 
 const SPEECH_TRANSLATE_ENDPOINT = apiUrl(ENDPOINTS.TRANSLATE_SPEECH);
 const DETECT_ENDPOINT = apiUrl(ENDPOINTS.TRANSLATE_LANGUAGES);
@@ -347,7 +350,7 @@ class SpeechTranslationService {
                 };
             }
         } catch (err) {
-            console.warn('[SpeechTranslation] Language detection failed:', err);
+            log.warn('Language_detection', 'Language detection failed', err);
         }
 
         return { language: 'en', confidence: 0.3 };

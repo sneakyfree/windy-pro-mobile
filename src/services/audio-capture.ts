@@ -6,6 +6,9 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import type { RecordingConfig, RecordingResult, AudioQuality, QualityLabel } from '@/types';
+import { createLogger } from './logger';
+
+const log = createLogger('AudioCapture');
 
 /** Default recording configuration */
 const DEFAULT_CONFIG: RecordingConfig = {

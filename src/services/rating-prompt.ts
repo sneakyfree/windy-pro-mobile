@@ -5,6 +5,9 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as StoreReview from 'expo-store-review';
+import { createLogger } from './logger';
+
+const log = createLogger('RatingPrompt');
 
 const TRANSLATION_COUNT_KEY = 'windy-translation-count';
 const LAST_PROMPT_KEY = 'windy-last-rating-prompt';

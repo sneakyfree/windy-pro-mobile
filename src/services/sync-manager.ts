@@ -23,6 +23,9 @@ import { ENDPOINTS, apiUrl } from '@/config/api';
 import { parseUploadError, isAuthError, isRateLimited, getUserMessage } from '@/utils/api-error';
 import { cloudApi, STORAGE_TIERS, type CloudFile } from './cloudApi';
 import type { LicenseTier } from '@/types';
+import { createLogger } from './logger';
+
+const log = createLogger('SyncManager');
 
 const QUEUE_KEY = 'windy-sync-queue';
 const SETTINGS_KEY = 'windy-sync-settings';
@@ -222,7 +225,7 @@ class SyncManager {
             uploaded += retryResult.succeeded;
 
         } catch (err) {
-            console.warn('[SyncManager] cloudSync error:', err);
+            log.warn('cloudSync', 'cloudSync error', err);
         }
 
         return { uploaded, downloaded, conflicts };
@@ -772,6 +775,6 @@ try {
         }
     });
 } catch (e) {
-    console.warn('[SyncManager] Failed to register background task:', e);
+    log.warn('Failed_to_register_background_', 'Failed to register background task', e);
 }
 

@@ -17,6 +17,9 @@ import {
     isRateLimited,
     getUserMessage,
 } from '@/utils/api-error';
+import { createLogger } from './logger';
+
+const log = createLogger('Translation');
 
 /** Cloud translation API — resolved from centralized config */
 const TRANSLATE_API = apiUrl(ENDPOINTS.TRANSLATE_TEXT);
@@ -149,7 +152,7 @@ class TranslationService {
 
             return result;
         } catch (error) {
-            console.warn('[Translation] Cloud failed:', error);
+            log.warn('Cloud', 'Cloud failed', error);
             return {
                 translated: `[Translation unavailable] ${text}`,
                 confidence: 0,
@@ -209,7 +212,7 @@ class TranslationService {
                 detectedLanguage: data.detected_language || data.detectedLanguage,
             };
         } catch (error) {
-            console.warn('[Translation] Speech API failed:', error);
+            log.warn('Speech_API', 'Speech API failed', error);
 
             // Fallback: return error state
             return {
@@ -294,7 +297,7 @@ class TranslationService {
                 onError: (err) => console.warn('[TTS] Error:', err),
             });
         } catch (err) {
-            console.warn('[TTS] Speak failed:', err);
+            log.warn('Speak', 'Speak failed', err);
         }
     }
 

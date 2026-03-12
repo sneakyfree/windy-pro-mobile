@@ -4,6 +4,9 @@
  */
 import * as Haptics from 'expo-haptics';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { createLogger } from './logger';
+
+const log = createLogger('Feedback');
 
 class FeedbackService {
     /**

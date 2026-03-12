@@ -13,6 +13,9 @@
  * This JS wrapper provides a clean API for the React layer.
  */
 import { NativeModules, Platform, Linking, Alert } from 'react-native';
+import { createLogger } from './logger';
+
+const log = createLogger('Overlay');
 
 const { WindyOverlay } = NativeModules;
 

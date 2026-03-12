@@ -11,6 +11,9 @@ import type { LicenseTier, LicenseValidation } from '@/types';
 import { API_BASE_URL, ENDPOINTS, apiUrl } from '@/config/api';
 import { fetchWithTimeout } from '@/utils/fetch-timeout';
 import { parseApiError, createNetworkError, isAuthError, isRateLimited } from '@/utils/api-error';
+import { createLogger } from './logger';
+
+const log = createLogger('License');
 
 const TOKEN_KEY = 'windy_jwt_token';
 
@@ -196,7 +199,7 @@ class LicenseService {
                 if (data.url) return data.url;
             }
         } catch (err) {
-            console.warn('[License] getPurchaseUrl failed:', err);
+            log.warn('getPurchaseUrl', 'getPurchaseUrl failed', err);
             // Fall back to static URL
         }
         return `${API_BASE_URL}/pricing?device=${encodeURIComponent(deviceId)}`;

@@ -11,6 +11,9 @@
  */
 import type { AudioQuality, QualityLabel } from '@/types';
 import { isCloneUsable } from './quality-scorer';
+import { createLogger } from './logger';
+
+const log = createLogger('CloneTracker');
 
 /** Clone milestone thresholds */
 export interface CloneMilestone {
@@ -104,7 +107,7 @@ class CloneTracker {
                         trigger: null,
                     });
                 } catch (e) {
-                    console.warn('[Clone] Notification failed:', e);
+                    log.warn('Notification', 'Notification failed', e);
                 }
 
                 // Persist milestone to storage
@@ -153,7 +156,7 @@ class CloneTracker {
             // Restore persisted milestone dates
             await this.restoreMilestones();
         } catch (e) {
-            console.warn('[Clone] Recalculate from DB failed:', e);
+            log.warn('Recalculate_from_DB', 'Recalculate from DB failed', e);
         }
 
         return this.getProgress();

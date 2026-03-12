@@ -5,6 +5,9 @@
  */
 import * as FileSystem from 'expo-file-system';
 import type { TranscriptSegment } from '@/types';
+import { createLogger } from './logger';
+
+const log = createLogger('WhisperManager');
 
 // whisper.rn types — dynamically loaded to avoid crash if not installed
 interface WhisperContext {

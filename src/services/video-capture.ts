@@ -4,6 +4,9 @@
  */
 import { Camera, CameraType, CameraView } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
+import { createLogger } from './logger';
+
+const log = createLogger('VideoCapture');
 
 class VideoCaptureService {
     private cameraRef: CameraView | null = null;

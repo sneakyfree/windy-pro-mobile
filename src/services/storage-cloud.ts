@@ -31,6 +31,9 @@ import {
     isRateLimited,
     ApiError,
 } from '@/utils/api-error';
+import { createLogger } from './logger';
+
+const log = createLogger('StorageCloud');
 
 const TOKEN_KEY = 'windy_jwt_token';
 const REFRESH_KEY = 'windy_refresh_token';
@@ -132,7 +135,7 @@ class CloudStorageClient {
             }
             return false;
         } catch (err) {
-            console.warn('[CloudStorage] restoreSession failed:', err);
+            log.warn('restoreSession', 'restoreSession failed', err);
             return false;
         }
     }
@@ -162,7 +165,7 @@ class CloudStorageClient {
 
             return true;
         } catch (err) {
-            console.warn('[CloudStorage] refreshAuth failed:', err);
+            log.warn('refreshAuth', 'refreshAuth failed', err);
             return false;
         }
     }
@@ -287,7 +290,7 @@ class CloudStorageClient {
                     );
 
                     if (uploadResult.status < 200 || uploadResult.status >= 300) {
-                        console.warn(`[Cloud] Audio upload got HTTP ${uploadResult.status} — metadata still synced`);
+                        log.warn('Audio_upload_got_HTTP_uploadRe', 'Audio upload got HTTP ${uploadResult.status} — metadata still synced');
                     }
                 }
             }
@@ -358,7 +361,7 @@ class CloudStorageClient {
             }
             return await response.json();
         } catch (err) {
-            console.warn('[CloudStorage] getRecording failed:', err);
+            log.warn('getRecording', 'getRecording failed', err);
             return null;
         }
     }
@@ -387,7 +390,7 @@ class CloudStorageClient {
             }
             return true;
         } catch (err) {
-            console.warn('[CloudStorage] deleteRecording failed:', err);
+            log.warn('deleteRecording', 'deleteRecording failed', err);
             return false;
         }
     }

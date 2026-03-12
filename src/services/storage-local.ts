@@ -5,6 +5,9 @@
 import * as SQLite from 'expo-sqlite';
 import * as FileSystem from 'expo-file-system';
 import type { Session, SessionSummary, SessionFilter, StorageUsage, AudioQuality } from '@/types';
+import { createLogger } from './logger';
+
+const log = createLogger('StorageLocal');
 
 const SCHEMA_VERSION = 1;
 
@@ -116,7 +119,7 @@ class LocalStorageService {
                     to: permanentAudioPath,
                 });
             } catch (err) {
-                console.warn('[Storage] Could not move audio file:', err);
+                log.warn('Could_not_move_audio_file', 'Could not move audio file', err);
                 permanentAudioPath = session.audioFilePath;
             }
         }
@@ -393,7 +396,7 @@ function safeParseQuality(json: string, score: number): any {
     try {
         return JSON.parse(json);
     } catch (err) {
-        console.warn('[Storage] safeParseQuality failed:', err);
+        log.warn('safeParseQuality', 'safeParseQuality failed', err);
         return {
             score, label: score >= 80 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'fair' : 'poor',
             snrDb: 0, speechRatio: 0, hasClipping: false, sampleRate: 44100

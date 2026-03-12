@@ -17,6 +17,9 @@ import * as Battery from 'expo-battery';
 import type { SyncConditions, SyncStatus } from '@/types';
 import { localStorageService } from './storage-local';
 import { cloudStorageClient } from './storage-cloud';
+import { createLogger } from './logger';
+
+const log = createLogger('SyncEngine');
 
 const SYNC_TASK_NAME = 'WINDY_BACKGROUND_SYNC';
 
@@ -145,7 +148,7 @@ class SyncEngine {
                     // Get full session data for metadata
                     const fullSession = await localStorageService.getSession(session.id);
                     if (!fullSession) {
-                        console.warn(`[Sync] Session ${session.id} not found, skipping`);
+                        log.warn('Session_sessionid_not_found_sk', 'Session ${session.id} not found, skipping');
                         continue;
                     }
 
@@ -249,7 +252,7 @@ class SyncEngine {
 
             return true;
         } catch (err) {
-            console.warn('[Sync] Condition check failed:', err);
+            log.warn('Condition_check', 'Condition check failed', err);
             return false;
         }
     }
@@ -298,7 +301,7 @@ class SyncEngine {
                 startOnBoot: true,
             });
         } catch (err) {
-            console.warn('[Sync] Failed to register background sync:', err);
+            log.warn('Failed_to_register_background_', 'Failed to register background sync', err);
         }
     }
 

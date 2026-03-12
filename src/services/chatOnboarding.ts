@@ -14,6 +14,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL, ENDPOINTS, CHAT_HOMESERVER } from '@/config/api';
 import { chatClient } from '@/services/chatClient';
+import { createLogger } from './logger';
+
+const log = createLogger('ChatOnboarding');
 
 // ─── Constants ──────────────────────────────────────────────────
 
@@ -153,7 +156,7 @@ class ChatOnboardingService {
             const err = classifyError(res.status, body);
             return { success: false, error: err.message };
         } catch (err: unknown) {
-            console.warn('[ChatOnboarding] requestVerification error:', err);
+            log.warn('requestVerification', 'requestVerification error', err);
             return {
                 success: false,
                 error: err instanceof Error ? err.message : 'Network error — check your connection',
@@ -197,7 +200,7 @@ class ChatOnboardingService {
             const err = classifyError(res.status, body);
             return { success: false, error: err.message };
         } catch (err: unknown) {
-            console.warn('[ChatOnboarding] verifyOtp error:', err);
+            log.warn('verifyOtp', 'verifyOtp error', err);
             return {
                 success: false,
                 error: err instanceof Error ? err.message : 'Network error — check your connection',
@@ -245,7 +248,7 @@ class ChatOnboardingService {
             const err = classifyError(res.status, body);
             return { success: false, error: err.message };
         } catch (err: unknown) {
-            console.warn('[ChatOnboarding] setProfile error:', err);
+            log.warn('setProfile', 'setProfile error', err);
             // Even if server call fails, store locally — the name will sync eventually
             await SecureStore.setItemAsync(CHAT_DISPLAY_NAME_KEY, displayName.trim()).catch(() => {});
             return { success: true }; // Soft failure — don't block onboarding
@@ -289,7 +292,7 @@ class ChatOnboardingService {
             await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
             return { success: true };
         } catch (err: unknown) {
-            console.warn('[ChatOnboarding] completeOnboarding error:', err);
+            log.warn('completeOnboarding', 'completeOnboarding error', err);
             return {
                 success: false,
                 error: err instanceof Error ? err.message : 'Failed to complete setup',

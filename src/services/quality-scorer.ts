@@ -12,6 +12,9 @@
  *   7. Noise floor estimation
  */
 import type { AudioQuality, QualityLabel } from '@/types';
+import { createLogger } from './logger';
+
+const log = createLogger('QualityScorer');
 
 export interface QualityBreakdown {
     quality: AudioQuality;

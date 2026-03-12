@@ -17,6 +17,9 @@
  *   - E2E encryption foundation (when Olm is available)
  */
 import * as SecureStore from 'expo-secure-store';
+import { createLogger } from './logger';
+
+const log = createLogger('ChatClient');
 
 // ─── Secure Store Keys ──────────────────────────────────────────
 const MATRIX_TOKEN_KEY = 'windy_matrix_token';
@@ -282,7 +285,7 @@ class ChatClient {
 
             return { success: true, userId: response.user_id };
         } catch (err: unknown) {
-            console.warn('[Chat] Login failed:', sanitizeError(err));
+            log.warn('Login', 'Login failed', sanitizeError(err));
             const classified = classifyMatrixError(err);
             return { success: false, error: classified.message, errorCode: classified.code };
         }
@@ -326,7 +329,7 @@ class ChatClient {
 
             return { success: true, userId: response.user_id };
         } catch (err: unknown) {
-            console.warn('[Chat] Register failed:', sanitizeError(err));
+            log.warn('Register', 'Register failed', sanitizeError(err));
 
             // PC-3: Detect UIAA interactive auth (401 with flows)
             const errObj = err as Record<string, any> | undefined;
@@ -367,7 +370,7 @@ class ChatClient {
             }
             return false;
         } catch (err) {
-            console.warn('[Chat] restoreSession failed:', sanitizeError(err));
+            log.warn('restoreSession', 'restoreSession failed', sanitizeError(err));
             return false;
         }
     }
@@ -381,12 +384,12 @@ class ChatClient {
                 // ML-2: Remove stored event handlers before stopping
                 this.removeClientListeners();
                 await this.client.logout().catch((e: unknown) => {
-                    console.warn('[Chat] logout API call failed:', sanitizeError(e));
+                    log.warn('logout_API_call', 'logout API call failed', sanitizeError(e));
                 });
                 this.client.stopClient();
             }
         } catch (e) {
-            console.warn('[Chat] logout cleanup error:', sanitizeError(e));
+            log.warn('logout_cleanup', 'logout cleanup error', sanitizeError(e));
         }
         this.client = null;
         this.session = null;
@@ -446,7 +449,7 @@ class ChatClient {
             await this.initClient();
             return { success: true, userId };
         } catch (err: unknown) {
-            console.warn('[Chat] loginWithCredentials failed:', sanitizeError(err));
+            log.warn('loginWithCredentials', 'loginWithCredentials failed', sanitizeError(err));
             return {
                 success: false,
                 error: 'Failed to initialize chat connection',
@@ -466,7 +469,7 @@ class ChatClient {
             await this.client.setDisplayName(name.trim());
             return { success: true };
         } catch (err: unknown) {
-            console.warn('[Chat] setDisplayName failed:', sanitizeError(err));
+            log.warn('setDisplayName', 'setDisplayName failed', sanitizeError(err));
             return { success: false, error: 'Could not update display name' };
         }
     }
@@ -499,7 +502,7 @@ class ChatClient {
             }
             return { success: true };
         } catch (err: unknown) {
-            console.warn('[Chat] setAvatar failed:', sanitizeError(err));
+            log.warn('setAvatar', 'setAvatar failed', sanitizeError(err));
             return { success: false, error: 'Could not update avatar' };
         }
     }
@@ -538,10 +541,10 @@ class ChatClient {
                 await this.client.initCrypto();
                 this.client.setCryptoTrustCrossSignedDevices?.(true);
                 this.cryptoEnabled = true;
-                if (__DEV__) console.log('[Chat] E2E encryption enabled');
+                log.info('E2E_encryption_enabled', 'E2E encryption enabled');
             }
         } catch (e) {
-            console.warn('[Chat] Crypto init not available (Olm not bundled):', sanitizeError(e));
+            log.warn('Crypto_init_not_available_Olm_', 'Crypto init not available (Olm not bundled)', sanitizeError(e));
             this.cryptoEnabled = false;
         }
 
@@ -657,7 +660,7 @@ class ChatClient {
             this.client.stopClient();
             this.started = false;
             this.setSyncState('stopped');
-            if (__DEV__) console.log('[Chat] Sync paused (app backgrounded)');
+            log.info('Sync_paused_app_backgrounded', 'Sync paused (app backgrounded)');
         }
     }
 
@@ -669,9 +672,9 @@ class ChatClient {
             try {
                 await this.client.startClient({ initialSyncLimit: 10 });
                 this.started = true;
-                if (__DEV__) console.log('[Chat] Sync resumed (app foregrounded)');
+                log.info('Sync_resumed_app_foregrounded', 'Sync resumed (app foregrounded)');
             } catch (e) {
-                console.warn('[Chat] Resume sync failed:', sanitizeError(e));
+                log.warn('Resume_sync', 'Resume sync failed', sanitizeError(e));
                 this.setSyncState('error');
             }
         }
@@ -696,7 +699,7 @@ class ChatClient {
         this.activeScreens = Math.max(0, this.activeScreens - 1);
         if (this.activeScreens <= 0 && this.started) {
             this.pauseSync();
-            if (__DEV__) console.log('[Chat] All chat screens unmounted — sync stopped');
+            log.info('All_chat_screens_unmounted__sy', 'All chat screens unmounted — sync stopped');
         }
     }
 
@@ -771,7 +774,7 @@ class ChatClient {
 
             return { roomId: result.room_id };
         } catch (err) {
-            console.warn('[Chat] createDM failed:', sanitizeError(err));
+            log.warn('createDM', 'createDM failed', sanitizeError(err));
             const classified = classifyMatrixError(err);
             return { roomId: null, error: classified.message };
         }
@@ -803,7 +806,7 @@ class ChatClient {
             });
             return { success: true };
         } catch (err) {
-            console.warn('[Chat] sendMessage failed:', sanitizeError(err));
+            log.warn('sendMessage', 'sendMessage failed', sanitizeError(err));
 
             // Queue for offline retry if it's a network error
             const classified = classifyMatrixError(err);
@@ -862,14 +865,14 @@ class ChatClient {
                     body: msg.text,
                     'uk.windypro.lang': msg.lang,
                 });
-                if (__DEV__) console.log('[Chat] Flushed pending message:', msg.id);
+                log.info('Flushed_pending_message', 'Flushed pending message', msg.id);
             } catch (err) {
-                console.warn('[Chat] Failed to flush pending message:', sanitizeError(err));
+                log.warn('Failed_to_flush_pending_messag', 'Failed to flush pending message', sanitizeError(err));
                 if (retries < 5) {
                     (msg as any)._retryCount = retries + 1;
                     this.pendingMessages.push(msg);
                 } else {
-                    console.warn('[Chat] Dropping message after 5 retries:', msg.id);
+                    log.warn('Dropping_message_after_5_retri', 'Dropping message after 5 retries', msg.id);
                 }
             }
         }
@@ -929,7 +932,7 @@ class ChatClient {
         try {
             await this.client.sendTyping(roomId, isTyping, isTyping ? 20000 : undefined);
         } catch (e) {
-            console.warn('[Chat] sendTyping failed:', sanitizeError(e));
+            log.warn('sendTyping', 'sendTyping failed', sanitizeError(e));
         }
     }
 
@@ -943,7 +946,7 @@ class ChatClient {
         try {
             await this.client.setPresence({ presence });
         } catch (err) {
-            console.warn('[Chat] setPresence failed:', sanitizeError(err));
+            log.warn('setPresence', 'setPresence failed', sanitizeError(err));
         }
     }
 
@@ -973,7 +976,7 @@ class ChatClient {
                         lastActiveAgo = user.lastActiveAgo;
                     }
                 } catch (e) {
-                    console.warn('[Chat] getUser presence failed:', sanitizeError(e));
+                    log.warn('getUser_presence', 'getUser presence failed', sanitizeError(e));
                 }
 
                 seenUsers.set(member.userId, {
@@ -1009,7 +1012,7 @@ class ChatClient {
                 presence: 'offline' as const,
             }));
         } catch (err) {
-            console.warn('[Chat] searchUsers failed:', sanitizeError(err));
+            log.warn('searchUsers', 'searchUsers failed', sanitizeError(err));
             return [];
         }
     }
@@ -1032,16 +1035,16 @@ class ChatClient {
     private async persistSession(): Promise<void> {
         if (!this.session) return;
         await SecureStore.setItemAsync(MATRIX_TOKEN_KEY, this.session.accessToken).catch((e) => {
-            console.warn('[Chat] persistSession token failed:', sanitizeError(e));
+            log.warn('persistSession_token', 'persistSession token failed', sanitizeError(e));
         });
         await SecureStore.setItemAsync(MATRIX_USER_KEY, this.session.userId).catch((e) => {
-            console.warn('[Chat] persistSession user failed:', sanitizeError(e));
+            log.warn('persistSession_user', 'persistSession user failed', sanitizeError(e));
         });
         await SecureStore.setItemAsync(MATRIX_SERVER_KEY, this.session.homeserverUrl).catch((e) => {
-            console.warn('[Chat] persistSession server failed:', sanitizeError(e));
+            log.warn('persistSession_server', 'persistSession server failed', sanitizeError(e));
         });
         await SecureStore.setItemAsync(MATRIX_DEVICE_KEY, this.session.deviceId).catch((e) => {
-            console.warn('[Chat] persistSession device failed:', sanitizeError(e));
+            log.warn('persistSession_device', 'persistSession device failed', sanitizeError(e));
         });
     }
 

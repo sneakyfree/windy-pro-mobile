@@ -11,6 +11,9 @@
  */
 import { translationService, TIER_1_LANGUAGES } from './translation';
 import type { ChatMessage } from './chatClient';
+import { createLogger } from './logger';
+
+const log = createLogger('ChatTranslate');
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -78,6 +81,7 @@ class ChatTranslateService {
      * Set the user's preferred language (messages will be translated TO this).
      */
     setUserLanguage(langCode: string): void {
+        log.state('setUserLanguage', `changed to ${langCode}`);
         this.userLanguage = langCode;
     }
 
@@ -98,10 +102,11 @@ class ChatTranslateService {
      * Returns a TranslatedMessage with translation data.
      */
     async translateMessage(message: ChatMessage): Promise<TranslatedMessage> {
-        // Check cache first
         const cacheKey = `${message.eventId}:${this.userLanguage}`;
         const cached = this.cache.get(cacheKey);
         if (cached) return cached;
+
+        log.entry('translateMessage', { eventId: message.eventId, bodyLen: message.body.length, isOwn: message.isOwn });
 
         // Own messages don't need translation
         if (message.isOwn) {
@@ -125,7 +130,7 @@ class ChatTranslateService {
                 const detected = await translationService.detectLanguage(message.body);
                 sourceLang = detected.language;
             } catch (err) {
-                console.warn('[ChatTranslate] Language detection failed:', err);
+                log.error('translateMessage', err, { phase: 'detection' });
             }
         }
 
@@ -163,9 +168,10 @@ class ChatTranslateService {
             };
 
             this.cache.set(cacheKey, result);
+            log.exit('translateMessage', { from: sourceLang, to: this.userLanguage, wasTranslated: true });
             return result;
         } catch (err) {
-            console.warn('[ChatTranslate] Translation failed:', err);
+            log.error('translateMessage', err, { from: sourceLang, to: this.userLanguage });
             return {
                 ...message,
                 translatedBody: null,
@@ -182,6 +188,7 @@ class ChatTranslateService {
      * RC-3: Process in batches of 5 to avoid overwhelming the translation engine.
      */
     async translateMessages(messages: ChatMessage[]): Promise<TranslatedMessage[]> {
+        log.entry('translateMessages', { count: messages.length });
         const BATCH_SIZE = 5;
         const results: TranslatedMessage[] = [];
         for (let i = 0; i < messages.length; i += BATCH_SIZE) {
@@ -189,6 +196,7 @@ class ChatTranslateService {
             const translated = await Promise.all(batch.map(m => this.translateMessage(m)));
             results.push(...translated);
         }
+        log.exit('translateMessages', { translated: results.filter(r => r.wasTranslated).length });
         return results;
     }
 
@@ -196,6 +204,7 @@ class ChatTranslateService {
      * Clear the translation cache.
      */
     clearCache(): void {
+        log.state('clearCache', `cleared ${this.cache.size} entries`);
         this.cache.clear();
     }
 }

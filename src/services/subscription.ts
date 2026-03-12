@@ -14,6 +14,9 @@ import Purchases, {
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import type { LicenseTier } from '@/types';
+import { createLogger } from './logger';
+
+const log = createLogger('Subscription');
 
 // Read RevenueCat keys from app.json extra config
 const REVENUECAT_IOS_KEY = Constants.expoConfig?.extra?.revenueCatIosKey || '';
@@ -75,13 +78,13 @@ class SubscriptionService {
      */
     async initialize(): Promise<boolean> {
         if (this.initialized) return true;
+        log.entry('initialize', { platform: Platform.OS });
 
         try {
             const apiKey = Platform.OS === 'ios' ? REVENUECAT_IOS_KEY : REVENUECAT_ANDROID_KEY;
 
-            // ERR-AUDIT: Validate API key exists
             if (!apiKey) {
-                console.warn('[Subscription] No RevenueCat API key configured for', Platform.OS);
+                log.warn('initialize', 'No RevenueCat API key configured', { platform: Platform.OS });
                 return false;
             }
 
@@ -91,10 +94,11 @@ class SubscriptionService {
 
             await Purchases.configure({ apiKey });
             this.initialized = true;
+            log.exit('initialize', { success: true });
             return true;
 
         } catch (error) {
-            console.warn('[Subscription] Failed to initialize RevenueCat:', sanitizeSubError(error));
+            log.error('initialize', error);
             return false;
         }
     }
@@ -115,17 +119,20 @@ class SubscriptionService {
      * Get available subscription offerings.
      */
     async getOfferings(): Promise<SubscriptionOffering[]> {
-        // ERR-AUDIT: Safe guard — return empty if not initialized
         if (!this.initialized) {
-            console.warn('[Subscription] getOfferings called before initialization');
+            log.warn('getOfferings', 'called before initialization');
             return [];
         }
+        log.entry('getOfferings');
 
         try {
             const offerings = await Purchases.getOfferings();
-            if (!offerings.current) return [];
+            if (!offerings.current) {
+                log.exit('getOfferings', { count: 0 });
+                return [];
+            }
 
-            return [{
+            const mapped = [{
                 identifier: offerings.current.identifier,
                 title: 'Windy Pro',
                 description: 'Choose your plan',
@@ -142,8 +149,10 @@ class SubscriptionService {
                     rcPackage: pkg,
                 })),
             }];
+            log.exit('getOfferings', { count: mapped[0].packages.length });
+            return mapped;
         } catch (error) {
-            console.warn('[Subscription] Failed to get offerings:', sanitizeSubError(error));
+            log.error('getOfferings', error);
             return [];
         }
     }
@@ -155,9 +164,10 @@ class SubscriptionService {
      */
     async purchasePackage(pkg: PurchasesPackage): Promise<PurchaseResult> {
         this.ensureInitialized();
+        log.entry('purchasePackage', { pkgId: (pkg as any)?.identifier });
 
-        // RC-AUDIT: Prevent concurrent purchase attempts (double-tap)
         if (this.purchaseInProgress) {
+            log.warn('purchasePackage', 'blocked — purchase already in progress');
             return { success: false, tier: null, error: 'Purchase already in progress' };
         }
         this.purchaseInProgress = true;
@@ -165,19 +175,18 @@ class SubscriptionService {
         try {
             const { customerInfo } = await Purchases.purchasePackage(pkg);
             const tier = this.getTierFromCustomerInfo(customerInfo);
+            log.exit('purchasePackage', { tier });
             return { success: true, tier };
         } catch (error: any) {
-            // EC-AUDIT: User cancelled — not an error
             if (error.userCancelled) {
+                log.state('purchasePackage', 'user cancelled');
                 return { success: false, tier: null, cancelled: true };
             }
 
-            // EC-AUDIT: Handle store-specific errors with user-friendly messages
             const message = this.classifyPurchaseError(error);
-            console.warn('[Subscription] Purchase failed:', sanitizeSubError(error));
+            log.error('purchasePackage', error, { classified: message });
             return { success: false, tier: null, error: message };
         } finally {
-            // RC-AUDIT: Always release mutex, even on error
             this.purchaseInProgress = false;
         }
     }
@@ -188,12 +197,15 @@ class SubscriptionService {
      */
     async restorePurchases(): Promise<LicenseTier> {
         this.ensureInitialized();
+        log.entry('restorePurchases');
 
         try {
             const customerInfo = await Purchases.restorePurchases();
-            return this.getTierFromCustomerInfo(customerInfo);
+            const tier = this.getTierFromCustomerInfo(customerInfo);
+            log.exit('restorePurchases', { tier });
+            return tier;
         } catch (error) {
-            console.warn('[Subscription] Restore failed:', sanitizeSubError(error));
+            log.error('restorePurchases', error);
             throw new Error('Could not restore purchases. Please check your connection and try again.');
         }
     }
@@ -203,14 +215,16 @@ class SubscriptionService {
      * @returns Current active tier.
      */
     async checkEntitlements(): Promise<LicenseTier> {
-        // ERR-AUDIT: Gracefully return free if not initialized
         if (!this.initialized) return 'free';
+        log.entry('checkEntitlements');
 
         try {
             const customerInfo = await Purchases.getCustomerInfo();
-            return this.getTierFromCustomerInfo(customerInfo);
+            const tier = this.getTierFromCustomerInfo(customerInfo);
+            log.exit('checkEntitlements', { tier });
+            return tier;
         } catch (error) {
-            console.warn('[Subscription] Entitlements check failed:', sanitizeSubError(error));
+            log.error('checkEntitlements', error);
             return 'free';
         }
     }
@@ -219,27 +233,27 @@ class SubscriptionService {
      * Set the user ID for RevenueCat (for cross-device syncing).
      */
     async identify(userId: string): Promise<void> {
-        // EC-AUDIT: Validate userId is non-empty
         if (!userId?.trim()) {
-            console.warn('[Subscription] identify called with empty userId');
+            log.warn('identify', 'called with empty userId');
             return;
         }
+        log.entry('identify', { userId: userId.slice(0, 3) + '…' });
 
         try {
             await Purchases.logIn(userId.trim());
+            log.exit('identify');
         } catch (error) {
-            console.warn('[Subscription] Identify failed:', sanitizeSubError(error));
+            log.error('identify', error);
         }
     }
 
-    /**
-     * Log out the current user (revert to anonymous).
-     */
     async logout(): Promise<void> {
+        log.entry('logout');
         try {
             await Purchases.logOut();
+            log.exit('logout');
         } catch (error) {
-            console.warn('[Subscription] Logout failed:', sanitizeSubError(error));
+            log.error('logout', error);
         }
     }
 

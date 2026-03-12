@@ -5,6 +5,9 @@
  */
 import * as FileSystem from 'expo-file-system';
 import { ENDPOINTS, apiUrl } from '@/config/api';
+import { createLogger } from './logger';
+
+const log = createLogger('NetworkMonitor');
 
 const HEALTH_URL = apiUrl(ENDPOINTS.HEALTH);
 const PING_INTERVAL_MS = 30_000;

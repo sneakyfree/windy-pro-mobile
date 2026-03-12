@@ -9,6 +9,9 @@ import * as Device from 'expo-device';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { DeviceProfile, EngineConfig, EngineId, WindyTuneResult } from '@/types';
+import { createLogger } from './logger';
+
+const log = createLogger('WindyTune');
 
 /**
  * 🧬 M3.1.1 — Device capability detection

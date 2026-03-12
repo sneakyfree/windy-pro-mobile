@@ -16,6 +16,9 @@ import { cloudStorageClient, type CloudRecording } from './storage-cloud';
 import { localStorageService } from './storage-local';
 import { networkMonitor, type NetworkStatus } from './network-monitor';
 import type { Session, SessionSource } from '@/types';
+import { createLogger } from './logger';
+
+const log = createLogger('CloudSync');
 
 const QUEUE_KEY = 'windy_sync_queue';
 const LAST_SYNC_KEY = 'windy_last_sync';
@@ -181,7 +184,7 @@ class CloudSyncService {
                 }
             }
         } catch (error) {
-            console.warn('[CloudSync] Download failed:', error);
+            log.warn('Download', 'Download failed', error);
         }
 
         return { downloaded, skipped, conflicts };
@@ -203,7 +206,7 @@ class CloudSyncService {
 
             return download.status === 200 ? localPath : null;
         } catch (err) {
-            console.warn('[CloudSync] downloadAudio failed:', err);
+            log.warn('downloadAudio', 'downloadAudio failed', err);
             return null;
         }
     }
@@ -236,7 +239,7 @@ class CloudSyncService {
                 cloudUpdatedAt: cloudRecording.createdAt,
             };
         } catch (err) {
-            console.warn('[CloudSync] resolveConflict failed:', err);
+            log.warn('resolveConflict', 'resolveConflict failed', err);
             return { resolution: 'keep-cloud' };
         }
     }
@@ -460,7 +463,7 @@ class CloudSyncService {
             const raw = await AsyncStorage.getItem(QUEUE_KEY);
             this.queue = raw ? JSON.parse(raw) : [];
         } catch (err) {
-            console.warn('[CloudSync] loadQueue failed:', err);
+            log.warn('loadQueue', 'loadQueue failed', err);
             this.queue = [];
         }
     }
