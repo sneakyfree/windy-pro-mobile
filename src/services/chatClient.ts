@@ -216,6 +216,9 @@ class ChatClient {
     private pendingMessages: PendingMessage[] = [];
     private currentSyncState: SyncState = 'stopped';
 
+    // RC-AUDIT: Mutex to prevent concurrent initClient calls
+    private initPromise: Promise<void> | null = null;
+
     // ML-1: Screen reference counter — sync stops when no chat screens are mounted
     private activeScreens = 0;
 
@@ -431,8 +434,14 @@ class ChatClient {
         deviceId: string,
         homeserverUrl: string,
     ): Promise<AuthResult> {
+        // SEC-AUDIT: Validate homeserver URL even for pre-provisioned credentials
+        const urlError = validateHomeserverUrl(homeserverUrl);
+        if (urlError) {
+            return { success: false, error: urlError, errorCode: 'INVALID_HOMESERVER' };
+        }
+
         try {
-            this.session = { accessToken, userId, deviceId, homeserverUrl };
+            this.session = { accessToken, userId, deviceId, homeserverUrl: homeserverUrl.trim() };
             await this.persistSession();
             await this.initClient();
             return { success: true, userId };
@@ -470,12 +479,18 @@ class ChatClient {
             return { success: false, error: 'Not connected to chat' };
         }
         try {
-            // Upload file to Matrix content repository
+            // ERR-AUDIT: Check fetch response before using blob
             const response = await fetch(uri);
+            if (!response.ok) {
+                return { success: false, error: 'Could not load avatar image' };
+            }
             const blob = await response.blob();
+            if (!blob.size || blob.size > 10 * 1024 * 1024) {
+                return { success: false, error: blob.size ? 'Avatar too large (max 10 MB)' : 'Avatar file is empty' };
+            }
             const uploadResult = await this.client.uploadContent(blob, {
                 name: 'avatar.jpg',
-                type: 'image/jpeg',
+                type: blob.type || 'image/jpeg',
             });
             // Set the uploaded MXC URI as avatar
             const mxcUri = uploadResult?.content_uri || uploadResult;
@@ -492,6 +507,21 @@ class ChatClient {
     // ─── Client Initialization ──────────────────────────────────
 
     private async initClient(): Promise<void> {
+        // RC-AUDIT: Serialize concurrent init calls with a mutex
+        if (this.initPromise) {
+            await this.initPromise;
+            return;
+        }
+        if (!this.session) return;
+        this.initPromise = this._initClientInner();
+        try {
+            await this.initPromise;
+        } finally {
+            this.initPromise = null;
+        }
+    }
+
+    private async _initClientInner(): Promise<void> {
         if (!this.session) return;
         const sdk = await this.loadSdk();
 
@@ -824,6 +854,8 @@ class ChatClient {
         this.pendingMessages = [];
 
         for (const msg of toSend) {
+            // ERR-AUDIT: Track retry count — drop messages after 5 failed attempts
+            const retries = ((msg as any)._retryCount || 0) as number;
             try {
                 await this.client?.sendEvent(msg.roomId, 'm.room.message', {
                     msgtype: 'm.text',
@@ -833,8 +865,12 @@ class ChatClient {
                 if (__DEV__) console.log('[Chat] Flushed pending message:', msg.id);
             } catch (err) {
                 console.warn('[Chat] Failed to flush pending message:', sanitizeError(err));
-                // Re-queue failed messages
-                this.pendingMessages.push(msg);
+                if (retries < 5) {
+                    (msg as any)._retryCount = retries + 1;
+                    this.pendingMessages.push(msg);
+                } else {
+                    console.warn('[Chat] Dropping message after 5 retries:', msg.id);
+                }
             }
         }
     }

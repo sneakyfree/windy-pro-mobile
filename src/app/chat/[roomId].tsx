@@ -149,31 +149,35 @@ export default function ConversationScreen() {
         if (!text || !roomId || sendingRef.current) return; // RC-1: use ref guard
         sendingRef.current = true;
 
-        setSending(true);
-        setSendError(null);
+        if (isMounted.current) setSending(true);
+        if (isMounted.current) setSendError(null);
         savedInputRef.current = inputText;
-        setInputText('');
+        if (isMounted.current) setInputText('');
 
         const result = await chatClient.sendMessage(roomId, text, chatTranslateService.getSendLanguage());
 
         sendingRef.current = false;
-        setSending(false);
+        if (isMounted.current) setSending(false);
 
         if (!result.success) {
             if (result.pending) {
                 // Message queued — reload to show pending indicator
-                // (handled by the combined effect on next re-render)
             } else {
                 // Real failure — restore input text and show error
-                setInputText(savedInputRef.current);
-                setSendError(result.error || 'Failed to send message');
+                if (isMounted.current) setInputText(savedInputRef.current);
+                if (isMounted.current) setSendError(result.error || 'Failed to send message');
             }
         }
     };
 
     const handleRetrySend = () => {
+        // RC-AUDIT: Restore saved text and retry — inputText may have been cleared by handleSend
+        if (savedInputRef.current && isMounted.current) {
+            setInputText(savedInputRef.current);
+        }
         setSendError(null);
-        handleSend();
+        // Defer to allow inputText state to update before handleSend reads it
+        setTimeout(() => handleSend(), 0);
     };
 
     // PC-4: Debounced typing notifications (3s window)

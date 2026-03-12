@@ -43,6 +43,8 @@ export default function ChatHomeScreen() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [syncState, setSyncState] = useState<SyncState>(chatClient.getSyncState());
     const [createError, setCreateError] = useState<string | null>(null);
+    // PERF-AUDIT: Cache contacts outside render loop instead of calling per FlatList item
+    const [contacts, setContacts] = useState<ChatContact[]>([]);
 
     const userLang = useSettingsStore(s => s.defaultLanguage);
 
@@ -80,6 +82,8 @@ export default function ChatHomeScreen() {
         try {
             const dms = chatClient.getDMs();
             setRooms(dms);
+            // PERF-AUDIT: Cache contacts once per load
+            setContacts(chatClient.getContacts());
         } catch (err) {
             console.warn('[ChatHome] loadRooms error:', err);
         } finally {
@@ -93,8 +97,14 @@ export default function ChatHomeScreen() {
         const unsub = chatClient.onMessage(() => {
             const dms = chatClient.getDMs();
             setRooms(dms);
+            // PERF-AUDIT: Refresh contacts when room list changes
+            setContacts(chatClient.getContacts());
         });
-        return unsub;
+        return () => {
+            unsub();
+            // ML-AUDIT: Clear search debounce timer on unmount
+            if (searchDebounce.current) clearTimeout(searchDebounce.current);
+        };
     }, [loadRooms]);
 
     const onRefresh = useCallback(async () => {
@@ -298,9 +308,8 @@ export default function ChatHomeScreen() {
                                     {(item.name || '?')[0].toUpperCase()}
                                 </Text>
                             </View>
-                            {/* Presence dot — RC-4: use actual member presence */}
+                            {/* Presence dot — RC-4: use cached contacts */}
                             {(() => {
-                                const contacts = chatClient.getContacts();
                                 const contact = contacts.find(c => item.members.includes(c.userId));
                                 const memberPresence = contact?.presence || 'offline';
                                 return (

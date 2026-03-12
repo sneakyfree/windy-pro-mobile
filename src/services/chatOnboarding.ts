@@ -261,6 +261,17 @@ class ChatOnboardingService {
         deviceId: string;
         homeserverUrl: string;
     }): Promise<{ success: boolean; error?: string }> {
+        // SEC-AUDIT: Validate credentials are non-empty before storing
+        if (!credentials.accessToken || !credentials.userId || !credentials.homeserverUrl) {
+            return { success: false, error: 'Invalid credentials received from server' };
+        }
+
+        // RC-AUDIT: Don't double-login if already authenticated
+        if (chatClient.isLoggedIn() && chatClient.getUserId() === credentials.userId) {
+            await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
+            return { success: true };
+        }
+
         try {
             // Use chatClient's new pre-provisioned login method
             const result = await chatClient.loginWithCredentials(

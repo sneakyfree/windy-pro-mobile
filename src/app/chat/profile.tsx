@@ -66,6 +66,10 @@ export default function ChatProfileScreen() {
             setLoading(false);
         };
         checkLogin();
+        // ML-AUDIT: Clean up triple-tap timer on unmount
+        return () => {
+            if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+        };
     }, []);
 
     // ─── Triple-tap handler ─────────────────────────────────────

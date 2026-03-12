@@ -83,6 +83,16 @@ export default function ChatOnboardingScreen() {
         });
     }, [fadeAnim, slideAnim]);
 
+    // ERR-AUDIT: Allow users to go back / cancel if server is unreachable
+    const handleBack = () => {
+        if (step === 1) {
+            router.back();
+        } else if (step <= 3) {
+            // Go back one step (only before onboarding completes)
+            animateToStep((step - 1) as OnboardingStep);
+        }
+    };
+
     // ─── Step 1: Request Verification ───────────────────────────
 
     const handleRequestVerification = async () => {
@@ -526,6 +536,19 @@ export default function ChatOnboardingScreen() {
                     {/* Step indicator */}
                     {renderStepIndicator()}
 
+                    {/* ERR-AUDIT: Back/cancel button */}
+                    {step <= 3 && (
+                        <TouchableOpacity
+                            onPress={handleBack}
+                            style={{ paddingVertical: 8, paddingHorizontal: 4, minHeight: 44, justifyContent: 'center' }}
+                            accessibilityLabel={step === 1 ? 'Cancel' : 'Go back'}
+                            accessibilityRole="button"
+                        >
+                            <Text style={{ fontSize: 15, color: colors.accent, fontWeight: '600' }}>
+                                {step === 1 ? '← Cancel' : '← Back'}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                     {/* Animated step content */}
                     <Animated.View
                         style={{
