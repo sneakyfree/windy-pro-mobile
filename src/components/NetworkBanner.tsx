@@ -6,6 +6,8 @@ import { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { colors, spacing, borderRadius } from '@/theme';
+import { networkMonitor } from '@/services/network-monitor';
+import { syncManager } from '@/services/sync-manager';
 
 export function NetworkBanner() {
     const [isOffline, setIsOffline] = useState(false);
@@ -35,6 +37,11 @@ export function NetworkBanner() {
             } else if (wasOffline || isOffline) {
                 // Back online — show "back online" briefly
                 setIsOffline(false);
+
+                // 🔄 Immediate sync on reconnect — don't wait for 30s polling
+                networkMonitor.checkConnectivity().catch(() => {});
+                syncManager.processQueue().catch(() => {});
+
                 // Keep banner visible for 2s showing "back online"
                 onlineTimer.current = setTimeout(() => {
                     setWasOffline(false);

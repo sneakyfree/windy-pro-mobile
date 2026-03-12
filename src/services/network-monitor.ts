@@ -95,7 +95,7 @@ class NetworkMonitor {
             }
         } catch (err) {
             // Network error, timeout, or abort — expected when offline
-            if (__DEV__) console.warn('[NetworkMonitor] Connectivity check failed:', err);
+            log.warn('checkConnectivity', 'connectivity check failed');
         }
 
         this._setStatus('offline');
@@ -106,7 +106,7 @@ class NetworkMonitor {
         if (this._status !== newStatus) {
             this._status = newStatus;
             this._listeners.forEach(cb => {
-                try { cb(newStatus); } catch (err) { console.warn('[NetworkMonitor] Listener error:', err); }
+                try { cb(newStatus); } catch (err) { log.warn('_setStatus', 'listener error'); }
             });
         }
     }
@@ -187,7 +187,7 @@ class NetworkMonitor {
 
     private _notifyQueueReady(): void {
         if (this._onQueueReady) {
-            try { this._onQueueReady(); } catch (err) { console.warn('[NetworkMonitor] Queue ready handler error:', err); }
+            try { this._onQueueReady(); } catch (err) { log.warn('_notifyQueueReady', 'queue ready handler error'); }
         }
     }
 }

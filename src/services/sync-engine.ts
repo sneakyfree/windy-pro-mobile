@@ -184,12 +184,12 @@ class SyncEngine {
                         this.retryCount = 0;
                     } else {
                         failed++;
-                        console.error(`[Sync] ✗ ${session.id}: ${result.error}`);
+                        log.warn('startSync', `session ${session.id} upload failed: ${result.error}`);
                     }
                 } catch (err: unknown) {
                     failed++;
                     const errMsg = err instanceof Error ? err.message : String(err);
-                    console.error(`[Sync] ✗ ${session.id}:`, errMsg);
+                    log.warn('startSync', `session ${session.id} error`);
 
                     // If auth error, try refresh once
                     if (errMsg?.includes('Not authenticated')) {
@@ -204,7 +204,7 @@ class SyncEngine {
 
             this.lastSyncTimestamp = new Date().toISOString();
         } catch (error: any) {
-            console.error('[Sync] Sync cycle failed:', error);
+            log.error('startSync', error);
             this.retryCount++;
             this.onError?.(error.message || 'Sync failed');
         } finally {
@@ -276,7 +276,7 @@ class SyncEngine {
                 storageUsed: usage.totalBytes,
                 storageQuota: 10 * 1024 * 1024 * 1024, // 10 GB default
             };
-        } catch (err) { console.warn('[SyncEngine] Error:', err);
+        } catch (err) { log.warn('getSyncStatus', 'sync status check failed');
             return {
                 totalSessions: 0,
                 syncedSessions: 0,
@@ -311,7 +311,7 @@ class SyncEngine {
     async unregisterBackgroundSync(): Promise<void> {
         try {
             await BackgroundFetch.unregisterTaskAsync(SYNC_TASK_NAME);
-        } catch (err) { console.warn('[syncengine] Error:', err); }
+        } catch (err) { log.warn('unregisterBackgroundSync', 'unregister failed'); }
     }
 
     /**
@@ -341,7 +341,7 @@ TaskManager.defineTask(SYNC_TASK_NAME, async () => {
         return result.synced > 0
             ? BackgroundFetch.BackgroundFetchResult.NewData
             : BackgroundFetch.BackgroundFetchResult.NoData;
-    } catch (err) { console.warn('[SyncEngine] Error:', err);
+    } catch (err) { log.warn('backgroundTask', 'background sync failed');
         return BackgroundFetch.BackgroundFetchResult.Failed;
     }
 });

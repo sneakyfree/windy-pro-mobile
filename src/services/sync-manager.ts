@@ -35,6 +35,8 @@ const BACKGROUND_TASK_NAME = 'windy-background-sync';
 const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
 const SMALL_FILE_THRESHOLD = 5 * 1024 * 1024; // 5MB — uploadable on cellular
 const MAX_BATCH_SIZE = 10 * 1024 * 1024; // 10MB batch limit
+const MAX_QUEUE_SIZE = 500; // Prevent unbounded disk fill
+const QUEUE_WARNING_THRESHOLD = 100;
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -125,13 +127,13 @@ class SyncManager {
                     item.status = 'queued';
                 }
             }
-        } catch (err) { console.warn('[SyncManager] loadQueue failed:', err); this.queue = []; }
+        } catch (err) { log.warn('loadQueue', 'loadQueue failed'); this.queue = []; }
 
         // Load settings
         try {
             const raw = await AsyncStorage.getItem(SETTINGS_KEY);
             if (raw) this.settings = { ...this.settings, ...JSON.parse(raw) };
-        } catch (err) { console.warn('[SyncManager] loadSettings failed:', err); }
+        } catch (err) { log.warn('loadSettings', 'loadSettings failed'); }
 
         // Listen for network changes
         this.netInfoUnsubscribe = NetInfo.addEventListener(this.handleNetworkChange);
@@ -149,7 +151,7 @@ class SyncManager {
             if (restored) {
                 this.cloudSync().catch(() => {});
             }
-        } catch (err) { console.warn('[SyncManager] Cloud session restore failed:', err); }
+        } catch (err) { log.warn('initialize', 'cloud session restore failed'); }
 
         this.initialized = true;
         this.emit();
@@ -277,9 +279,15 @@ class SyncManager {
         try {
             const info = await FileSystem.getInfoAsync(params.filePath);
             fileSize = info.exists && 'size' in info ? (info as any).size : 0;
-        } catch (err) { console.warn('[SyncManager] getFileInfo failed:', err); return; }
+        } catch (err) { log.warn('addToQueue', 'getFileInfo failed'); return; }
 
         if (fileSize === 0) return;
+
+        // Queue size cap — prevent unbounded disk fill
+        if (this.queue.length >= MAX_QUEUE_SIZE) {
+            log.warn('addToQueue', `queue full (${MAX_QUEUE_SIZE} items) — rejecting new item`);
+            return;
+        }
 
         // Determine priority
         const priority: UploadPriority =
@@ -529,7 +537,7 @@ class SyncManager {
                     try {
                         const body = await res.json();
                         if (body.error) errorMsg = body.error;
-                    } catch (err) { console.warn('[SyncManager] chunk error parse failed:', err); }
+                    } catch (err) { log.warn('uploadChunked', 'chunk error parse failed'); }
 
                     if (isAuthError(res.status)) {
                         item.error = 'Session expired — please log in again';
@@ -575,7 +583,7 @@ class SyncManager {
                     return 'skip'; // Same or older — skip upload
                 }
             }
-        } catch (err) { console.warn('[SyncManager] checkConflict failed:', err); }
+        } catch (err) { log.warn('checkConflict', 'checkConflict failed'); }
         return 'upload';
     }
 
@@ -624,7 +632,7 @@ class SyncManager {
                         item.progress = 100;
                     }
                 }
-            } catch (err) { console.warn('[SyncManager] batch upload failed:', err); }
+            } catch (err) { log.warn('batchSmallFiles', 'batch upload failed'); }
         }
 
         await this.persistQueue();
@@ -640,7 +648,7 @@ class SyncManager {
                 stopOnTerminate: false,
                 startOnBoot: true,
             });
-        } catch (err) { console.warn('[SyncManager] registerBackgroundTask failed:', err); }
+        } catch (err) { log.warn('registerBackgroundTask', 'registerBackgroundTask failed'); }
     }
 
     // ─── Notifications ──────────────────────────────────────────
@@ -657,7 +665,7 @@ class SyncManager {
                 },
                 trigger: null,
             });
-        } catch (err) { console.warn("[SyncManager] Error:", err); }
+        } catch (err) { log.warn('notifyPendingSync', 'notification schedule failed'); }
     }
 
     // ─── Settings ───────────────────────────────────────────────
@@ -718,7 +726,7 @@ class SyncManager {
     private emit(): void {
         const state = this.getState();
         this.listeners.forEach(cb => {
-            try { cb(state); } catch (err) { console.warn("[SyncManager] Error:", err); }
+            try { cb(state); } catch (err) { log.warn('emit', 'listener error'); }
         });
     }
 
@@ -770,7 +778,7 @@ try {
 
             await syncManager.processQueue();
             return BackgroundFetch.BackgroundFetchResult.NewData;
-        } catch (err) { console.warn("[SyncManager] Error:", err);
+        } catch (err) { log.warn('backgroundTask', 'background sync failed');
             return BackgroundFetch.BackgroundFetchResult.Failed;
         }
     });

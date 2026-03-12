@@ -8,7 +8,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Alert, Platform, BackHandler } from 'react-native';
+import { View, StyleSheet, Alert, Platform, BackHandler, AppState, AppStateStatus } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -26,6 +26,7 @@ import { offlinePackService } from '@/services/offline-packs';
 import { subscriptionService } from '@/services/subscription';
 import { networkMonitor } from '@/services/network-monitor';
 import { cloudApi } from '@/services/cloudApi';
+import { syncManager } from '@/services/sync-manager';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkBanner } from '@/components/NetworkBanner';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -140,6 +141,16 @@ export default function RootLayout() {
       return false;
     });
     return () => handler.remove();
+  }, []);
+
+  // 🔄 Foreground sync: when app comes back from background + online → sync immediately
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (nextState === 'active' && networkMonitor.isOnline) {
+        syncManager.processQueue().catch(() => {});
+      }
+    });
+    return () => subscription.remove();
   }, []);
 
   // Push notification tap routing

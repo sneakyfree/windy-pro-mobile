@@ -68,6 +68,15 @@ export function SyncStatusBanner() {
                 </View>
             </View>
 
+            {/* Queue overflow warning */}
+            {pendingCount > 100 && !isSyncing && (
+                <View style={styles.warningRow}>
+                    <Text style={styles.warningText}>
+                        ⚠️ {pendingCount} items queued — connect to Wi-Fi to sync
+                    </Text>
+                </View>
+            )}
+
             {/* Progress bar */}
             {isSyncing && (
                 <View style={styles.progressTrack}>
@@ -142,5 +151,17 @@ const styles = StyleSheet.create({
         height: '100%',
         backgroundColor: colors.accent,
         borderRadius: 2,
+    },
+    warningRow: {
+        marginTop: spacing.xs,
+        paddingVertical: 4,
+        paddingHorizontal: spacing.xs,
+        backgroundColor: 'rgba(234, 179, 8, 0.15)',
+        borderRadius: borderRadius.sm,
+    },
+    warningText: {
+        color: '#eab308',
+        fontSize: 11,
+        fontWeight: '600',
     },
 });

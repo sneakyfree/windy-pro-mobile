@@ -88,7 +88,7 @@ class OfflinePackService {
 
             await this.saveMeta();
         } catch (err) {
-            console.error('[OfflinePacks] Init error:', err);
+            log.error('initialize', err);
             this.packs = AVAILABLE_PACKS.map(p => ({
                 ...p, downloadedBytes: 0, status: 'available' as const, progress: 0,
             }));
@@ -160,7 +160,7 @@ class OfflinePackService {
                 pack.status = 'error';
             }
         } catch (err) {
-            console.error(`[OfflinePacks] Download ${code} failed:`, err);
+            log.error('downloadPack', err);
             pack.status = 'error';
             pack.progress = 0;
             this.activeDownloads.delete(code);
@@ -223,7 +223,7 @@ class OfflinePackService {
     private async saveMeta(): Promise<void> {
         try {
             await AsyncStorage.setItem(PACKS_META_KEY, JSON.stringify(this.packs));
-        } catch (err) { console.warn("[OfflinePacks] Error:", err); }
+        } catch (err) { log.warn('saveMeta', 'save metadata failed'); }
     }
 }
 

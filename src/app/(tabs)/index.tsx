@@ -763,7 +763,9 @@ export default function RecordScreen() {
                             <Text style={styles.transcriptErrorEmoji}>⚠️</Text>
                             <Text style={styles.transcriptErrorText}>{transcriptionError}</Text>
                             <Text style={styles.transcriptErrorHint}>
-                                Check Settings → Server URL is reachable
+                                {transcriptionError?.toLowerCase().includes('network') || transcriptionError?.toLowerCase().includes('offline')
+                                    ? "You're offline — recording saved locally. Transcription will run when connected."
+                                    : 'Check Settings → Server URL is reachable'}
                             </Text>
                         </View>
                     ) : fullText ? (
