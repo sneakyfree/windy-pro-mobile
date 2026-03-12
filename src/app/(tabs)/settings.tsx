@@ -368,30 +368,6 @@ export default function SettingsScreen() {
               <Text style={styles.navRowLabel}>📹 Video Recorder</Text>
               <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
-            <Pressable style={styles.navRow} onPress={() => router.push('/photo-translate')}
-              accessibilityLabel="Photo Translate" accessibilityRole="button" accessibilityHint="Translate text from photos"
-            >
-              <Text style={styles.navRowLabel}>📸 Photo Translate</Text>
-              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
-            </Pressable>
-            <Pressable style={styles.navRow} onPress={() => router.push('/batch-translate')}
-              accessibilityLabel="Batch Translate" accessibilityRole="button" accessibilityHint="Translate multiple texts at once"
-            >
-              <Text style={styles.navRowLabel}>📋 Batch Translate</Text>
-              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
-            </Pressable>
-            <Pressable style={styles.navRow} onPress={() => router.push('/pronunciation')}
-              accessibilityLabel="Pronunciation Guide" accessibilityRole="button" accessibilityHint="Get pronunciation for words"
-            >
-              <Text style={styles.navRowLabel}>🗣️ Pronunciation</Text>
-              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
-            </Pressable>
-            <Pressable style={styles.navRow} onPress={() => router.push('/phrasebook')}
-              accessibilityLabel="Phrasebook" accessibilityRole="button" accessibilityHint="Saved phrases and translations"
-            >
-              <Text style={styles.navRowLabel}>📖 Phrasebook</Text>
-              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
-            </Pressable>
           </SettingsSection>
 
           {/* UI */}

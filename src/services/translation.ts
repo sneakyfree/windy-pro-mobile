@@ -117,9 +117,13 @@ class TranslationService {
 
         // Cloud translation
         try {
+            const token = (() => { try { return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || ''; } catch { return ''; } })();
             const response = await fetchWithTimeout(TRANSLATE_API, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify({ text: safeText, source: from, target: to }),
             });
 
@@ -225,9 +229,13 @@ class TranslationService {
      */
     async detectLanguage(text: string): Promise<{ language: string; confidence: number }> {
         try {
+            const token = (() => { try { return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || ''; } catch { return ''; } })();
             const response = await fetch(DETECT_API, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify({ text }),
             });
 

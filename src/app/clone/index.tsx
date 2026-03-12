@@ -252,7 +252,10 @@ export default function CloneDashboardScreen() {
         const poll = setInterval(async () => {
             polls++;
             try {
-                const res = await fetch(`${CLONE_API}/status/${jobId}`);
+                const token = (() => { try { return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || ''; } catch { return ''; } })();
+                const res = await fetch(`${CLONE_API}/status/${jobId}`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
                 const data = await res.json();
 
                 if (data.status === 'complete' && data.voice_id) {
