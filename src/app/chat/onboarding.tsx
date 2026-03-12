@@ -649,6 +649,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1.5,
         borderColor: 'transparent',
+        minHeight: 44, // VQ: iOS 44pt minimum tap target
     },
     toggleActive: {
         borderColor: colors.accent,
@@ -684,7 +685,8 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     otpBox: {
-        width: 48,
+        flex: 1, // VQ: Use flex instead of fixed width for small-screen compat
+        maxWidth: 52,
         height: 56,
         borderRadius: 12,
         backgroundColor: colors.surface,

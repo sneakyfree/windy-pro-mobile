@@ -608,7 +608,9 @@ const styles = StyleSheet.create({
     infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingVertical: 8,
+        alignItems: 'center', // VQ: vertical center for consistent layout
+        paddingVertical: 10,
+        minHeight: 44, // VQ: iOS 44pt minimum tap target
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: colors.borderLight,
     },

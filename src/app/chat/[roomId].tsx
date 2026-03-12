@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
         paddingTop: 6,
         borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: 'rgba(255,255,255,0.2)',
+        borderTopColor: 'rgba(255,255,255,0.35)', // VQ: improved contrast for dark/light bubbles
     },
     translationBadge: {
         fontSize: 11,
@@ -517,6 +517,7 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: colors.textPrimary,
         maxHeight: 100,
+        minHeight: 44, // VQ: iOS 44pt minimum
         borderWidth: 1,
         borderColor: colors.borderLight,
     },

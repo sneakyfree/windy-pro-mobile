@@ -392,6 +392,7 @@ const styles = StyleSheet.create({
         color: colors.textPrimary,
         borderWidth: 1,
         borderColor: colors.borderLight,
+        minHeight: 44, // VQ: iOS 44pt minimum tap target
     },
 
     searchResults: {
