@@ -166,14 +166,33 @@ export default function SubscriptionScreen() {
                     );
                 }
             } else {
-                // Fallback to web purchase URL
-                const url = await licenseService.getPurchaseUrl(`device-${Date.now().toString(36)}`);
-                await Linking.openURL(url);
+                // Fallback: Stripe Checkout via web API
+                const response = await fetch(
+                    'https://windypro.thewindstorm.uk/api/v1/payments/create-checkout',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            tier: plan.tier,
+                            successUrl: 'windypro://subscription?status=success',
+                            cancelUrl: 'windypro://subscription?status=cancel',
+                        }),
+                    }
+                );
+                const data: Record<string, unknown> = await response.json();
+                const checkoutUrl = data.url as string | undefined;
+                if (checkoutUrl) {
+                    await Linking.openURL(checkoutUrl);
+                } else {
+                    throw new Error((data.error as string) || 'Could not create checkout session');
+                }
             }
-        } catch (err: any) {
-            if (!err?.userCancelled) {
+        } catch (err: unknown) {
+            const e = err as Record<string, unknown> | null;
+            if (!e?.userCancelled) {
                 haptic.error();
-                Alert.alert('Error', 'Could not complete purchase. Please try again.');
+                const msg = (e?.message as string) || 'Could not complete purchase. Please try again.';
+                Alert.alert('Purchase Failed', msg);
             }
         } finally {
             setPurchasing(null);
@@ -221,9 +240,9 @@ export default function SubscriptionScreen() {
                     'plain-text'
                 );
             }
-        } catch (err) {
+        } catch (err: unknown) {
             haptic.error();
-            Alert.alert('Error', 'Could not restore purchases. Please try again.');
+            Alert.alert('Restore Failed', 'Could not restore purchases. Please try again.');
         } finally {
             setRestoring(false);
         }

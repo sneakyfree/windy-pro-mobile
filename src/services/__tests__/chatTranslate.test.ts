@@ -34,15 +34,16 @@ import type { ChatMessage } from '../chatClient';
 
 // Helper: create a ChatMessage
 function makeMsg(opts: Partial<ChatMessage> & { body: string }): ChatMessage {
+    const { body, ...rest } = opts;
     return {
         eventId: `evt-${Math.random().toString(36).slice(2, 8)}`,
         roomId: '!room:matrix.org',
         sender: '@other:matrix.org',
-        body: opts.body,
+        body,
         timestamp: Date.now(),
         type: 'text',
         isOwn: false,
-        ...opts,
+        ...rest,
     };
 }
 
