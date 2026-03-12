@@ -15,6 +15,7 @@ import { feedbackService } from '@/services/feedback';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import type { SessionSummary, StorageUsage } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { INPUT_LIMITS } from '@/utils/validation';
 
 import { apiUrl } from '@/config/api';
 
@@ -400,6 +401,7 @@ export default function HistoryScreen() {
             value={searchQuery}
             onChangeText={handleSearch}
             returnKeyType="search"
+            maxLength={INPUT_LIMITS.SEARCH_QUERY}
             accessibilityLabel="Search transcripts"
             accessibilityHint="Type to filter recording history"
           />

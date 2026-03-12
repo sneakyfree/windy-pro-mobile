@@ -12,6 +12,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
 import { cloudApi } from '@/services/cloudApi';
+import { INPUT_LIMITS, validateEmail, validatePassword } from '@/utils/validation';
 
 export default function RegisterScreen() {
     const [email, setEmail] = useState('');
@@ -25,16 +26,18 @@ export default function RegisterScreen() {
             setError('Please fill in all fields');
             return;
         }
+        const emailCheck = validateEmail(email);
+        if (!emailCheck.valid) {
+            setError(emailCheck.error!);
+            return;
+        }
         if (password !== confirmPassword) {
             setError('Passwords do not match');
             return;
         }
-        if (password.length < 8) {
-            setError('Password must be at least 8 characters');
-            return;
-        }
-        if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-            setError('Password must include uppercase, lowercase, and a number');
+        const pwCheck = validatePassword(password);
+        if (!pwCheck.valid) {
+            setError(pwCheck.error!);
             return;
         }
 
@@ -96,6 +99,7 @@ export default function RegisterScreen() {
                             autoCapitalize="none"
                             autoCorrect={false}
                             editable={!loading}
+                            maxLength={INPUT_LIMITS.EMAIL}
                             accessibilityLabel="Email input"
                         />
 
@@ -108,6 +112,7 @@ export default function RegisterScreen() {
                             placeholderTextColor={colors.textTertiary}
                             secureTextEntry
                             editable={!loading}
+                            maxLength={INPUT_LIMITS.PASSWORD}
                             accessibilityLabel="Password input"
                         />
 
@@ -120,6 +125,7 @@ export default function RegisterScreen() {
                             placeholderTextColor={colors.textTertiary}
                             secureTextEntry
                             editable={!loading}
+                            maxLength={INPUT_LIMITS.PASSWORD}
                             accessibilityLabel="Confirm password input"
                         />
 

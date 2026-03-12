@@ -30,6 +30,7 @@ import type { StorageUsage } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { syncManager } from '@/services/sync-manager';
 import { getTranscriptionServerUrl, setTranscriptionServerUrl } from '@/services/transcription';
+import { INPUT_LIMITS, validateUrl } from '@/utils/validation';
 
 const AUDIO_QUALITY_PRESETS = [
   { id: 'low' as const, label: '🟢 Low', desc: '16 kHz · small files', color: '#22c55e' },
@@ -559,6 +560,11 @@ export default function SettingsScreen() {
                 accessibilityLabel="Transcription server URL"
                 onEndEditing={async () => {
                   const url = serverUrl.trim() || 'https://windypro.thewindstorm.uk';
+                  const urlCheck = validateUrl(url);
+                  if (!urlCheck.valid) {
+                    Alert.alert('Invalid URL', urlCheck.error);
+                    return;
+                  }
                   setServerUrl(url);
                   setTranscriptionServerUrl(url);
                   await AsyncStorage.setItem(SERVER_URL_KEY, url);
@@ -570,6 +576,7 @@ export default function SettingsScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
+                maxLength={INPUT_LIMITS.SERVER_URL}
               />
               <Pressable
                 style={styles.serverResetBtn}

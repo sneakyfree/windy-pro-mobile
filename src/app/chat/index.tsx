@@ -8,6 +8,7 @@ import {
     View, Text, FlatList, TouchableOpacity, StyleSheet,
     RefreshControl, ActivityIndicator, TextInput, Alert,
 } from 'react-native';
+import { INPUT_LIMITS } from '@/utils/validation';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
@@ -229,6 +230,7 @@ export default function ChatHomeScreen() {
                     placeholderTextColor={colors.textTertiary}
                     autoCapitalize="none"
                     autoCorrect={false}
+                    maxLength={INPUT_LIMITS.SEARCH_QUERY}
                     accessibilityLabel="Search for users to start a conversation"
                 />
             </View>

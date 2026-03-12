@@ -7,8 +7,10 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    ScrollView, ActivityIndicator, Switch, Alert,
+    KeyboardAvoidingView, Platform, ScrollView, Alert,
+    ActivityIndicator, Image, Switch,
 } from 'react-native';
+import { INPUT_LIMITS } from '@/utils/validation';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
@@ -250,6 +252,7 @@ export default function ChatProfileScreen() {
                                     placeholderTextColor={colors.textTertiary}
                                     autoCapitalize="none"
                                     editable={!authLoading}
+                                    maxLength={INPUT_LIMITS.SERVER_URL}
                                     accessibilityLabel="Homeserver URL"
                                     accessibilityHint="Enter your Matrix homeserver URL, must start with https"
                                 />
@@ -264,6 +267,7 @@ export default function ChatProfileScreen() {
                                     autoCapitalize="none"
                                     autoCorrect={false}
                                     editable={!authLoading}
+                                    maxLength={INPUT_LIMITS.USERNAME}
                                     accessibilityLabel="Username"
                                 />
 
@@ -276,6 +280,7 @@ export default function ChatProfileScreen() {
                                     placeholderTextColor={colors.textTertiary}
                                     secureTextEntry
                                     editable={!authLoading}
+                                    maxLength={INPUT_LIMITS.PASSWORD}
                                     accessibilityLabel="Password"
                                 />
 

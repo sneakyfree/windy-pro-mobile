@@ -12,9 +12,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    ScrollView, ActivityIndicator, Animated, Keyboard,
-    KeyboardAvoidingView, Platform, Alert,
+    KeyboardAvoidingView, Platform, ScrollView, Alert,
+    ActivityIndicator, Animated, Keyboard,
 } from 'react-native';
+import { INPUT_LIMITS, validatePhone, validateEmail } from '@/utils/validation';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -310,6 +311,7 @@ export default function ChatOnboardingScreen() {
                 autoCorrect={false}
                 editable={!loading}
                 autoFocus
+                maxLength={identifierType === 'phone' ? INPUT_LIMITS.PHONE : INPUT_LIMITS.EMAIL}
                 accessibilityLabel={identifierType === 'phone' ? 'Phone number' : 'Email address'}
             />
 

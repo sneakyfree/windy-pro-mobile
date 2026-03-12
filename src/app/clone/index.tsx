@@ -647,6 +647,7 @@ export default function CloneDashboardScreen() {
                                 onChangeText={setTestText}
                                 multiline
                                 numberOfLines={3}
+                                maxLength={500}
                                 placeholder="Enter text to speak..."
                                 placeholderTextColor={colors.textTertiary}
                             />
