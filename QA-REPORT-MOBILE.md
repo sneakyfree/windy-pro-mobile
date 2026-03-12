@@ -1,227 +1,247 @@
-# QA Report — Windy Pro Mobile
-**Date:** 2026-03-11  
-**Auditor:** Automated QA Agent  
-**Commit:** `a6a657f` (main)
+# 🌪️ QA Report — Windy Pro Mobile
+
+**Date:** 2026-03-12  
+**Commit:** `30fd14f` (main)  
+**Version:** 2.0.0 (build 9)
 
 ---
 
-## 1. Build Status
-
-### TypeScript (`npx tsc --noEmit`)
-**Result:** ✅ PASS (0 errors)  
-> Last error (TS2783 duplicate `body` in `chatTranslate.test.ts`) was fixed in commit `a6a657f`.  
-> TSC could not be re-verified this session due to system resource exhaustion from zombie processes, but the fix is deterministic.
-
-### Jest (`npx jest --forceExit`)
-**Result:** ✅ PASS (268/268 tests, 14 suites)  
-> Last verified run: 100% pass rate. Could not re-run due to same resource issue.
-
----
-
-## 2. Screen Inventory
-
-### Tab Screens (6 tabs)
-
-| Tab | File | Loading | Empty State | Pull-to-Refresh | Error Handling | KAV |
-|-----|------|---------|-------------|-----------------|----------------|-----|
-| 🎤 Record | `(tabs)/index.tsx` | ✅ Processing state | ✅ Placeholder text | — (not a list) | ✅ Alert + error state | — |
-| 📷 Camera | `(tabs)/camera.tsx` | ✅ ActivityIndicator | ✅ Permission gate | — | ✅ try/catch + Alert | — |
-| 📋 History | `(tabs)/history.tsx` | ✅ FlatList refreshing | ✅ "No recordings yet" | ✅ onRefresh | ✅ Alert on load fail | — |
-| 🧬 Clone | `(tabs)/clone-data.tsx` | ✅ ActivityIndicator | ✅ ListEmptyComponent | ✅ RefreshControl | ✅ Alert | — |
-| 💬 Chat | `(tabs)/chat.tsx` | ✅ ActivityIndicator | ✅ "No conversations" | ✅ RefreshControl | ✅ try/catch | — |
-| ⚙️ Settings | `(tabs)/settings.tsx` | — (static) | — (static) | — | ✅ try/catch | — |
-
-### Modal/Push Screens (25 screens)
-
-| Screen | File | Loading | Empty | Error | Reachable From |
-|--------|------|---------|-------|-------|----------------|
-| Onboarding | `onboarding/index.tsx` | — | — | ✅ ScreenErrorBoundary | First launch auto |
-| Session Detail | `session/[id].tsx` | ✅ | ✅ | ✅ Alert | History tap |
-| Translate | `translate/index.tsx` | ✅ | ✅ | ✅ Alert | Settings, deep link |
-| Clone | `clone/index.tsx` | ✅ | — | ✅ Alert | Settings |
-| OCR | `ocr/index.tsx` | ✅ | — | ✅ Alert | Translate screen |
-| Subscription | `subscription/index.tsx` | — (static cards) | — | ✅ Alert | Settings, cloud, deep link |
-| Video | `video/index.tsx` | ✅ | — | ✅ Alert | Settings |
-| App Store | `appstore/index.tsx` | — (static) | — | — | Settings |
-| Quick Translate | `quick-translate.tsx` | ✅ | — | ✅ Alert | Deep link |
-| Cloud | `cloud/index.tsx` | ✅ | ✅ "No cloud files" | ✅ Alert | Settings tab? ⚠️ |
-| Chat Home | `chat/index.tsx` | ✅ | ✅ | ✅ | Chat tab |
-| Chat Room | `chat/[roomId].tsx` | ✅ | ✅ | ✅ Alert | Chat contact tap |
-| Chat Profile | `chat/profile.tsx` | ✅ | — | ✅ Alert | Chat settings icon |
-| Auth Login | `auth/login.tsx` | ✅ | — | ✅ Alert | Cloud sign-in |
-| Auth Register | `auth/register.tsx` | ✅ | — | ✅ Alert | Login screen |
-| Privacy Policy | `legal/privacy.tsx` | — (static) | — | — | Settings, App Store |
-| Terms of Service | `legal/terms.tsx` | — (static) | — | — | Settings, App Store |
-| **Batch Translate** | `batch-translate/index.tsx` | ✅ | — | ✅ | **⚠️ NOT LINKED** |
-| **Photo Translate** | `photo-translate/index.tsx` | ✅ | — | ✅ | **⚠️ NOT LINKED** |
-| **Pronunciation** | `pronunciation/index.tsx` | ✅ | — | ✅ | **⚠️ NOT LINKED** |
-| **Phrasebook** | `phrasebook/index.tsx` | — | — | — | **⚠️ NOT LINKED** |
-| **Camera Link** | `camera-link/index.tsx` | — | — | — | **⚠️ NOT LINKED** |
-| Clone Data | `clone-data/index.tsx` | ✅ | ✅ | ✅ | Clone Data tab |
-
----
-
-## 3. TODOs / FIXMEs / HACKs
-
-| File | Line | Content |
-|------|------|---------|
-| `_layout.tsx` | 157 | `// License activation: windypro://license?key=XXX` (comment, not a TODO) |
-
-**Total: 0 actionable items** — all previous TODOs were resolved during hardening.
-
----
-
-## 4. Remaining `catch (err: any)` (10 files)
-
-| File | Count |
-|------|-------|
-| `EnginePickerSheet.tsx` | 1 |
-| `(tabs)/camera.tsx` | Multiple |
-| `quick-translate.tsx` | 1 |
-| `video/index.tsx` | Multiple |
-| `fetch-timeout.ts` | 1 |
-| `translate/index.tsx` | Multiple |
-| `sync-manager.ts` | Multiple |
-| `sync-engine.ts` | Multiple |
-| `license.test.ts` | 1 |
-
-> These should be migrated to `catch (err: unknown)` for type safety.
-
----
-
-## 5. Hardcoded URLs & Config Values
-
-### API URLs (all pointing to production)
-
-| URL | Used In |
-|-----|---------|
-| `https://windypro.thewindstorm.uk` | `config/api.ts` (API_BASE_URL) |
-| `https://windypro.thewindstorm.uk/api/voice-clone` | `clone/index.tsx` |
-| `https://windypro.thewindstorm.uk/user/history` | `history.tsx` |
-| `https://windypro.thewindstorm.uk/user/favorites` | `history.tsx` |
-| `https://windypro.thewindstorm.uk/api/v1/translate` | `batch-translate/index.tsx`, `pronunciation/index.tsx` |
-| `https://windypro.thewindstorm.uk/api/v1/ocr` | `photo-translate/index.tsx` |
-| `https://windypro.thewindstorm.uk/api/v1/translate/text` | `photo-translate/index.tsx` |
-| `https://windypro.thewindstorm.uk/api/v1/payments/create-checkout` | `subscription/index.tsx` |
-| `https://windypro.thewindstorm.uk/models` | `offline-packs.ts`, `windy-tune.ts` |
-| `https://windypro.thewindstorm.uk/api/v1/recordings/upload` | `clone-bundle.ts` |
-| `https://vision.googleapis.com/v1/images:annotate` | `ocr.ts` |
-| `https://huggingface.co/ggerganov/whisper.cpp/resolve/main` | `engine-download.ts` |
-| `https://matrix.org` | `chatClient.ts`, `chat/profile.tsx` |
-| `https://apps.apple.com/app/windy-pro/id0000000000` | `appstore/index.tsx` ⚠️ **PLACEHOLDER** |
-| `https://play.google.com/store/apps/details?id=uk.thewindstorm.windypro` | `appstore/index.tsx` |
-
-> ⚠️ **Issue:** `config/api.ts` exports `API_BASE_URL` but 7 screens define their own API URLs instead of using it. These should be centralized.
-
-> ⚠️ **Issue:** iOS App Store URL contains placeholder ID `id0000000000`.
-
----
-
-## 6. Unwired / Inaccessible Features
-
-| Feature | Screen | Status |
-|---------|--------|--------|
-| **Batch Translate** | `batch-translate/index.tsx` | ⚠️ Screen exists but no navigation link from UI |
-| **Photo Translate** | `photo-translate/index.tsx` | ⚠️ Screen exists but no navigation link from UI |
-| **Pronunciation** | `pronunciation/index.tsx` | ⚠️ Screen exists but no navigation link from UI |
-| **Phrasebook** | `phrasebook/index.tsx` | ⚠️ Screen exists but no navigation link from UI |
-| **Camera Link** | `camera-link/index.tsx` | ⚠️ Screen exists but no navigation link from UI |
-| **Cloud** | `cloud/index.tsx` | ⚠️ No direct nav link found in tabs/settings |
-
-> 5 fully-built screens are unreachable from any UI navigation path. They can only be accessed via direct deep links or URL bar.
-
----
-
-## 7. Navigation Graph
+## 1. TypeScript Compilation
 
 ```
-Tab Bar
-├── 🎤 Record (index.tsx)
-│   └── Session Detail (session/[id].tsx)
-├── 📷 Camera (camera.tsx)
-├── 📋 History (history.tsx)
-│   └── Session Detail (session/[id].tsx)
-├── 🧬 Clone Data (clone-data.tsx)
-├── 💬 Chat (chat.tsx → chat/index.tsx)
-│   ├── Chat Room (chat/[roomId].tsx)
-│   └── Chat Profile (chat/profile.tsx)
-└── ⚙️ Settings (settings.tsx)
-    ├── Translate (translate/index.tsx)
-    │   └── OCR (ocr/index.tsx)
-    ├── Clone (clone/index.tsx)
-    ├── Video (video/index.tsx)
-    ├── Subscription (subscription/index.tsx)
-    ├── App Store (appstore/index.tsx)
-    │   ├── Privacy Policy (legal/privacy.tsx)
-    │   └── Terms (legal/terms.tsx)
-    ├── Privacy Policy (legal/privacy.tsx)
-    └── Terms (legal/terms.tsx)
-
-Deep Links Only:
-├── windypro://translate → Translate
-├── windypro://translate?text=... → Quick Translate
-├── windypro://license?key=... → License activation
-├── windypro://session/ID → Session Detail
-├── windypro://clone → Clone
-├── windypro://subscribe → Subscription
-
-Auto:
-├── First Launch → Onboarding (onboarding/index.tsx)
-
-UNREACHABLE FROM UI:
-├── batch-translate/index.tsx
-├── photo-translate/index.tsx
-├── pronunciation/index.tsx
-├── phrasebook/index.tsx
-└── camera-link/index.tsx
+npx tsc --noEmit
 ```
+
+| Result | Details |
+|--------|---------|
+| ✅ **0 errors** | Clean compilation |
+| ✅ **0 warnings** | No type issues |
 
 ---
 
-## 8. Keyboard Avoidance
+## 2. Test Suite
 
-| Screen | Has KeyboardAvoidingView | Has Text Input |
-|--------|--------------------------|----------------|
-| `chat/[roomId].tsx` | ✅ | ✅ Message input |
-| `quick-translate.tsx` | ✅ | ✅ Text input |
-| `auth/login.tsx` | ✅ | ✅ Email/password |
-| `auth/register.tsx` | ✅ | ✅ Email/password |
-| `translate/index.tsx` | ✅ | ✅ Text input |
-| `(tabs)/history.tsx` | ❌ | ✅ Search bar |
-| `(tabs)/settings.tsx` | ❌ | ✅ Server URL input |
-| `chat/index.tsx` | ❌ | ✅ Search bar |
-| `chat/profile.tsx` | ❌ | ✅ Username/homeserver |
-| `batch-translate/index.tsx` | ❌ | ✅ Multiple text inputs |
+```
+npx jest --passWithNoTests --forceExit
+```
 
-> ⚠️ 5 screens with text inputs don't use KeyboardAvoidingView. These rely on scroll-to-input behavior which may not work reliably on all Android devices.
+| Metric | Count |
+|--------|-------|
+| Test Suites | **14 passed**, 14 total |
+| Tests | **268 passed**, 268 total |
+| Snapshots | 0 total |
+| Time | ~5.2s |
+
+⚠️ Jest emits a "worker process failed to exit gracefully" warning — caused by active timers in services (not a test failure, just leaky teardown).
+
+---
+
+## 3. Screen Inventory
+
+### Tab Screens (6)
+
+| Screen | File | Lines | Loading | Error | Empty |
+|--------|------|-------|---------|-------|-------|
+| 🎤 Record | `(tabs)/index.tsx` | 1144 | ❌ | ✅ 58 | ❌ |
+| 📷 Camera | `(tabs)/camera.tsx` | 619 | ❌ | ✅ 25 | ✅ 2 |
+| 📋 History | `(tabs)/history.tsx` | 806 | ✅ 6 | ✅ 28 | ✅ 11 |
+| 🧬 Clone | `(tabs)/clone-data.tsx` | 4 | — | — | — |
+| 💬 Chat | `(tabs)/chat.tsx` | 4 | — | — | — |
+| ⚙️ Settings | `(tabs)/settings.tsx` | 779 | ✅ 3 | ✅ 32 | ✅ 2 |
+
+> `chat.tsx` and `clone-data.tsx` are 4-line re-export stubs pointing to actual screen files.
+
+### Secondary Screens (25)
+
+| Screen | File | Lines | Loading | Error | Empty | Reachable? |
+|--------|------|-------|---------|-------|-------|------------|
+| Translate | `translate/index.tsx` | 981 | ❌ | ✅ 26 | ✅ 8 | ✅ Settings + deep link |
+| Clone | `clone/index.tsx` | 899 | ✅ 18 | ✅ 34 | ✅ 8 | ✅ Settings |
+| Video | `video/index.tsx` | 712 | ❌ | ✅ 22 | ✅ 2 | ✅ Settings |
+| Subscription | `subscription/index.tsx` | 541 | ❌ | ✅ 13 | ❌ | ✅ Settings + deep link |
+| App Store | `appstore/index.tsx` | 436 | ❌ | ✅ 9 | ❌ | ✅ Settings |
+| Onboarding | `onboarding/index.tsx` | 429 | ❌ | ✅ 14 | ❌ | ✅ Deep link only |
+| Photo Translate | `photo-translate/index.tsx` | 425 | ❌ | ✅ 14 | ✅ 1 | ⚠️ Not linked |
+| Cloud | `cloud/index.tsx` | 415 | ✅ 11 | ✅ 11 | ✅ 14 | ⚠️ Not linked |
+| Chat Home | `chat/index.tsx` | 403 | ✅ 10 | ✅ 2 | ✅ 17 | ✅ Tab |
+| Chat Profile | `chat/profile.tsx` | 416 | ✅ 15 | ✅ 12 | ✅ 6 | ✅ Chat screen |
+| Chat Room | `chat/[roomId].tsx` | 359 | ✅ 6 | ❌ 0 | ✅ 2 | ✅ Chat screen |
+| Phrasebook | `phrasebook/index.tsx` | 373 | ✅ 2 | ✅ 9 | ✅ 13 | ⚠️ Not linked |
+| Quick Translate | `quick-translate.tsx` | 365 | ❌ | ✅ 7 | ✅ 2 | ✅ Deep link only |
+| Camera Link | `camera-link/index.tsx` | 325 | ❌ | ✅ 12 | ❌ | ⚠️ Not linked |
+| Pronunciation | `pronunciation/index.tsx` | 322 | ✅ 5 | ✅ 5 | ✅ 2 | ⚠️ Not linked |
+| OCR | `ocr/index.tsx` | 322 | ❌ | ✅ 28 | ❌ | ✅ Camera tab |
+| Session Detail | `session/[id].tsx` | 320 | ✅ 7 | ✅ 20 | ✅ 1 | ✅ History tap |
+| Clone Data | `clone-data/index.tsx` | 285 | ✅ 10 | ✅ 6 | ✅ 7 | ✅ Tab |
+| Batch Translate | `batch-translate/index.tsx` | 259 | ✅ 6 | ✅ 12 | ✅ 2 | ⚠️ Not linked |
+| Auth Register | `auth/register.tsx` | 253 | ✅ 9 | ✅ 12 | ✅ 6 | ✅ Login screen |
+| Auth Login | `auth/login.tsx` | 205 | ✅ 8 | ✅ 10 | ✅ 4 | ✅ Cloud screen |
+| Privacy | `legal/privacy.tsx` | 59 | ❌ | ❌ | ✅ 1 | ✅ Settings |
+| Terms | `legal/terms.tsx` | 59 | ❌ | ❌ | ❌ | ✅ Settings |
+| Tab Layout | `(tabs)/_layout.tsx` | 97 | — | — | — | ✅ Root |
+| Root Layout | `_layout.tsx` | 242 | — | — | — | ✅ Root |
+
+---
+
+## 4. Loading / Error / Empty State Coverage
+
+### Screens Missing Loading States
+- `(tabs)/index.tsx` — Record tab (no async data to load)
+- `translate/index.tsx` — No loading spinner during API calls
+- `video/index.tsx` — No loading state for camera init
+- `subscription/index.tsx` — No loading during offerings fetch
+- `camera-link/index.tsx` — No loading during pairing
+
+### Screens Missing Error Handling
+- `chat/[roomId].tsx` — 0 error references (no catch/Alert)
+- `legal/privacy.tsx` — Static content, acceptable
+- `legal/terms.tsx` — Static content, acceptable
+
+### Screens Missing Empty States
+- `subscription/index.tsx` — No empty state if no offerings
+- `camera-link/index.tsx` — Uses connection state UI instead
+
+---
+
+## 5. TODO / FIXME / HACK / PLACEHOLDER
+
+| File | Line | Marker | Content |
+|------|------|--------|---------|
+| `services/subscription.ts` | 18 | PLACEHOLDER | `appl_PLACEHOLDER_YOUR_IOS_KEY` |
+| `services/subscription.ts` | 19 | PLACEHOLDER | `goog_PLACEHOLDER_YOUR_ANDROID_KEY` |
+| `app/_layout.tsx` | 157 | XXX | `windypro://license?key=XXX` (comment example) |
+
+**Total: 3 markers.** RevenueCat API keys are PLACEHOLDER stubs. No TODO/FIXME/HACK found.
+
+---
+
+## 6. Unwired Features
+
+Features present in code but NOT reachable from the UI:
+
+| Feature | File | Issue |
+|---------|------|-------|
+| Photo Translate | `photo-translate/index.tsx` | No navigation link from any screen |
+| Batch Translate | `batch-translate/index.tsx` | No navigation link from any screen |
+| Camera Link | `camera-link/index.tsx` | No navigation link from any screen |
+| Phrasebook | `phrasebook/index.tsx` | No navigation link from any screen |
+| Pronunciation | `pronunciation/index.tsx` | No navigation link from any screen |
+| Cloud Sync UI | `cloud/index.tsx` | No navigation link from any screen |
+| Whisper Manager | `services/whisper-manager.ts` | Local whisper model management (never called) |
+| Engine Download | `services/engine-download.ts` | Whisper model CDN download (never called) |
+| Offline Packs | `services/offline-packs.ts` | Offline language packs (no UI trigger) |
+
+**9 features are built but not wired up via navigation.**
+
+---
+
+## 7. Hardcoded URLs / API Keys / Config Values
+
+### API URLs Bypassing `config/api.ts`
+
+| File | Line | URL |
+|------|------|-----|
+| `config/api.ts:7` | — | `https://windypro.thewindstorm.uk` ← **Canonical** |
+| `(tabs)/history.tsx` | 19-20 | `/user/history`, `/user/favorites` |
+| `batch-translate/index.tsx` | 15 | `/api/v1/translate` |
+| `clone/index.tsx` | 19 | `/api/voice-clone` |
+| `photo-translate/index.tsx` | 18-19 | `/api/v1/ocr`, `/api/v1/translate/text` |
+| `pronunciation/index.tsx` | 14 | `/api/v1/translate` |
+| `subscription/index.tsx` | 171 | `/api/v1/payments/create-checkout` |
+| `services/clone-bundle.ts` | 14 | `/api/v1/recordings/upload` |
+| `services/push-notifications.ts` | 11 | base URL duplicated |
+| `services/windy-tune.ts` | 202 | `/models` |
+| `services/offline-packs.ts` | 11 | `/models` |
+
+### External Service URLs
+
+| File | URL | Notes |
+|------|-----|-------|
+| `services/ocr.ts` | `https://vision.googleapis.com/v1/images:annotate` | Google Vision API |
+| `services/engine-download.ts` | `https://huggingface.co/ggerganov/whisper.cpp/resolve/main` | HuggingFace CDN |
+| `services/chatClient.ts` | `https://matrix.org` | Matrix default |
+| `appstore/index.tsx` | `https://apps.apple.com/app/windy-pro/id0000000000` | **Placeholder ID** |
+| `appstore/index.tsx` | `https://play.google.com/store/apps/details?id=uk.thewindstorm.windypro` | OK |
+
+### API Keys
+
+| File | Key | Status |
+|------|-----|--------|
+| `services/subscription.ts:18` | `appl_PLACEHOLDER_YOUR_IOS_KEY` | ❌ Placeholder |
+| `services/subscription.ts:19` | `goog_PLACEHOLDER_YOUR_ANDROID_KEY` | ❌ Placeholder |
+
+**12 hardcoded API URLs bypass `config/api.ts`. 1 Apple Store ID is placeholder.**
+
+---
+
+## 8. Navigation Reachability
+
+### ✅ Reachable Screens (22)
+
+| Route | Accessible From |
+|-------|-----------------|
+| `/(tabs)` — Record | Tab bar |
+| `/(tabs)/camera` | Tab bar |
+| `/(tabs)/history` | Tab bar |
+| `/(tabs)/clone-data` | Tab bar |
+| `/(tabs)/chat` | Tab bar |
+| `/(tabs)/settings` | Tab bar |
+| `/translate` | Settings + deep link |
+| `/clone` | Settings |
+| `/video` | Settings |
+| `/subscription` | Settings + deep link |
+| `/appstore` | Settings |
+| `/legal/privacy` | Settings + App Store |
+| `/legal/terms` | Settings + App Store |
+| `/session/[id]` | History item tap + deep link |
+| `/auth/login` | Cloud screen |
+| `/auth/register` | Login screen |
+| `/chat/[roomId]` | Chat room list |
+| `/chat/profile` | Chat screen |
+| `/ocr` | Camera tab |
+| `/onboarding` | Deep link only |
+| `/quick-translate` | Deep link only |
+| `/cloud` | ⚠️ No direct link found |
+
+### ❌ Unreachable Screens (5)
+
+| Route | Issue |
+|-------|-------|
+| `/photo-translate` | No `router.push` from any screen |
+| `/batch-translate` | No `router.push` from any screen |
+| `/camera-link` | No `router.push` from any screen |
+| `/phrasebook` | No `router.push` from any screen |
+| `/pronunciation` | No `router.push` from any screen |
 
 ---
 
 ## 9. Ratings
 
-| Category | Score | Justification |
-|----------|-------|---------------|
-| **Stability** | **8/10** | Zero TSC errors, 268/268 tests pass, comprehensive error boundaries, all catch blocks log errors. Deductions: 10 `catch(err: any)` still exist; no crash reporting SDK integrated. |
-| **UI Polish** | **9/10** | Dark theme consistent across all screens, Inter font loaded, animated transitions, branded accent colors, haptic feedback on all interactions, empty states with helpful text, pull-to-refresh on all lists. Deductions: tab icons use emoji (no vector icons); 640px icons (should be 1024px). |
-| **Feature Completeness** | **7/10** | Core flow (Record → Transcribe → Export) fully wired. Chat, Cloud, Clone, Translate, OCR, Video, Subscription — all functional. Deductions: 5 built screens unreachable from UI; iOS App Store URL is placeholder; no crash/analytics SDK; history screen hits unauthenticated API endpoint. |
-| **Code Quality** | **8/10** | Consistent patterns (SafeAreaView, ScreenErrorBoundary, feedbackService), typed stores, proper service layer separation. Deductions: 7 screens define hardcoded API URLs instead of using `config/api.ts`; 10 `catch(err: any)` remaining; `console.error` used in 2 places instead of `console.warn`. |
+| Category | Rating | Justification |
+|----------|--------|---------------|
+| **Stability** | **8/10** | 0 TypeScript errors, 268 tests passing, all catches logged, error boundaries present. Deductions: Jest teardown warnings, untested chat features |
+| **UI Polish** | **7/10** | Dark theme consistent, haptic feedback, animations, waveform viz. Deductions: tab bar icons return `null`, some screens lack loading spinners |
+| **Feature Completeness** | **6/10** | Core recording/transcription/translation loop is solid. Deductions: 5 screens completely unreachable, 3 services never called, RevenueCat keys are placeholders, App Store ID is placeholder |
+| **Code Quality** | **8/10** | 0 empty catch blocks, consistent error handling, typed throughout, utils for API errors and fetch timeout. Deductions: 12 hardcoded URLs bypass centralized config, some screens lack loading states |
 
-### Overall: **8.0 / 10**
+### Overall: **7.25 / 10**
 
 ---
 
-## 10. Priority Action Items
+## 10. Critical Action Items
 
-### P0 — Blocking
-1. **iOS App Store URL is placeholder** (`id0000000000`) — will break share links on iOS
+### P0 — Must Fix Before Ship
+1. Replace RevenueCat PLACEHOLDER keys with real API keys
+2. Replace Apple App Store ID `id0000000000` with real ID
+3. Wire up or remove 5 unreachable screens
 
 ### P1 — Should Fix
-2. **5 unreachable screens** — batch-translate, photo-translate, pronunciation, phrasebook, camera-link need navigation links in settings or translate screen
-3. **7 duplicated API URLs** — should all reference `API_BASE_URL` from `config/api.ts`
-4. **10 remaining `catch(err: any)`** — should be `catch(err: unknown)`
+4. Centralize 12 hardcoded API URLs through `config/api.ts`
+5. Add loading states to `translate`, `video`, `subscription` screens
+6. Add error handling to `chat/[roomId].tsx` (0 error refs)
+7. Render actual tab bar icons instead of returning `null`
 
 ### P2 — Nice to Have
-5. **KeyboardAvoidingView** missing on 5 screens with text inputs
-6. **Icon resolution** — 640×640 should be 1024×1024 for optimal rendering
-7. **Cloud screen** has no navigation entry from the tab bar or settings
-8. **Tab icons** use emoji text instead of proper vector icons (react-native-vector-icons is installed)
+8. Fix Jest teardown warnings (timer cleanup)
+9. Wire up whisper-manager, engine-download, offline-packs services
+10. Add empty state to subscription screen (no offerings case)
