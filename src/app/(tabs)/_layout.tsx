@@ -23,8 +23,8 @@ export default function TabLayout() {
           paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
+          fontSize: 10,
+          fontWeight: '600',
         },
 
         // Header appearance
@@ -46,7 +46,7 @@ export default function TabLayout() {
           title: 'Record',
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '🎤 Record',
+          tabBarLabel: '🎤 Rec',
         }}
       />
       <Tabs.Screen
@@ -55,7 +55,7 @@ export default function TabLayout() {
           title: 'Camera',
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '📷 Camera',
+          tabBarLabel: '📷 Cam',
         }}
       />
       <Tabs.Screen
@@ -63,7 +63,7 @@ export default function TabLayout() {
         options={{
           title: 'History',
           tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '📋 History',
+          tabBarLabel: '📋 Hist',
         }}
       />
       <Tabs.Screen
@@ -89,7 +89,7 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '⚙️ Settings',
+          tabBarLabel: '⚙️ More',
         }}
       />
     </Tabs>
