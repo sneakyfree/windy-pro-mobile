@@ -283,24 +283,28 @@ export default function VideoRecordScreen() {
                 </View>
 
                 {/* Mode Toggle */}
-                <View style={styles.modeToggle}>
+                <View style={styles.modeToggle} accessibilityRole="radiogroup">
                     <Pressable
                         style={[styles.modeBtn, mode === 'audio-only' && styles.modeBtnActive]}
                         onPress={() => { setMode('audio-only'); feedbackService.tap(); }}
-                        accessibilityLabel="Switch to audio only mode" accessibilityRole="button"
+                        accessibilityLabel="Audio only mode"
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: mode === 'audio-only' }}
                     >
-                        <Text style={styles.modeBtnEmoji}>🎤</Text>
-                        <Text style={[styles.modeBtnText, mode === 'audio-only' && styles.modeBtnTextActive]}>
+                        <Text style={styles.modeBtnEmoji} importantForAccessibility="no">🎤</Text>
+                        <Text style={[styles.modeBtnText, mode === 'audio-only' && styles.modeBtnTextActive]} importantForAccessibility="no">
                             Audio Only
                         </Text>
                     </Pressable>
                     <Pressable
                         style={[styles.modeBtn, mode === 'video' && styles.modeBtnActive]}
                         onPress={() => { setMode('video'); feedbackService.tap(); }}
-                        accessibilityLabel="Switch to video mode" accessibilityRole="button"
+                        accessibilityLabel="Video mode"
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: mode === 'video' }}
                     >
-                        <Text style={styles.modeBtnEmoji}>📹</Text>
-                        <Text style={[styles.modeBtnText, mode === 'video' && styles.modeBtnTextActive]}>
+                        <Text style={styles.modeBtnEmoji} importantForAccessibility="no">📹</Text>
+                        <Text style={[styles.modeBtnText, mode === 'video' && styles.modeBtnTextActive]} importantForAccessibility="no">
                             Video
                         </Text>
                     </Pressable>
@@ -339,7 +343,7 @@ export default function VideoRecordScreen() {
                                 )}
                             </Pressable>
                             {/* Progress bar */}
-                            <View style={styles.progressBarContainer}>
+                            <View style={styles.progressBarContainer} importantForAccessibility="no" accessibilityElementsHidden={true}>
                                 <View style={styles.progressBarBg}>
                                     <View style={[styles.progressBarFill, { width: `${playbackPct}%` }]} />
                                 </View>
@@ -357,7 +361,7 @@ export default function VideoRecordScreen() {
                                 facing={facing}
                             />
                             {state === 'recording' && (
-                                <View style={styles.recordingOverlay}>
+                                <View style={styles.recordingOverlay} importantForAccessibility="no" accessibilityElementsHidden={true}>
                                     <Animated.View style={[styles.recordDot, { opacity: pulseAnim }]} />
                                     <Text style={styles.recordingLabel}>REC</Text>
                                 </View>
@@ -377,7 +381,7 @@ export default function VideoRecordScreen() {
                             <Text style={styles.audioOnlyText}>Audio Only Mode</Text>
                             <Text style={styles.audioOnlySubtext}>No camera — just microphone</Text>
                             {state === 'recording' && (
-                                <View style={styles.audioLevelContainer}>
+                                <View style={styles.audioLevelContainer} importantForAccessibility="no" accessibilityElementsHidden={true}>
                                     {Array.from({ length: 20 }).map((_, i) => (
                                         <View
                                             key={i}
@@ -401,24 +405,28 @@ export default function VideoRecordScreen() {
 
                 {/* Thumbnail + File Info */}
                 {(recordedVideoUri || recordedAudioUri) && state === 'idle' && (
-                    <View style={styles.fileInfoRow}>
+                    <View style={styles.fileInfoRow}
+                        accessible={true}
+                        accessibilityLabel={`${recordedVideoUri ? 'Video' : 'Audio'} recording, ${formatDuration(videoDuration)}, ${formatFileSize(fileSize)}`}
+                        accessibilityRole="text"
+                    >
                         {thumbnailUri ? (
-                            <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} />
+                            <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} importantForAccessibility="no" />
                         ) : (
-                            <View style={styles.thumbnailPlaceholder}>
+                            <View style={styles.thumbnailPlaceholder} importantForAccessibility="no">
                                 <Text style={styles.thumbnailEmoji}>
                                     {recordedVideoUri ? '🎬' : '🎵'}
                                 </Text>
                             </View>
                         )}
                         <View style={styles.fileInfoText}>
-                            <Text style={styles.fileInfoTitle}>
+                            <Text style={styles.fileInfoTitle} importantForAccessibility="no">
                                 {recordedVideoUri ? 'Video Recording' : 'Audio Recording'}
                             </Text>
-                            <Text style={styles.fileInfoMeta}>
+                            <Text style={styles.fileInfoMeta} importantForAccessibility="no">
                                 📐 {formatDuration(videoDuration)} · 💾 {formatFileSize(fileSize)}
                             </Text>
-                            <Text style={styles.fileInfoMeta}>
+                            <Text style={styles.fileInfoMeta} importantForAccessibility="no">
                                 {recordedVideoUri ? '720p · MP4' : 'WAV · 44.1kHz'}
                             </Text>
                         </View>
@@ -426,11 +434,15 @@ export default function VideoRecordScreen() {
                 )}
 
                 {/* Duration Display */}
-                <View style={styles.durationRow}>
+                <View style={styles.durationRow}
+                    accessible={true}
+                    accessibilityLabel={state === 'recording' ? `Recording duration ${formatDuration(duration)}` : 'Duration zero'}
+                    accessibilityRole="text"
+                >
                     {state === 'recording' && (
-                        <Animated.View style={[styles.pulseDot, { opacity: pulseAnim }]} />
+                        <Animated.View style={[styles.pulseDot, { opacity: pulseAnim }]} importantForAccessibility="no" />
                     )}
-                    <Text style={styles.durationText}>
+                    <Text style={styles.durationText} importantForAccessibility="no">
                         {state === 'recording' ? formatDuration(duration) : '00:00'}
                     </Text>
                 </View>
@@ -495,7 +507,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.screenPadding,
         marginBottom: spacing.md,
     },
-    backBtn: { marginRight: spacing.md },
+    backBtn: { marginRight: spacing.md, minWidth: 48, minHeight: 48, justifyContent: 'center' },
     backText: { fontSize: 16, color: colors.accent },
     title: { fontSize: 20, fontWeight: '600', color: colors.textPrimary, flex: 1 },
     headerRight: { width: 40 },
@@ -560,9 +572,9 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: spacing.md,
         right: spacing.md,
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         backgroundColor: 'rgba(0,0,0,0.4)',
         alignItems: 'center',
         justifyContent: 'center',

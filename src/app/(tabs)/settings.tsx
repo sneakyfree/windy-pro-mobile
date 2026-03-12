@@ -263,10 +263,14 @@ export default function SettingsScreen() {
 
           {/* Recording */}
           <SettingsSection title="Recording">
-            <Pressable style={styles.navRow} onPress={() => setLanguagePickerVisible(true)}>
+            <Pressable style={styles.navRow} onPress={() => setLanguagePickerVisible(true)}
+              accessibilityLabel={`Recording language: ${settings.defaultLanguage.toUpperCase()}`}
+              accessibilityRole="button"
+              accessibilityHint="Opens language picker"
+            >
               <Text style={styles.navRowLabel}>Language</Text>
               <Text style={styles.rowValue}>{settings.defaultLanguage.toUpperCase()}</Text>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
             <SettingsToggle label="High quality audio" subtitle="44.1 kHz (larger files)" value={settings.highQualityAudio} onToggle={settings.setHighQualityAudio} />
             <SettingsToggle label="Location tagging" value={settings.locationTagging} onToggle={settings.setLocationTagging} />
@@ -276,7 +280,11 @@ export default function SettingsScreen() {
           <SettingsSection title="Translation">
             <View style={styles.row}>
               <Text style={styles.rowLabel}>Default Source</Text>
-              <Pressable onPress={() => setLanguagePickerVisible(true)}>
+              <Pressable onPress={() => setLanguagePickerVisible(true)}
+                accessibilityLabel={`Translation source language: ${settings.defaultLanguage.toUpperCase()}`}
+                accessibilityRole="button"
+                style={{ minHeight: 48, justifyContent: 'center' }}
+              >
                 <Text style={styles.rowValue}>
                   {translationService.getFlag(settings.defaultLanguage)} {settings.defaultLanguage.toUpperCase()}
                 </Text>
@@ -284,7 +292,11 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.row}>
               <Text style={styles.rowLabel}>Default Target</Text>
-              <Pressable onPress={() => setTargetLangPickerVisible(true)}>
+              <Pressable onPress={() => setTargetLangPickerVisible(true)}
+                accessibilityLabel={`Translation target language: ${settings.defaultTargetLanguage.toUpperCase()}`}
+                accessibilityRole="button"
+                style={{ minHeight: 48, justifyContent: 'center' }}
+              >
                 <Text style={styles.rowValue}>
                   {translationService.getFlag(settings.defaultTargetLanguage)} {settings.defaultTargetLanguage.toUpperCase()}
                 </Text>
@@ -301,6 +313,9 @@ export default function SettingsScreen() {
                       settings.audioQualityPreset === p.id && { borderColor: p.color, backgroundColor: `${p.color}15` },
                     ]}
                     onPress={() => settings.setAudioQualityPreset(p.id)}
+                    accessibilityLabel={`${p.label} audio quality${settings.audioQualityPreset === p.id ? ', selected' : ''}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: settings.audioQualityPreset === p.id }}
                   >
                     <Text style={[
                       styles.qualityPresetText,
@@ -319,20 +334,26 @@ export default function SettingsScreen() {
             <Pressable
               style={[styles.row, settings.selectedVoice === null && styles.voiceRowActive]}
               onPress={() => settings.setSelectedVoice(null)}
+              accessibilityLabel={`System Default voice${settings.selectedVoice === null ? ', selected' : ''}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: settings.selectedVoice === null }}
             >
               <Text style={styles.rowLabel}>🔊 System Default</Text>
-              {settings.selectedVoice === null && <Text style={styles.voiceCheck}>✓</Text>}
+              {settings.selectedVoice === null && <Text style={styles.voiceCheck} importantForAccessibility="no">✓</Text>}
             </Pressable>
             {clonedVoiceId && (
               <Pressable
                 style={[styles.row, settings.selectedVoice === clonedVoiceId && styles.voiceRowActive]}
                 onPress={() => settings.setSelectedVoice(clonedVoiceId)}
+                accessibilityLabel={`My Cloned Voice${settings.selectedVoice === clonedVoiceId ? ', selected' : ''}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: settings.selectedVoice === clonedVoiceId }}
               >
                 <View style={styles.rowLabelContainer}>
                   <Text style={styles.rowLabel}>🧬 My Cloned Voice</Text>
                   <Text style={styles.rowSubtitle}>ID: {clonedVoiceId.slice(0, 8)}...</Text>
                 </View>
-                {settings.selectedVoice === clonedVoiceId && <Text style={styles.voiceCheck}>✓</Text>}
+                {settings.selectedVoice === clonedVoiceId && <Text style={styles.voiceCheck} importantForAccessibility="no">✓</Text>}
               </Pressable>
             )}
             <Pressable
@@ -341,6 +362,9 @@ export default function SettingsScreen() {
                 translationService.speak('This is a voice preview.', settings.defaultTargetLanguage);
                 feedbackService.tap();
               }}
+              accessibilityLabel="Preview voice"
+              accessibilityRole="button"
+              accessibilityHint="Plays a sample of the selected voice"
             >
               <Text style={[styles.rowLabel, { color: colors.accent }]}>▶️ Preview Voice</Text>
             </Pressable>
@@ -407,6 +431,9 @@ export default function SettingsScreen() {
                   key={t}
                   style={[styles.themeBtn, settings.theme === t && styles.themeBtnActive]}
                   onPress={() => settings.setTheme(t)}
+                  accessibilityLabel={`${themeLabels[t]} theme${settings.theme === t ? ', selected' : ''}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: settings.theme === t }}
                 >
                   <Text style={[styles.themeBtnText, settings.theme === t && styles.themeBtnTextActive]}>
                     {themeLabels[t]}
@@ -471,7 +498,12 @@ export default function SettingsScreen() {
                   <Pressable onPress={async () => {
                     await offlinePackService.downloadPack(pack.code);
                     setPacks(offlinePackService.getPacks());
-                  }}>
+                  }}
+                    accessibilityLabel={`Download ${pack.name} language pack`}
+                    accessibilityRole="button"
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    style={{ minWidth: 48, minHeight: 48, justifyContent: 'center', alignItems: 'center' }}
+                  >
                     <Text style={styles.storageActionText}>⬇️</Text>
                   </Pressable>
                 )}
@@ -479,7 +511,12 @@ export default function SettingsScreen() {
                   <Pressable onPress={async () => {
                     await offlinePackService.deletePack(pack.code);
                     setPacks(offlinePackService.getPacks());
-                  }}>
+                  }}
+                    accessibilityLabel={`Delete ${pack.name} language pack`}
+                    accessibilityRole="button"
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    style={{ minWidth: 48, minHeight: 48, justifyContent: 'center', alignItems: 'center' }}
+                  >
                     <Text style={[styles.storageActionText, { color: colors.stateError }]}>🗑</Text>
                   </Pressable>
                 )}
@@ -487,7 +524,12 @@ export default function SettingsScreen() {
                   <Pressable onPress={async () => {
                     await offlinePackService.cancelDownload(pack.code);
                     setPacks(offlinePackService.getPacks());
-                  }}>
+                  }}
+                    accessibilityLabel={`Cancel downloading ${pack.name}`}
+                    accessibilityRole="button"
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    style={{ minWidth: 48, minHeight: 48, justifyContent: 'center', alignItems: 'center' }}
+                  >
                     <Text style={styles.storageActionText}>✕</Text>
                   </Pressable>
                 )}
@@ -495,7 +537,12 @@ export default function SettingsScreen() {
                   <Pressable onPress={async () => {
                     await offlinePackService.downloadPack(pack.code);
                     setPacks(offlinePackService.getPacks());
-                  }}>
+                  }}
+                    accessibilityLabel={`Retry downloading ${pack.name}`}
+                    accessibilityRole="button"
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    style={{ minWidth: 48, minHeight: 48, justifyContent: 'center', alignItems: 'center' }}
+                  >
                     <Text style={styles.storageActionText}>🔄</Text>
                   </Pressable>
                 )}
@@ -531,9 +578,13 @@ export default function SettingsScreen() {
               await feedbackService.tap();
               await syncManager.manualSync();
               Alert.alert('Sync', 'Sync started — uploads will process in the background.');
-            }}>
+            }}
+              accessibilityLabel="Sync now"
+              accessibilityRole="button"
+              accessibilityHint="Starts syncing recordings to the cloud"
+            >
               <Text style={styles.navRowLabel}>🔄 Sync Now</Text>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
             <Pressable style={styles.navRow} onPress={() => {
               Alert.alert('Clear Synced Data', 'Remove completed uploads from the queue? This does not delete your recordings.', [
@@ -546,9 +597,13 @@ export default function SettingsScreen() {
                   },
                 },
               ]);
-            }}>
+            }}
+              accessibilityLabel="Clear synced data"
+              accessibilityRole="button"
+              accessibilityHint="Removes completed uploads from the queue"
+            >
               <Text style={styles.navRowLabel}>🗑 Clear Synced Data</Text>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
           </SettingsSection>
 
@@ -590,6 +645,8 @@ export default function SettingsScreen() {
                   await AsyncStorage.setItem(SERVER_URL_KEY, def);
                   feedbackService.tap();
                 }}
+                accessibilityLabel="Reset server URL to default"
+                accessibilityRole="button"
               >
                 <Text style={styles.serverResetText}>Reset</Text>
               </Pressable>
@@ -598,19 +655,25 @@ export default function SettingsScreen() {
 
           {/* About */}
           <SettingsSection title="About">
-            <Pressable style={styles.navRow} onPress={() => router.push('/appstore')}>
+            <Pressable style={styles.navRow} onPress={() => router.push('/appstore')}
+              accessibilityLabel="About Windy Pro" accessibilityRole="button"
+            >
               <Text style={styles.navRowLabel}>🌪️ About Windy Pro</Text>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
             <SettingsRow label="Version" value={`${appVersion} (Build ${buildNumber})`} />
             <SettingsRow label="SDK" value={`Expo SDK ${Constants.expoConfig?.sdkVersion || '52'}`} />
-            <Pressable style={styles.navRow} onPress={() => router.push('/legal/privacy')}>
+            <Pressable style={styles.navRow} onPress={() => router.push('/legal/privacy')}
+              accessibilityLabel="Privacy Policy" accessibilityRole="button"
+            >
               <Text style={styles.navRowLabel}>Privacy Policy</Text>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
-            <Pressable style={styles.navRow} onPress={() => router.push('/legal/terms')}>
+            <Pressable style={styles.navRow} onPress={() => router.push('/legal/terms')}
+              accessibilityLabel="Terms of Service" accessibilityRole="button"
+            >
               <Text style={styles.navRowLabel}>Terms of Service</Text>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
           </SettingsSection>
 
@@ -625,9 +688,11 @@ export default function SettingsScreen() {
               <SettingsRow label="License Key" value={`${settings.licenseKey.slice(0, 8)}...`} />
             )}
             {settings.licenseTier !== 'free' && (
-              <Pressable style={styles.navRow} onPress={() => router.push('/subscription')}>
+              <Pressable style={styles.navRow} onPress={() => router.push('/subscription')}
+                accessibilityLabel="Manage Subscription" accessibilityRole="button"
+              >
                 <Text style={styles.navRowLabel}>💳 Manage Subscription</Text>
-                <Text style={styles.chevron}>›</Text>
+                <Text style={styles.chevron} importantForAccessibility="no">›</Text>
               </Pressable>
             )}
             <Pressable
@@ -646,6 +711,9 @@ export default function SettingsScreen() {
                   },
                 ]);
               }}
+              accessibilityLabel="Log out"
+              accessibilityRole="button"
+              accessibilityHint="Signs you out of your account"
             >
               <Text style={[styles.navRowLabel, { color: colors.stateError }]}>🚪 Log Out</Text>
             </Pressable>

@@ -28,6 +28,7 @@ import { videoCaptureService } from '@/services/video-capture';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useAccessibility } from '@/hooks/useAccessibility';
 import type { Session } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { analyticsService } from '@/services/analytics';
@@ -57,6 +58,7 @@ export default function RecordScreen() {
     const { licenseTier } = useSettingsStore();
     const { requireFeature, getRecordingLimit } = useFeatureGate();
     const { reduceMotion, animDuration } = useReducedMotion();
+    const { announce } = useAccessibility();
 
     const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
     const avgLevelRef = useRef<number>(0);
@@ -235,6 +237,7 @@ export default function RecordScreen() {
 
                 // Update state
                 setRecordingStarted(newSessionId);
+                announce('Recording started');
                 clearTranscript();
 
                 // Duration timer
@@ -278,6 +281,7 @@ export default function RecordScreen() {
 
         // Update state to processing
         setRecordingStopped();
+        announce('Recording stopped, processing');
 
         try {
             // Stop real recording
@@ -327,6 +331,7 @@ export default function RecordScreen() {
                 if (transcriptText && transcriptText.length > 0) {
                     await Clipboard.setStringAsync(transcriptText);
                     feedbackService.success().catch(() => { });
+                    announce('Transcript ready, copied to clipboard');
                 }
             } catch (transcribeErr: unknown) {
                 console.warn('[Record] Transcription failed:', transcribeErr);
@@ -605,7 +610,7 @@ export default function RecordScreen() {
 
                 {/* Rolling Waveform Visualization */}
                 {state === 'recording' && (
-                    <View style={styles.waveformContainer}>
+                    <View style={styles.waveformContainer} importantForAccessibility="no" accessibilityElementsHidden={true}>
                         {waveformSnapshot.map((level, i) => {
                             // Bars ordered: oldest first, newest at right
                             const idx = (waveformIndex.current + i) % WAVEFORM_BARS;
@@ -630,20 +635,20 @@ export default function RecordScreen() {
 
                 {/* Camera Preview — shows when video toggle is ON and not recording */}
                 {mediaCapture.video && state !== 'recording' && (
-                    <View style={styles.cameraContainer}>
+                    <View style={styles.cameraContainer} accessibilityLabel="Front camera preview" accessibilityRole="image">
                         <CameraView
                             ref={(ref: unknown) => videoCaptureService.setCameraRef(ref as never)}
                             style={styles.cameraPreview}
                             facing="front"
                         />
-                        <Text style={styles.cameraLabel}>📹 Front Camera Ready</Text>
+                        <Text style={styles.cameraLabel} importantForAccessibility="no">📹 Front Camera Ready</Text>
                     </View>
                 )}
 
                 {/* Processing indicator */}
                 {state === 'processing' && (
-                    <View style={styles.processingBanner}>
-                        <Text style={styles.processingText}>🔄 Transcribing audio...</Text>
+                    <View style={styles.processingBanner} accessibilityRole="alert" accessibilityLabel="Transcribing audio">
+                        <Text style={styles.processingText} importantForAccessibility="no">🔄 Transcribing audio...</Text>
                     </View>
                 )}
 
@@ -681,11 +686,14 @@ export default function RecordScreen() {
                 </View>
 
                 {/* Duration + Recording Info Row */}
-                <View style={styles.durationRow}>
+                <View style={styles.durationRow} accessible={true}
+                    accessibilityLabel={state === 'recording' ? `Recording duration ${formatDuration(duration)}, ${formatDuration(maxDuration - duration)} remaining` : state === 'processing' ? `Duration ${formatDuration(duration)}` : 'Duration zero'}
+                    accessibilityRole="text"
+                >
                     {state === 'recording' && (
-                        <Animated.View style={[styles.recordingDot, { opacity: pulseAnim }]} />
+                        <Animated.View style={[styles.recordingDot, { opacity: pulseAnim }]} importantForAccessibility="no" />
                     )}
-                    <Text style={styles.duration}>
+                    <Text style={styles.duration} importantForAccessibility="no">
                         {state === 'recording' || state === 'processing'
                             ? formatDuration(duration)
                             : '00:00'}
@@ -694,15 +702,19 @@ export default function RecordScreen() {
 
                 {/* File Size Indicator */}
                 {(state === 'recording' || recordingFileSize > 0) && (
-                    <View style={styles.fileSizeRow}>
-                        <Text style={styles.fileSizeText}>
+                    <View style={styles.fileSizeRow}
+                        accessible={true}
+                        accessibilityLabel={`File size ${formatFileSize(recordingFileSize)}${state === 'recording' ? ', 44.1 kilohertz, 16-bit, Mono' : ''}`}
+                        accessibilityRole="text"
+                    >
+                        <Text style={styles.fileSizeText} importantForAccessibility="no">
                             💾 {formatFileSize(recordingFileSize)}
                         </Text>
                         {state === 'recording' && (
-                            <Text style={styles.fileSizeSeparator}>•</Text>
+                            <Text style={styles.fileSizeSeparator} importantForAccessibility="no">•</Text>
                         )}
                         {state === 'recording' && (
-                            <Text style={styles.fileSizeText}>
+                            <Text style={styles.fileSizeText} importantForAccessibility="no">
                                 44.1kHz · 16-bit · Mono
                             </Text>
                         )}
@@ -985,9 +997,9 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     playPauseBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         backgroundColor: colors.surface,
         alignItems: 'center',
         justifyContent: 'center',

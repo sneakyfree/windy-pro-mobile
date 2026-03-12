@@ -257,7 +257,7 @@ export default function CameraTab() {
                         </View>
 
                         {/* Crosshair targeting box */}
-                        <View style={styles.crosshair}>
+                        <View style={styles.crosshair} importantForAccessibility="no" accessibilityElementsHidden={true}>
                             <View style={[styles.corner, styles.cornerTL]} />
                             <View style={[styles.corner, styles.cornerTR]} />
                             <View style={[styles.corner, styles.cornerBL]} />
@@ -272,7 +272,7 @@ export default function CameraTab() {
 
                         {/* Live scan bounding box overlays */}
                         {liveMode && liveResult && !frozen && liveResult.original.boundingBoxes.length > 0 && (
-                            <View style={styles.boundingBoxContainer}>
+                            <View style={styles.boundingBoxContainer} importantForAccessibility="no" accessibilityElementsHidden={true}>
                                 {liveResult.original.boundingBoxes.slice(0, 10).map((box, i) => (
                                     <View
                                         key={`bb-${i}`}
@@ -295,21 +295,29 @@ export default function CameraTab() {
 
                         {/* Live floating translation bubble */}
                         {liveMode && liveResult && !frozen && (
-                            <View style={styles.floatingBubble}>
+                            <View style={styles.floatingBubble}
+                                accessible={true}
+                                accessibilityLabel={`Live translation: ${liveResult.original.text}. Translated: ${liveResult.translated}`}
+                                accessibilityRole="text"
+                                accessibilityLiveRegion="polite"
+                            >
                                 <View style={styles.bubbleHeader}>
-                                    <Text style={styles.bubbleHeaderText}>
+                                    <Text style={styles.bubbleHeaderText} importantForAccessibility="no">
                                         {getFlag(liveResult.fromLang)} → {getFlag(targetLang)}
                                     </Text>
-                                    <View style={styles.bubbleLiveDot} />
+                                    <View style={styles.bubbleLiveDot} importantForAccessibility="no" />
                                 </View>
-                                <Text style={styles.bubbleOriginal} numberOfLines={2}>
+                                <Text style={styles.bubbleOriginal} numberOfLines={2} importantForAccessibility="no">
                                     {liveResult.original.text}
                                 </Text>
                                 <View style={styles.bubbleDivider} />
-                                <Text style={styles.bubbleTranslated} numberOfLines={3}>
+                                <Text style={styles.bubbleTranslated} numberOfLines={3} importantForAccessibility="no">
                                     {liveResult.translated}
                                 </Text>
-                                <Pressable style={styles.bubbleFreezeBtn} onPress={freezeFrame}>
+                                <Pressable style={styles.bubbleFreezeBtn} onPress={freezeFrame}
+                                    accessibilityLabel="Freeze and read translation"
+                                    accessibilityRole="button"
+                                >
                                     <Text style={styles.bubbleFreezeBtnText}>❄️ Freeze & Read</Text>
                                 </Pressable>
                             </View>
@@ -331,7 +339,11 @@ export default function CameraTab() {
                     {/* Translation Overlay */}
                     {result && (
                         <Animated.View style={[styles.translationOverlay, { opacity: overlayOpacity }]}>
-                            <Pressable style={styles.overlayCard} onPress={dismissResult} accessibilityLabel="Translation result. Tap to dismiss" accessibilityRole="button">
+                            <Pressable style={styles.overlayCard} onPress={dismissResult}
+                                accessible={true}
+                                accessibilityLabel={`Translation result. Original: ${result.original.text}. Translated to ${result.translated}. Tap to dismiss`}
+                                accessibilityRole="button"
+                            >
                                 {/* Original */}
                                 <View style={styles.overlaySection}>
                                     <Text style={styles.overlayLabel}>

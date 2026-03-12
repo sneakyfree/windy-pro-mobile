@@ -47,6 +47,7 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '🎤 Rec',
+          tabBarAccessibilityLabel: 'Record tab',
         }}
       />
       <Tabs.Screen
@@ -56,6 +57,7 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '📷 Cam',
+          tabBarAccessibilityLabel: 'Camera translate tab',
         }}
       />
       <Tabs.Screen
@@ -64,6 +66,7 @@ export default function TabLayout() {
           title: 'History',
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '📋 Hist',
+          tabBarAccessibilityLabel: 'Recording history tab',
         }}
       />
       <Tabs.Screen
@@ -73,6 +76,7 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '🧬 Clone',
+          tabBarAccessibilityLabel: 'Voice clone data tab',
         }}
       />
       <Tabs.Screen
@@ -82,6 +86,7 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '💬 Chat',
+          tabBarAccessibilityLabel: 'Chat tab',
         }}
       />
       <Tabs.Screen
@@ -90,6 +95,7 @@ export default function TabLayout() {
           title: 'Settings',
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '⚙️ More',
+          tabBarAccessibilityLabel: 'Settings tab',
         }}
       />
     </Tabs>

@@ -48,29 +48,43 @@ export function SyncStatusBanner() {
     if (pendingCount === 0 && !isSyncing) return null;
 
     return (
-        <View style={styles.container}>
+        <View style={styles.container}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+            accessibilityLabel={
+                isSyncing
+                    ? `Syncing: ${overallProgress}% complete on ${networkLabel}`
+                    : `${pendingCount} items pending sync on ${networkLabel}. Last sync: ${lastSync}`
+            }
+        >
             <View style={styles.row}>
                 <View style={styles.leftCol}>
-                    <Text style={styles.label}>{networkIcon} {networkLabel}</Text>
-                    <Text style={styles.detail}>
+                    <Text style={styles.label} importantForAccessibility="no">{networkIcon} {networkLabel}</Text>
+                    <Text style={styles.detail} importantForAccessibility="no">
                         {isSyncing
                             ? `⬆️ Uploading... ${overallProgress}%`
                             : `${pendingCount} pending`}
                     </Text>
                 </View>
                 <View style={styles.rightCol}>
-                    <Pressable onPress={handleSync} style={styles.syncBtn} disabled={isSyncing}>
-                        <Text style={styles.syncBtnText}>
-                            {isSyncing ? '⏳ Syncing' : '🔄 Sync'}
+                    <Pressable onPress={handleSync} style={styles.syncBtn} disabled={isSyncing}
+                        accessibilityLabel={isSyncing ? 'Syncing in progress' : 'Start sync now'}
+                        accessibilityRole="button"
+                        accessibilityState={{ disabled: isSyncing }}
+                    >
+                        <Text style={styles.syncBtnText} importantForAccessibility="no">
+                            {isSyncing ? '⌛ Syncing' : '🔄 Sync'}
                         </Text>
                     </Pressable>
-                    <Text style={styles.lastSync}>Last: {lastSync}</Text>
+                    <Text style={styles.lastSync} importantForAccessibility="no">Last: {lastSync}</Text>
                 </View>
             </View>
 
             {/* Queue overflow warning */}
             {pendingCount > 100 && !isSyncing && (
-                <View style={styles.warningRow}>
+                <View style={styles.warningRow}
+                    accessibilityRole="alert"
+                >
                     <Text style={styles.warningText}>
                         ⚠️ {pendingCount} items queued — connect to Wi-Fi to sync
                     </Text>
@@ -79,7 +93,7 @@ export function SyncStatusBanner() {
 
             {/* Progress bar */}
             {isSyncing && (
-                <View style={styles.progressTrack}>
+                <View style={styles.progressTrack} importantForAccessibility="no">
                     <Animated.View
                         style={[
                             styles.progressFill,

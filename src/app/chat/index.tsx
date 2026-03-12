@@ -232,6 +232,7 @@ export default function ChatHomeScreen() {
                     autoCorrect={false}
                     maxLength={INPUT_LIMITS.SEARCH_QUERY}
                     accessibilityLabel="Search for users to start a conversation"
+                    accessibilityHint="Type a name to find people to chat with"
                 />
             </View>
 
@@ -305,7 +306,7 @@ export default function ChatHomeScreen() {
                     >
                         {/* Avatar */}
                         <View style={styles.avatarContainer}>
-                            <View style={styles.avatar}>
+                            <View style={styles.avatar} importantForAccessibility="no">
                                 <Text style={styles.avatarText}>
                                     {(item.name || '?')[0].toUpperCase()}
                                 </Text>

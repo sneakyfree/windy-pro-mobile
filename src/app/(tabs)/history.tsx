@@ -331,7 +331,7 @@ export default function HistoryScreen() {
         <View style={styles.cardHeader}>
           <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
           <View style={styles.cardMeta}>
-            <Pressable onPress={() => toggleFavorite(item.id)} accessibilityLabel={favorites.has(item.id) ? 'Remove from favorites' : 'Add to favorites'} accessibilityRole="button">
+            <Pressable onPress={() => toggleFavorite(item.id)} accessibilityLabel={favorites.has(item.id) ? 'Remove from favorites' : 'Add to favorites'} accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={styles.favStar}>{favorites.has(item.id) ? '⭐' : '☆'}</Text>
             </Pressable>
             <Text style={styles.cardDuration}>{formatDuration(item.duration)}</Text>
@@ -342,7 +342,7 @@ export default function HistoryScreen() {
           {item.previewText || 'No transcript'}
         </Text>
         <View style={styles.cardFooter}>
-          <View style={[styles.qualityDot, { backgroundColor: getQualityColor(item.quality?.score ?? 0) }]} />
+          <View style={[styles.qualityDot, { backgroundColor: getQualityColor(item.quality?.score ?? 0) }]} importantForAccessibility="no" />
           <Text style={styles.qualityText}>{item.quality?.score ?? '—'}</Text>
           <Text style={styles.cardSource}>{item.source}</Text>
           {!selectMode && (
@@ -365,14 +365,18 @@ export default function HistoryScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Storage Usage Indicator */}
         {storage && (
-          <View style={styles.storageCard}>
+          <View style={styles.storageCard}
+            accessible={true}
+            accessibilityLabel={`Storage: ${formatBytes(storage.totalBytes)} of ${STORAGE_LIMIT_MB} megabytes used. ${storage.sessionCount} sessions.`}
+            accessibilityRole="text"
+          >
             <View style={styles.storageHeader}>
-              <Text style={styles.storageTitle}>💾 Storage</Text>
-              <Text style={styles.storageValue}>
+              <Text style={styles.storageTitle} importantForAccessibility="no">💾 Storage</Text>
+              <Text style={styles.storageValue} importantForAccessibility="no">
                 {formatBytes(storage.totalBytes)} of {STORAGE_LIMIT_MB} MB
               </Text>
             </View>
-            <View style={styles.storageBarBg}>
+            <View style={styles.storageBarBg} importantForAccessibility="no">
               <Animated.View
                 style={[styles.storageBarFill, {
                   backgroundColor: storageColor,
@@ -383,7 +387,7 @@ export default function HistoryScreen() {
                 }]}
               />
             </View>
-            <View style={styles.storageBreakdown}>
+            <View style={styles.storageBreakdown} importantForAccessibility="no">
               <Text style={styles.storageStat}>🎤 {formatBytes(storage.audioBytes)}</Text>
               <Text style={styles.storageStat}>📹 {formatBytes(storage.videoBytes)}</Text>
               <Text style={styles.storageStat}>🧠 {formatBytes(storage.engineBytes)}</Text>
@@ -540,7 +544,7 @@ function SwipeableRow({ children, onDelete }: { children: React.ReactNode; onDel
     })
   ).current;
 
-  return (
+    return (
     <View style={swipeStyles.container}>
       <View style={swipeStyles.deleteBackground}>
         <Text style={swipeStyles.deleteText}>🗑️ Delete</Text>
@@ -548,6 +552,13 @@ function SwipeableRow({ children, onDelete }: { children: React.ReactNode; onDel
       <Animated.View
         style={{ transform: [{ translateX }] }}
         {...panResponder.panHandlers}
+        accessible={true}
+        accessibilityActions={[{ name: 'delete', label: 'Delete this recording' }]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'delete') {
+            onDelete();
+          }
+        }}
       >
         {children}
       </Animated.View>

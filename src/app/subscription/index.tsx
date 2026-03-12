@@ -11,6 +11,7 @@ import { licenseService, FEATURE_MATRIX, RECORDING_LIMITS } from '@/services/lic
 import { subscriptionService } from '@/services/subscription';
 import { feedbackService } from '@/services/feedback';
 import { useHaptic } from '@/hooks/useHaptic';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 // ── Plan definitions ──
 interface PlanInfo {
@@ -130,15 +131,20 @@ export default function SubscriptionScreen() {
     const [restoring, setRestoring] = useState(false);
     const heroAnim = useRef(new Animated.Value(0)).current;
     const haptic = useHaptic();
+    const { reduceMotion } = useReducedMotion();
 
     useEffect(() => {
+        if (reduceMotion) {
+            heroAnim.setValue(1);
+            return;
+        }
         Animated.spring(heroAnim, {
             toValue: 1,
             tension: 40,
             friction: 7,
             useNativeDriver: true,
         }).start();
-    }, []);
+    }, [reduceMotion]);
 
     const handlePurchase = async (plan: PlanInfo) => {
         if (plan.tier === licenseTier) return;
@@ -266,8 +272,8 @@ export default function SubscriptionScreen() {
                 opacity: heroAnim,
                 transform: [{ translateY: heroAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }],
             }]}>
-                <Text style={styles.heroEmoji}>🌪️</Text>
-                <Text style={styles.heroTitle}>Unlock Windy Pro</Text>
+                <Text style={styles.heroEmoji} importantForAccessibility="no">🌪️</Text>
+                <Text style={styles.heroTitle} accessibilityRole="header">Unlock Windy Pro</Text>
                 <Text style={styles.heroSubtitle}>
                     Choose the plan that fits your workflow
                 </Text>
@@ -285,6 +291,9 @@ export default function SubscriptionScreen() {
                             isRecommended && styles.cardRecommended,
                             isCurrentTier && styles.cardCurrent,
                         ]}
+                        accessible={true}
+                        accessibilityLabel={`${plan.name} plan, ${plan.price} ${plan.period}. ${plan.features.join(', ')}.${isCurrentTier ? ' Current plan.' : ''}`}
+                        accessibilityRole="summary"
                     >
                         {/* Badge */}
                         {plan.badge && (
@@ -414,7 +423,7 @@ const styles = StyleSheet.create({
 
     // Header
     header: { marginBottom: spacing.md },
-    backBtn: {},
+    backBtn: { minWidth: 48, minHeight: 48, justifyContent: 'center' },
     backText: { fontSize: 16, color: colors.accent },
 
     // Hero

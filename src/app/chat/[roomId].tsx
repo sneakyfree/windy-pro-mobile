@@ -367,6 +367,7 @@ export default function ConversationScreen() {
                         maxLength={4000}
                         returnKeyType="default"
                         accessibilityLabel="Type a message"
+                        accessibilityHint="Type and send a message in this conversation"
                     />
                     <TouchableOpacity
                         style={[

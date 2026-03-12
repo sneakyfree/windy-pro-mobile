@@ -70,13 +70,16 @@ export function NetworkBanner() {
                 isOffline ? styles.bannerOffline : styles.bannerOnline,
                 { transform: [{ translateY: slideAnim }] },
             ]}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="assertive"
+            accessibilityLabel={isOffline ? 'You are offline. Recordings are saved locally.' : 'Back online. Syncing recordings.'}
         >
-            <Text style={styles.bannerEmoji}>{isOffline ? '📡' : '✅'}</Text>
+            <Text style={styles.bannerEmoji} importantForAccessibility="no">{isOffline ? '📡' : '✅'}</Text>
             <View style={styles.bannerContent}>
-                <Text style={styles.bannerTitle}>
+                <Text style={styles.bannerTitle} importantForAccessibility="no">
                     {isOffline ? 'You\'re offline' : 'Back online'}
                 </Text>
-                <Text style={styles.bannerSubtext}>
+                <Text style={styles.bannerSubtext} importantForAccessibility="no">
                     {isOffline
                         ? 'Recordings are saved locally. Sync when reconnected.'
                         : 'Connection restored. Syncing...'}

@@ -25,3 +25,22 @@ export const hitSlop = {
     left: 12,
     right: 12,
 } as const;
+
+/**
+ * Minimum touch target size — satisfies both:
+ * - iOS HIG: 44pt × 44pt
+ * - Material Design: 48dp × 48dp
+ */
+export const minTouchTarget = 48;
+
+/**
+ * Extended hit slop for small interactive icons (stars, emojis, etc.)
+ * Ensures the touchable area meets minimum accessibility requirements
+ * even when the visual element is smaller.
+ */
+export const accessibleHitSlop = {
+    top: 16,
+    bottom: 16,
+    left: 16,
+    right: 16,
+} as const;

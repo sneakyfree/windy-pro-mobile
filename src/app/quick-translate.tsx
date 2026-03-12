@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.screenPadding,
         paddingVertical: spacing.md,
     },
-    backBtn: {},
+    backBtn: { minWidth: 48, minHeight: 48, justifyContent: 'center' },
     backText: { fontSize: 16, color: colors.accent },
     title: {
         fontSize: 18,

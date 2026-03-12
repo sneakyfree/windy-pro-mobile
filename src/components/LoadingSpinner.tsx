@@ -16,9 +16,12 @@ interface Props {
 
 export function LoadingSpinner({ label, size = 'large', fullScreen = false }: Props) {
     const content = (
-        <View style={[styles.wrapper, fullScreen && styles.fullScreen]}>
+        <View style={[styles.wrapper, fullScreen && styles.fullScreen]}
+            accessibilityLabel={label || 'Loading'}
+            accessibilityRole="none"
+        >
             <ActivityIndicator size={size} color={colors.accent} />
-            {label && <Text style={styles.label}>{label}</Text>}
+            {label && <Text style={styles.label} importantForAccessibility="no">{label}</Text>}
         </View>
     );
     return content;
