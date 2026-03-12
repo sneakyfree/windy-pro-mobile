@@ -140,7 +140,7 @@ export default function VideoRecordScreen() {
                 setDuration(elapsed);
                 setFileSize(estimateVideoSize(elapsed));
             }, 100);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[Video] Start failed:', err);
             setError();
             feedbackService.error().catch(() => { });
@@ -219,7 +219,7 @@ export default function VideoRecordScreen() {
             } catch (err) {
                 console.warn('[Video] Save failed:', err);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[Video] Stop failed:', err);
             feedbackService.error().catch(() => { });
         }

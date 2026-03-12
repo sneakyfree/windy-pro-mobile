@@ -11,7 +11,9 @@ import { colors, spacing, borderRadius } from '@/theme';
 import { feedbackService } from '@/services/feedback';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
-const TRANSLATE_API = 'https://windypro.thewindstorm.uk/api/v1/translate';
+import { apiUrl } from '@/config/api';
+
+const TRANSLATE_API = apiUrl('/api/v1/translate');
 
 // Basic IPA approximation tables for common languages
 const IPA_RULES: Record<string, Record<string, string>> = {

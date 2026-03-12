@@ -16,7 +16,9 @@ import { feedbackService } from '@/services/feedback';
 import { localStorageService } from '@/services/storage-local';
 import type { SessionSummary } from '@/types';
 
-const CLONE_API = 'https://windypro.thewindstorm.uk/api/voice-clone';
+import { apiUrl, ENDPOINTS } from '@/config/api';
+
+const CLONE_API = apiUrl('/api/voice-clone');
 const CLONE_VOICE_KEY = 'windy-clone-voice-id';
 const SAMPLE_DURATION = 30; // seconds
 

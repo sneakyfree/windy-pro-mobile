@@ -544,7 +544,7 @@ class SyncManager {
                 item.bytes_uploaded = Math.min((i + 1) * CHUNK_SIZE, item.total_bytes);
                 item.progress = Math.round((item.bytes_uploaded / item.total_bytes) * 100);
                 this.emit();
-            } catch (err: any) {
+            } catch (err: unknown) {
                 if (err.name === 'AbortError') {
                     item.chunk_index = i;
                     item.status = 'paused';

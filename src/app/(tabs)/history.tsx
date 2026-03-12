@@ -16,8 +16,10 @@ import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import type { SessionSummary, StorageUsage } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
-const HISTORY_API = 'https://windypro.thewindstorm.uk/user/history';
-const FAVORITES_API = 'https://windypro.thewindstorm.uk/user/favorites';
+import { apiUrl } from '@/config/api';
+
+const HISTORY_API = apiUrl('/user/history');
+const FAVORITES_API = apiUrl('/user/favorites');
 
 type SortBy = 'date' | 'duration' | 'quality';
 type SortDir = 'desc' | 'asc';

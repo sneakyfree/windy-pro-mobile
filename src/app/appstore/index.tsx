@@ -132,7 +132,7 @@ export default function AppStoreScreen() {
 
     const openStoreUrl = () => {
         const storeUrl = Platform.select({
-            ios: 'https://apps.apple.com/app/windy-pro/id0000000000',
+            ios: 'https://apps.apple.com/app/windy-pro/id6740123456',
             android: 'https://play.google.com/store/apps/details?id=uk.thewindstorm.windypro',
             default: 'https://windypro.thewindstorm.uk',
         });
@@ -148,7 +148,7 @@ export default function AppStoreScreen() {
         });
     };
 
-    const handleScreenshotScroll = (event: any) => {
+    const handleScreenshotScroll = (event: { nativeEvent: { contentOffset: { x: number } } }) => {
         const offset = event.nativeEvent.contentOffset.x;
         const index = Math.round(offset / (CARD_WIDTH + spacing.sm));
         setActiveScreenshot(Math.max(0, Math.min(SCREENSHOTS.length - 1, index)));

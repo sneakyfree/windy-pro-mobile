@@ -181,7 +181,7 @@ export default function TranslateScreen() {
             haptic.medium();
             feedbackService.recordStart();
             announce('Recording started. Speak now.');
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[Translate] Start recording failed:', err);
             haptic.error();
             const isPermission = err?.message?.includes('permission') || err?.message?.includes('not granted');

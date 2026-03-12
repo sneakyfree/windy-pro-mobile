@@ -12,7 +12,9 @@ import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 
-const TRANSLATE_API = 'https://windypro.thewindstorm.uk/api/v1/translate';
+import { apiUrl } from '@/config/api';
+
+const TRANSLATE_API = apiUrl('/api/v1/translate');
 
 interface TranslationResult {
     language: string;

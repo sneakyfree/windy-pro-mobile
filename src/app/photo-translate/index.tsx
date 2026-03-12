@@ -15,8 +15,10 @@ import { colors, spacing, borderRadius } from '@/theme';
 import { feedbackService } from '@/services/feedback';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
-const OCR_API = 'https://windypro.thewindstorm.uk/api/v1/ocr';
-const TRANSLATE_API = 'https://windypro.thewindstorm.uk/api/v1/translate/text';
+import { apiUrl } from '@/config/api';
+
+const OCR_API = apiUrl('/api/v1/ocr');
+const TRANSLATE_API = apiUrl('/api/v1/translate/text');
 
 interface DetectedText {
     text: string;

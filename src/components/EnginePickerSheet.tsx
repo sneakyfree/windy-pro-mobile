@@ -59,8 +59,8 @@ export default function EnginePickerSheet({ visible, onClose }: Props) {
             await checkDownloaded();
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             handleSelect(id);
-        } catch (err: any) {
-            Alert.alert('Download Failed', err.message);
+        } catch (err: unknown) {
+            Alert.alert('Download Failed', err instanceof Error ? err.message : 'Unknown error');
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         } finally {
             setDownloadingId(null);

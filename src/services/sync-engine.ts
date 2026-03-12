@@ -190,12 +190,13 @@ class SyncEngine {
                         failed++;
                         console.error(`[Sync] ✗ ${session.id}: ${result.error}`);
                     }
-                } catch (err: any) {
+                } catch (err: unknown) {
                     failed++;
-                    console.error(`[Sync] ✗ ${session.id}:`, err.message);
+                    const errMsg = err instanceof Error ? err.message : String(err);
+                    console.error(`[Sync] ✗ ${session.id}:`, errMsg);
 
                     // If auth error, try refresh once
-                    if (err.message?.includes('Not authenticated')) {
+                    if (errMsg?.includes('Not authenticated')) {
                         const refreshed = await cloudStorageClient.refreshAuth();
                         if (!refreshed) {
                             this.onError?.('Session expired — please log in again');

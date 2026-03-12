@@ -162,9 +162,9 @@ describe('LicenseService', () => {
                 const result = await licenseService.validateLicense('KEY');
                 // If we get here, cached validation was returned
                 expect(result).toBeDefined();
-            } catch (err: any) {
+            } catch (err: unknown) {
                 // If not cached, should throw the network error
-                expect(err.message).toBe('Network error');
+                expect((err as Error).message).toBe('Network error');
             }
         });
     });

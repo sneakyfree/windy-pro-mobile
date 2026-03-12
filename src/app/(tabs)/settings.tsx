@@ -350,6 +350,12 @@ export default function SettingsScreen() {
               <Text style={styles.navRowLabel}>🌐 Windy Translate</Text>
               <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
+            <Pressable style={styles.navRow} onPress={() => router.push('/cloud')}
+              accessibilityLabel="Cloud Storage" accessibilityRole="button" accessibilityHint="Opens cloud file manager"
+            >
+              <Text style={styles.navRowLabel}>☁️ Cloud Storage</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+            </Pressable>
             <Pressable style={styles.navRow} onPress={() => router.push('/clone')}
               accessibilityLabel="Voice Clone" accessibilityRole="button" accessibilityHint="Opens voice clone progress"
             >
@@ -360,6 +366,30 @@ export default function SettingsScreen() {
               accessibilityLabel="Video Recorder" accessibilityRole="button" accessibilityHint="Opens video recording screen"
             >
               <Text style={styles.navRowLabel}>📹 Video Recorder</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+            </Pressable>
+            <Pressable style={styles.navRow} onPress={() => router.push('/photo-translate')}
+              accessibilityLabel="Photo Translate" accessibilityRole="button" accessibilityHint="Translate text from photos"
+            >
+              <Text style={styles.navRowLabel}>📸 Photo Translate</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+            </Pressable>
+            <Pressable style={styles.navRow} onPress={() => router.push('/batch-translate')}
+              accessibilityLabel="Batch Translate" accessibilityRole="button" accessibilityHint="Translate multiple texts at once"
+            >
+              <Text style={styles.navRowLabel}>📋 Batch Translate</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+            </Pressable>
+            <Pressable style={styles.navRow} onPress={() => router.push('/pronunciation')}
+              accessibilityLabel="Pronunciation Guide" accessibilityRole="button" accessibilityHint="Get pronunciation for words"
+            >
+              <Text style={styles.navRowLabel}>🗣️ Pronunciation</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+            </Pressable>
+            <Pressable style={styles.navRow} onPress={() => router.push('/phrasebook')}
+              accessibilityLabel="Phrasebook" accessibilityRole="button" accessibilityHint="Saved phrases and translations"
+            >
+              <Text style={styles.navRowLabel}>📖 Phrasebook</Text>
               <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
           </SettingsSection>

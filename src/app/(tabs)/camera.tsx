@@ -103,7 +103,7 @@ export default function CameraTab() {
 
             // TTS: speak the translation
             translationService.speak(ocrResult.translated, targetLang);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('[OCR Camera] Error:', err);
             setError(err?.message || 'Translation failed. Check your connection.');
             feedbackService.error();

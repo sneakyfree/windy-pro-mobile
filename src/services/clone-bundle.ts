@@ -11,7 +11,9 @@ import { Platform } from 'react-native';
 import { networkMonitor } from './network-monitor';
 
 const BUNDLES_KEY = 'windy-clone-bundles';
-const UPLOAD_API = 'https://windypro.thewindstorm.uk/api/v1/recordings/upload';
+import { apiUrl } from '@/config/api';
+
+const UPLOAD_API = apiUrl('/api/v1/recordings/upload');
 
 // ─── Types ──────────────────────────────────────────────────────
 
