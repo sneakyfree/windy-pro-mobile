@@ -3,7 +3,7 @@
  * Manages in-app purchases via RevenueCat SDK.
  * Handles: initialization, offerings, purchases, restore, entitlement checks.
  *
- * ⚠️ Replace REVENUECAT_API_KEY with your actual RevenueCat API key.
+ * API keys are read from app.json extra config (set via EAS build env vars).
  * This service does NOT work in Expo Go — requires native build.
  */
 import Purchases, {
@@ -12,11 +12,12 @@ import Purchases, {
     LOG_LEVEL,
 } from 'react-native-purchases';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import type { LicenseTier } from '@/types';
 
-// ⚠️ Replace with your actual RevenueCat API keys
-const REVENUECAT_IOS_KEY = 'appl_PLACEHOLDER_YOUR_IOS_KEY';
-const REVENUECAT_ANDROID_KEY = 'goog_PLACEHOLDER_YOUR_ANDROID_KEY';
+// Read RevenueCat keys from app.json extra config
+const REVENUECAT_IOS_KEY = Constants.expoConfig?.extra?.revenueCatIosKey || '';
+const REVENUECAT_ANDROID_KEY = Constants.expoConfig?.extra?.revenueCatAndroidKey || '';
 
 /** Entitlement → LicenseTier mapping */
 const ENTITLEMENT_MAP: Record<string, LicenseTier> = {
@@ -64,7 +65,7 @@ class SubscriptionService {
 
             await Purchases.configure({ apiKey });
             this.initialized = true;
-            // console.log('[Subscription] RevenueCat initialized');
+
         } catch (error) {
             console.warn('[Subscription] Failed to initialize RevenueCat:', error);
         }
@@ -111,7 +112,7 @@ class SubscriptionService {
             return this.getTierFromCustomerInfo(customerInfo);
         } catch (error: any) {
             if (error.userCancelled) {
-                // console.log('[Subscription] User cancelled purchase');
+
                 return null;
             }
             console.warn('[Subscription] Purchase failed:', error);

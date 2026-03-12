@@ -48,9 +48,6 @@ export default function RootLayout() {
     if (fontError) {
       console.warn('[Fonts] Font loading error:', fontError);
     }
-    if (fontsLoaded) {
-      // console.log('[Fonts] All fonts loaded successfully');
-    }
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
@@ -58,7 +55,6 @@ export default function RootLayout() {
       try {
         // Initialize local database
         await localStorageService.initialize();
-        // console.log('[App] Storage initialized successfully');
         // Initialize push notifications
         pushNotificationService.initialize().catch(() => { });
         // Initialize offline language packs
@@ -152,7 +148,6 @@ export default function RootLayout() {
     const handleDeepLink = async ({ url }: { url: string }) => {
       try {
         const parsed = Linking.parse(url);
-        // console.log('[DeepLink] Received:', parsed.path, parsed.queryParams);
 
         // License activation: windypro://license?key=XXX
         if (parsed.path === 'license' && parsed.queryParams?.key) {
