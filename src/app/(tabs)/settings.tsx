@@ -31,6 +31,9 @@ import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { syncManager } from '@/services/sync-manager';
 import { getTranscriptionServerUrl, setTranscriptionServerUrl } from '@/services/transcription';
 import { INPUT_LIMITS, validateUrl } from '@/utils/validation';
+import { createLogger } from '@/services/logger';
+
+const settingsLog = createLogger('Settings');
 
 const AUDIO_QUALITY_PRESETS = [
   { id: 'low' as const, label: '🟢 Low', desc: '16 kHz · small files', color: '#22c55e' },
@@ -67,7 +70,7 @@ export default function SettingsScreen() {
     try {
       const storageData = await localStorageService.getStorageUsage();
       setStorage(storageData);
-    } catch (err) { console.warn("[Settings] Error:", err); }
+    } catch (err) { settingsLog.warn('loadData', 'Error loading storage data'); }
 
     const progress = cloneTracker.getProgress();
     setCloneHours(progress.totalHours);
@@ -80,19 +83,19 @@ export default function SettingsScreen() {
         const info = await FileSystem.getInfoAsync(cacheDir);
         setCacheSize((info as any).size || 0);
       }
-    } catch (err) { console.warn("[Settings] Cache check failed:", err); setCacheSize(0); }
+    } catch (err) { settingsLog.warn('loadData', 'Cache check failed'); setCacheSize(0); }
 
     // Load offline packs
     try {
       await offlinePackService.initialize();
       setPacks(offlinePackService.getPacks());
-    } catch (err) { console.warn("[Settings] Error:", err); }
+    } catch (err) { settingsLog.warn('loadData', 'Offline packs init failed'); }
 
     // Load cloned voice ID
     try {
       const voiceId = await AsyncStorage.getItem(CLONE_VOICE_KEY);
       setClonedVoiceId(voiceId);
-    } catch (err) { console.warn("[Settings] Error:", err); }
+    } catch (err) { settingsLog.warn('loadData', 'Clone voice load failed'); }
   };
 
   const formatBytes = (bytes: number): string => {
@@ -131,7 +134,7 @@ export default function SettingsScreen() {
               setCacheSize(0);
               feedbackService.success().catch(() => { });
               Alert.alert('Done', 'Cache cleared successfully.');
-            } catch (err) { console.warn("[Settings] Error:", err);
+            } catch (err) { settingsLog.warn('clearCache', 'Clear cache failed');
               Alert.alert('Error', 'Could not clear cache.');
             } finally {
               setClearingCache(false);
@@ -171,7 +174,7 @@ export default function SettingsScreen() {
         });
       }
       feedbackService.success().catch(() => { });
-    } catch (err) { console.warn("[Settings] Error:", err);
+    } catch (err) { settingsLog.warn('export', 'Export failed');
       Alert.alert('Export Failed', 'Could not export data.');
     }
   };
@@ -204,7 +207,7 @@ export default function SettingsScreen() {
                       await localStorageService.initialize(); // re-init clears
                       feedbackService.success().catch(() => { });
                       Alert.alert('Account Deleted', 'Your data has been removed.');
-                    } catch (err) { console.warn("[Settings] Error:", err);
+                    } catch (err) { settingsLog.warn('deleteAccount', 'Delete failed');
                       Alert.alert('Error', 'Could not complete account deletion.');
                     }
                   },

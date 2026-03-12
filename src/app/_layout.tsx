@@ -15,6 +15,9 @@ import * as NavigationBar from 'expo-navigation-bar';
 import * as Notifications from 'expo-notifications';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { colors } from '@/theme';
+import { createLogger } from '@/services/logger';
+import { sanitizeText, INPUT_LIMITS } from '@/utils/validation';
+import { TIER_1_LANGUAGES } from '@/services/translation';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { localStorageService } from '@/services/storage-local';
 import { licenseService } from '@/services/license';
@@ -29,6 +32,39 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Keep splash screen visible until we're ready
 SplashScreen.preventAutoHideAsync();
+
+const log = createLogger('Layout');
+
+// ─── Deep Link Sanitization ─────────────────────────────────
+
+/** Safe characters for session/route IDs: alphanumeric, hyphens, underscores */
+const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/;
+
+/** Valid language codes from our supported list */
+const VALID_LANG_CODES = new Set(TIER_1_LANGUAGES.map(l => l.code));
+
+/** Sanitize a deep link session ID — reject path traversal */
+function sanitizeSessionId(raw: string): string | null {
+  const id = raw.trim();
+  if (!id || id.includes('..') || id.includes('/') || id.includes('\\')) return null;
+  if (id.length > 128) return null;
+  if (!SAFE_ID_RE.test(id)) return null;
+  return id;
+}
+
+/** Sanitize a deep link language code */
+function sanitizeLangCode(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const code = raw.trim().toLowerCase().slice(0, 10);
+  return VALID_LANG_CODES.has(code) ? code : null;
+}
+
+/** Sanitize deep link text param */
+function sanitizeDeepLinkText(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const cleaned = sanitizeText(raw).slice(0, INPUT_LIMITS.TRANSLATE_TEXT);
+  return cleaned || null;
+}
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
@@ -46,7 +82,7 @@ export default function RootLayout() {
   // Log font loading status for debugging
   useEffect(() => {
     if (fontError) {
-      console.warn('[Fonts] Font loading error:', fontError);
+      log.warn('fonts', 'Font loading error');
     }
   }, [fontsLoaded, fontError]);
 
@@ -71,7 +107,7 @@ export default function RootLayout() {
           NavigationBar.setButtonStyleAsync('light').catch(() => { });
         }
       } catch (e) {
-        console.warn('[App] Storage initialization error:', e);
+        log.warn('prepare', 'Storage initialization error');
       } finally {
         setAppReady(true);
       }
@@ -83,11 +119,11 @@ export default function RootLayout() {
   useEffect(() => {
     const timeout = setTimeout(async () => {
       if (!splashDismissed) {
-        console.warn('[App] Splash screen timeout — force dismissing after 5s');
+        log.warn('splash', 'Splash screen timeout — force dismissing after 5s');
         try {
           await SplashScreen.hideAsync();
         } catch (e) {
-          console.warn('[App] SplashScreen.hideAsync error:', e);
+          log.warn('splash', 'SplashScreen.hideAsync error');
         }
         setSplashDismissed(true);
         if (!appReady) setAppReady(true);
@@ -122,7 +158,7 @@ export default function RootLayout() {
           } else if (data.type === 'update') {
             Linking.openURL('market://details?id=uk.thewindstorm.windypro').catch(() => { });
           }
-        } catch (err) { console.warn("[Layout] Navigation error:", err); }
+        } catch (err) { log.warn('notificationTap', 'Navigation error'); }
       }, 300);
     };
 
@@ -151,9 +187,13 @@ export default function RootLayout() {
 
         // License activation: windypro://license?key=XXX
         if (parsed.path === 'license' && parsed.queryParams?.key) {
-          const key = parsed.queryParams.key as string;
-          const validation = await licenseService.validateLicense(key);
-          setLicense(validation.tier, key);
+          const rawKey = String(parsed.queryParams.key).trim().slice(0, INPUT_LIMITS.LICENSE_KEY);
+          if (!rawKey || !SAFE_ID_RE.test(rawKey)) {
+            log.warn('deepLink', 'Invalid license key format in deep link');
+            return;
+          }
+          const validation = await licenseService.validateLicense(rawKey);
+          setLicense(validation.tier, rawKey);
           Alert.alert(
             '🎉 License Activated',
             `Welcome to Windy Pro ${formatTier(validation.tier)}!`
@@ -163,16 +203,18 @@ export default function RootLayout() {
 
         // Session deep link: windypro://session/SESSION_ID
         if (parsed.path?.startsWith('session/')) {
-          const sessionId = parsed.path.replace('session/', '');
-          if (sessionId) {
-            // Navigation happens after layout is ready
-            setTimeout(() => {
-              try {
-                const { router } = require('expo-router');
-                router.push(`/session/${sessionId}`);
-              } catch (err) { console.warn("[Layout] Navigation error:", err); }
-            }, 500);
+          const rawId = parsed.path.replace('session/', '');
+          const sessionId = sanitizeSessionId(rawId);
+          if (!sessionId) {
+            log.warn('deepLink', 'Rejected malicious session deep link', { rawLen: rawId.length });
+            return;
           }
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push(`/session/${sessionId}`);
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 500);
           return;
         }
 
@@ -188,25 +230,28 @@ export default function RootLayout() {
         // Handle translate deep link specially — with params goes to quick-translate
         if (parsed.path === 'translate') {
           const { text, from, to } = parsed.queryParams || {};
-          if (text) {
-            // Has text param → route to quick-translate with params
+          const safeText = sanitizeDeepLinkText(text);
+          if (safeText) {
+            // Has valid text param → route to quick-translate with sanitized params
             const params = new URLSearchParams();
-            params.set('text', text as string);
-            if (from) params.set('from', from as string);
-            if (to) params.set('to', to as string);
+            params.set('text', safeText);
+            const safeFrom = sanitizeLangCode(from);
+            const safeTo = sanitizeLangCode(to);
+            if (safeFrom) params.set('from', safeFrom);
+            if (safeTo) params.set('to', safeTo);
             setTimeout(() => {
               try {
                 const { router } = require('expo-router');
                 router.push(`/quick-translate?${params.toString()}`);
-              } catch (err) { console.warn("[Layout] Navigation error:", err); }
+              } catch (err) { log.warn('deepLink', 'Navigation error'); }
             }, 500);
           } else {
-            // No text param → full translate screen
+            // No valid text param → full translate screen
             setTimeout(() => {
               try {
                 const { router } = require('expo-router');
                 router.push('/translate');
-              } catch (err) { console.warn("[Layout] Navigation error:", err); }
+              } catch (err) { log.warn('deepLink', 'Navigation error'); }
             }, 500);
           }
           return;
@@ -218,11 +263,11 @@ export default function RootLayout() {
             try {
               const { router } = require('expo-router');
               router.push(route);
-            } catch (err) { console.warn("[Layout] Navigation error:", err); }
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
           }, 500);
         }
       } catch (err) {
-        console.warn('[DeepLink] Handler failed:', err);
+        log.warn('deepLink', 'Handler failed');
       }
     };
 
@@ -242,7 +287,7 @@ export default function RootLayout() {
       try {
         await SplashScreen.hideAsync();
       } catch (e) {
-        console.warn('[App] SplashScreen.hideAsync error:', e);
+        log.warn('splash', 'SplashScreen.hideAsync error');
       }
       setSplashDismissed(true);
     }

@@ -8,11 +8,11 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { createLogger } from './logger';
+import { API_BASE_URL } from '@/config/api';
 
 const log = createLogger('PushNotifications');
 
-const API_BASE = 'https://windypro.thewindstorm.uk';
-const REGISTER_TOKEN_URL = `${API_BASE}/api/register-push-token`;
+const REGISTER_TOKEN_URL = `${API_BASE_URL}/api/register-push-token`;
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -80,7 +80,7 @@ class PushNotificationService {
 
             return this.token;
         } catch (err) {
-            console.error('[Push] Init failed:', err);
+            log.error('initialize', err);
             return null;
         }
     }

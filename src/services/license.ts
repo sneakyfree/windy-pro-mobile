@@ -84,7 +84,7 @@ class LicenseService {
             let token: string | null = null;
             try {
                 token = await SecureStore.getItemAsync(TOKEN_KEY);
-            } catch (err) { console.warn('[License] Failed to get token:', err); }
+            } catch (err) { log.warn('validateLicense', 'token retrieval failed'); }
 
             const headers: Record<string, string> = {
                 'Content-Type': 'application/json',

@@ -247,7 +247,7 @@ class TranslationService {
                 return { language: data.language || 'en', confidence: data.confidence || 0.5 };
             }
             // Non-ok but not a network error — fall through to heuristic
-        } catch (err) { console.warn('[Translation] detectLanguage network error:', err); }
+        } catch (err) { log.warn('detectLanguage', 'network error'); }
 
         // Heuristic fallback: check against known patterns
         return this.heuristicDetect(text);
@@ -294,7 +294,7 @@ class TranslationService {
                 rate: this.ttsRate,
                 pitch: 1.0,
                 onDone: () => { /* done */ },
-                onError: (err) => console.warn('[TTS] Error:', err),
+                onError: () => log.warn('speak', 'TTS playback error'),
             });
         } catch (err) {
             log.warn('Speak', 'Speak failed', err);

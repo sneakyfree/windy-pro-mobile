@@ -115,7 +115,7 @@ class CloudStorageClient {
             if (error instanceof ApiError) {
                 return { success: false, error: error.message };
             }
-            console.error('[Cloud] Login error:', error);
+            log.error('login', error);
             return { success: false, error: error.message || 'Network error' };
         }
     }
@@ -298,7 +298,7 @@ class CloudStorageClient {
             onProgress?.(100);
             return { success: true, remoteId };
         } catch (error: any) {
-            console.error('[Cloud] Upload failed:', error);
+            log.error('uploadRecording', error);
             return { success: false, error: error.message };
         }
     }
@@ -335,7 +335,7 @@ class CloudStorageClient {
                 total: data.total || data.count || 0,
             };
         } catch (error: any) {
-            console.error('[Cloud] List recordings failed:', error);
+            log.error('listRecordings', error);
             return { recordings: [], total: 0 };
         }
     }

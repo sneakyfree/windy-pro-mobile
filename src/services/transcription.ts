@@ -138,7 +138,7 @@ class TranscriptionService {
         const token = (() => {
             try {
                 return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || '';
-            } catch (err) { console.warn('[transcription] Error:', err); return ''; }
+            } catch (err) { log.warn('httpTranscribe', 'token retrieval failed'); return ''; }
         })();
 
         const response = await FileSystem.uploadAsync(endpoint, uri, {
