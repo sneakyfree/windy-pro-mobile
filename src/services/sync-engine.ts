@@ -64,7 +64,6 @@ class SyncEngine {
         }
 
         this.isEnabled = true;
-        // console.log('[Sync] Enabled for:', email);
         return { success: true };
     }
 
@@ -75,7 +74,6 @@ class SyncEngine {
         const restored = await cloudStorageClient.restoreSession();
         if (restored) {
             this.isEnabled = true;
-            // console.log('[Sync] Restored from saved session');
         }
         return restored;
     }
@@ -87,7 +85,6 @@ class SyncEngine {
         this.isEnabled = false;
         await cloudStorageClient.logout();
         await this.unregisterBackgroundSync();
-        // console.log('[Sync] Disabled');
     }
 
     /**
@@ -119,12 +116,10 @@ class SyncEngine {
         // Check conditions
         const conditionsMet = await this.checkConditions();
         if (!conditionsMet) {
-            // console.log('[Sync] Conditions not met, skipping');
             return { synced: 0, failed: 0, total: 0 };
         }
 
         this.isSyncing = true;
-        // console.log('[Sync] Starting sync cycle...');
 
         let synced = 0;
         let failed = 0;
@@ -135,7 +130,6 @@ class SyncEngine {
             total = pending.length;
 
             if (total === 0) {
-                // console.log('[Sync] Nothing to sync');
                 return { synced: 0, failed: 0, total: 0 };
             }
 
@@ -185,7 +179,6 @@ class SyncEngine {
                         await localStorageService.markSynced(session.id);
                         synced++;
                         this.retryCount = 0;
-                        // console.log(`[Sync] ✓ ${session.id} (${synced}/${total})`);
                     } else {
                         failed++;
                         console.error(`[Sync] ✗ ${session.id}: ${result.error}`);
@@ -207,7 +200,6 @@ class SyncEngine {
             }
 
             this.lastSyncTimestamp = new Date().toISOString();
-            // console.log(`[Sync] Cycle complete: ${synced} synced, ${failed} failed, ${total} total`);
         } catch (error: any) {
             console.error('[Sync] Sync cycle failed:', error);
             this.retryCount++;
@@ -231,7 +223,6 @@ class SyncEngine {
             if (this.conditions.wifiOnly) {
                 const netState = await NetInfo.fetch();
                 if (netState.type !== 'wifi') {
-                    // console.log('[Sync] Not on Wi-Fi, skipping');
                     return false;
                 }
             }
@@ -241,7 +232,6 @@ class SyncEngine {
                 const batteryState = await Battery.getBatteryStateAsync();
                 if (batteryState !== Battery.BatteryState.CHARGING &&
                     batteryState !== Battery.BatteryState.FULL) {
-                    // console.log('[Sync] Not plugged in, skipping');
                     return false;
                 }
             }
@@ -252,10 +242,8 @@ class SyncEngine {
                     1000 * Math.pow(2, this.retryCount),
                     30 * 60 * 1000 // Max 30 minutes
                 );
-                // console.log(`[Sync] Backing off ${backoffMs}ms (retry ${this.retryCount})`);
                 await new Promise((r) => setTimeout(r, backoffMs));
             } else if (this.retryCount > this.maxRetries) {
-                // console.log('[Sync] Max retries exceeded, stopping');
                 return false;
             }
 
@@ -309,7 +297,6 @@ class SyncEngine {
                 stopOnTerminate: false,
                 startOnBoot: true,
             });
-            // console.log('[Sync] Background sync registered');
         } catch (err) {
             console.warn('[Sync] Failed to register background sync:', err);
         }

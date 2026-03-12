@@ -190,7 +190,6 @@ class OcrService {
      * In production, would use ML Kit or Tesseract
      */
     private async fallbackOcr(base64Image: string): Promise<OcrResult> {
-        // console.log('[OCR] Fallback OCR — image size:', base64Image.length, 'chars');
         return {
             text: '',
             confidence: 0,

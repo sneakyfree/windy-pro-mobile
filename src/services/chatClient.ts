@@ -437,7 +437,7 @@ class ChatClient {
                 await this.client.initCrypto();
                 this.client.setCryptoTrustCrossSignedDevices?.(true);
                 this.cryptoEnabled = true;
-                console.log('[Chat] E2E encryption enabled');
+                if (__DEV__) console.log('[Chat] E2E encryption enabled');
             }
         } catch (e) {
             console.warn('[Chat] Crypto init not available (Olm not bundled):', sanitizeError(e));
@@ -556,7 +556,7 @@ class ChatClient {
             this.client.stopClient();
             this.started = false;
             this.setSyncState('stopped');
-            console.log('[Chat] Sync paused (app backgrounded)');
+            if (__DEV__) console.log('[Chat] Sync paused (app backgrounded)');
         }
     }
 
@@ -568,7 +568,7 @@ class ChatClient {
             try {
                 await this.client.startClient({ initialSyncLimit: 10 });
                 this.started = true;
-                console.log('[Chat] Sync resumed (app foregrounded)');
+                if (__DEV__) console.log('[Chat] Sync resumed (app foregrounded)');
             } catch (e) {
                 console.warn('[Chat] Resume sync failed:', sanitizeError(e));
                 this.setSyncState('error');
@@ -595,7 +595,7 @@ class ChatClient {
         this.activeScreens = Math.max(0, this.activeScreens - 1);
         if (this.activeScreens <= 0 && this.started) {
             this.pauseSync();
-            console.log('[Chat] All chat screens unmounted — sync stopped');
+            if (__DEV__) console.log('[Chat] All chat screens unmounted — sync stopped');
         }
     }
 
@@ -759,7 +759,7 @@ class ChatClient {
                     body: msg.text,
                     'uk.windypro.lang': msg.lang,
                 });
-                console.log('[Chat] Flushed pending message:', msg.id);
+                if (__DEV__) console.log('[Chat] Flushed pending message:', msg.id);
             } catch (err) {
                 console.warn('[Chat] Failed to flush pending message:', sanitizeError(err));
                 // Re-queue failed messages

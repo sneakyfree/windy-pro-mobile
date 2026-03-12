@@ -304,7 +304,6 @@ export default function RecordScreen() {
                 avgLevelRef.current,
                 peakLevelRef.current
             );
-            // console.log(`[Record] Quality: ${quality.score}/100 (${quality.label})`);
 
             // RP-2.3: Transcribe the recording
             setTranscriptionError(null);
