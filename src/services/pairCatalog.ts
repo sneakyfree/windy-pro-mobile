@@ -2,9 +2,15 @@
  * 🧬 L0.2 — Pair Catalog Service
  * Load, cache, and query the translation pair catalog.
  *
- * - Catalog source: CDN fetch → bundled fallback (shared/pair-catalog.json)
+ * - Catalog source: CDN fetch → AsyncStorage cache → bundled fallback (shared/pair-catalog.json)
  * - Purchases: expo-secure-store (sensitive)
- * - Catalog cache: AsyncStorage (non-sensitive, large)
+ * - Catalog cache: AsyncStorage (non-sensitive, large) with 24-hour TTL
+ *
+ * Hardening (Strand L):
+ *   - CDN fetch failure gracefully falls back to cache → bundled
+ *   - Catalog entries validated on load (required fields check)
+ *   - Corrupt/malformed JSON handled gracefully with cache cleanup
+ *   - Cache has 24-hour TTL
  */
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -60,6 +66,60 @@ export interface PairBundle {
     note?: string;
 }
 
+// ─── Required fields for validation ──────────────────────────
+const REQUIRED_PAIR_FIELDS: (keyof TranslationPair)[] = [
+    'id', 'source', 'target', 'sourceName', 'targetName', 'cdnUrl', 'sizeMB', 'quality',
+];
+
+/**
+ * Validate a single catalog entry has all required fields.
+ */
+function isValidPairEntry(entry: unknown): entry is TranslationPair {
+    if (typeof entry !== 'object' || entry === null) return false;
+    const obj = entry as Record<string, unknown>;
+
+    for (const field of REQUIRED_PAIR_FIELDS) {
+        if (obj[field] === undefined || obj[field] === null) return false;
+    }
+
+    // Type checks for critical fields
+    if (typeof obj.id !== 'string' || obj.id.length === 0) return false;
+    if (typeof obj.source !== 'string' || obj.source.length === 0) return false;
+    if (typeof obj.target !== 'string' || obj.target.length === 0) return false;
+    if (typeof obj.sourceName !== 'string') return false;
+    if (typeof obj.targetName !== 'string') return false;
+    if (typeof obj.cdnUrl !== 'string') return false;
+    if (typeof obj.sizeMB !== 'number' || obj.sizeMB < 0) return false;
+    if (typeof obj.quality !== 'number' || obj.quality < 1 || obj.quality > 5) return false;
+
+    return true;
+}
+
+/**
+ * Validate and filter catalog entries, logging warnings for invalid ones.
+ */
+function validateCatalog(data: unknown[]): TranslationPair[] {
+    const valid: TranslationPair[] = [];
+    let invalidCount = 0;
+
+    for (const entry of data) {
+        if (isValidPairEntry(entry)) {
+            valid.push(entry);
+        } else {
+            invalidCount++;
+        }
+    }
+
+    if (invalidCount > 0) {
+        log.warn('validateCatalog', `Filtered out ${invalidCount} invalid catalog entries`, {
+            validCount: valid.length,
+            invalidCount,
+        });
+    }
+
+    return valid;
+}
+
 // ─── Bundled fallback data ───────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -78,6 +138,8 @@ class PairCatalogService {
     /**
      * Load catalogs from CDN (with AsyncStorage cache fallback),
      * then load owned pairs from SecureStore.
+     *
+     * Priority: CDN → AsyncStorage cache (24h TTL) → bundled JSON
      */
     async loadCatalog(): Promise<TranslationPair[]> {
         log.entry('loadCatalog');
@@ -85,7 +147,7 @@ class PairCatalogService {
         // Load owned pairs first
         await this.loadOwnedPairs();
 
-        // Try CDN fetch
+        // Try CDN → cache → bundled fallback
         try {
             const cached = await this.getCachedCatalog();
             if (cached) {
@@ -96,13 +158,25 @@ class PairCatalogService {
                     headers: { Accept: 'application/json' },
                 });
                 if (response.ok) {
-                    const data: TranslationPair[] = await response.json();
-                    if (Array.isArray(data) && data.length > 0) {
-                        this.catalog = data;
-                        await this.setCachedCatalog(data);
-                        log.info('loadCatalog', 'fetched from CDN', { count: data.length });
+                    let rawData: unknown;
+                    try {
+                        rawData = await response.json();
+                    } catch (parseErr) {
+                        throw new Error('CDN returned invalid JSON');
+                    }
+
+                    if (!Array.isArray(rawData)) {
+                        throw new Error('CDN response is not an array');
+                    }
+
+                    // Validate catalog entries
+                    const validData = validateCatalog(rawData);
+                    if (validData.length > 0) {
+                        this.catalog = validData;
+                        await this.setCachedCatalog(validData);
+                        log.info('loadCatalog', 'fetched from CDN', { count: validData.length });
                     } else {
-                        throw new Error('Invalid catalog response');
+                        throw new Error('CDN returned no valid catalog entries');
                     }
                 } else {
                     throw new Error(`CDN returned ${response.status}`);
@@ -126,6 +200,7 @@ class PairCatalogService {
      * Get a single pair by ID.
      */
     getPair(id: string): TranslationPair | undefined {
+        if (!id || typeof id !== 'string') return undefined;
         return this.ensureLoaded().find((p) => p.id === id);
     }
 
@@ -133,7 +208,7 @@ class PairCatalogService {
      * Search pairs by language name (source or target).
      */
     searchPairs(query: string): TranslationPair[] {
-        const q = query.toLowerCase().trim();
+        const q = (query ?? '').toLowerCase().trim();
         if (!q) return this.ensureLoaded();
         return this.ensureLoaded().filter(
             (p) =>
@@ -252,18 +327,43 @@ class PairCatalogService {
             if (!tsRaw) return null;
 
             const ts = parseInt(tsRaw, 10);
-            if (Date.now() - ts > CACHE_TTL_MS) {
-                // Cache expired
+            if (isNaN(ts) || Date.now() - ts > CACHE_TTL_MS) {
+                // Cache expired or corrupt timestamp — clean up
+                await this.clearCatalogCache();
                 return null;
             }
 
             const raw = await AsyncStorage.getItem(CATALOG_CACHE_KEY);
             if (!raw) return null;
 
-            const parsed: TranslationPair[] = JSON.parse(raw);
-            return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+            let parsed: unknown;
+            try {
+                parsed = JSON.parse(raw);
+            } catch {
+                // Corrupt JSON — clean up cache
+                log.warn('getCachedCatalog', 'Corrupt catalog cache, clearing');
+                await this.clearCatalogCache();
+                return null;
+            }
+
+            if (!Array.isArray(parsed) || parsed.length === 0) return null;
+
+            // Validate cached entries
+            const valid = validateCatalog(parsed);
+            return valid.length > 0 ? valid : null;
         } catch {
             return null;
+        }
+    }
+
+    /**
+     * Clear the catalog cache (used when corrupt data is detected).
+     */
+    private async clearCatalogCache(): Promise<void> {
+        try {
+            await AsyncStorage.multiRemove([CATALOG_CACHE_KEY, CATALOG_CACHE_TS_KEY]);
+        } catch {
+            // ignore
         }
     }
 
@@ -282,8 +382,22 @@ class PairCatalogService {
         try {
             const raw = await SecureStore.getItemAsync(OWNED_PAIRS_KEY);
             if (raw) {
-                const ids: string[] = JSON.parse(raw);
-                this.ownedPairIds = new Set(ids);
+                let parsed: unknown;
+                try {
+                    parsed = JSON.parse(raw);
+                } catch {
+                    log.warn('loadOwnedPairs', 'Corrupt owned pairs data, resetting');
+                    this.ownedPairIds = new Set();
+                    return;
+                }
+                if (Array.isArray(parsed)) {
+                    this.ownedPairIds = new Set(
+                        parsed.filter((v): v is string => typeof v === 'string')
+                    );
+                } else {
+                    log.warn('loadOwnedPairs', 'Owned pairs data is not an array, resetting');
+                    this.ownedPairIds = new Set();
+                }
             }
         } catch (err) {
             log.warn('loadOwnedPairs', 'failed to load owned pairs', {

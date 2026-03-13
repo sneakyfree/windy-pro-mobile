@@ -2,6 +2,7 @@
  * 🧬 L3.4 — Storage Bar Component
  * Visual bar showing used vs available disk space for translation pairs.
  */
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, spacing, borderRadius } from '@/theme';
 
@@ -18,7 +19,10 @@ function formatBytes(bytes: number): string {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-export function StorageBar({ usedBytes, freeBytes }: StorageBarProps) {
+function StorageBarInner({ usedBytes: rawUsed, freeBytes: rawFree }: StorageBarProps) {
+    // Guard against NaN, undefined, or negative values
+    const usedBytes = Number.isFinite(rawUsed) && rawUsed > 0 ? rawUsed : 0;
+    const freeBytes = Number.isFinite(rawFree) && rawFree > 0 ? rawFree : 0;
     const totalBytes = usedBytes + freeBytes;
     const fraction = totalBytes > 0 ? Math.min(usedBytes / totalBytes, 1) : 0;
     const percentage = Math.round(fraction * 100);
@@ -60,6 +64,8 @@ export function StorageBar({ usedBytes, freeBytes }: StorageBarProps) {
         </View>
     );
 }
+
+export const StorageBar = React.memo(StorageBarInner);
 
 const styles = StyleSheet.create({
     container: {

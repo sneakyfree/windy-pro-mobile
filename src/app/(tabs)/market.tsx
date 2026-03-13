@@ -22,7 +22,7 @@ import {
     RefreshControl,
     ActivityIndicator,
 } from 'react-native';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -73,10 +73,14 @@ function MarketScreenInner() {
     const [regionFilter, setRegionFilter] = useState<PairRegion | 'all'>('all');
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
+    const activeDownloadsRef = useRef<Set<string>>(new Set());
 
     const loadAllData = useCallback(async () => {
         try {
+            setError(null);
+
             // Load catalog
             const pairs = await pairCatalogService.loadCatalog();
             setCatalog(pairs);
@@ -102,8 +106,8 @@ function MarketScreenInner() {
             } else {
                 setShowHero(true);
             }
-        } catch {
-            // Errors handled by individual services
+        } catch (err) {
+            setError('Failed to load marketplace data. Pull down to retry.');
         } finally {
             setLoading(false);
         }
@@ -127,31 +131,40 @@ function MarketScreenInner() {
     };
 
     const handleDownload = async (pairId: string) => {
+        // Prevent duplicate simultaneous downloads
+        if (activeDownloadsRef.current.has(pairId)) return;
+
         haptic.medium();
         const pair = pairCatalogService.getPair(pairId);
         if (!pair) return;
+
+        activeDownloadsRef.current.add(pairId);
 
         const onProgress = (progress: DownloadProgress) => {
             setDownloadProgress((prev) => ({ ...prev, [pairId]: progress.fraction }));
         };
 
-        const success = await pairManager.downloadPair(pairId, pair.cdnUrl, onProgress);
-        setDownloadProgress((prev) => {
-            const next = { ...prev };
-            delete next[pairId];
-            return next;
-        });
+        try {
+            const success = await pairManager.downloadPair(pairId, pair.cdnUrl, onProgress);
+            setDownloadProgress((prev) => {
+                const next = { ...prev };
+                delete next[pairId];
+                return next;
+            });
 
-        if (success) {
-            haptic.success();
-            setDownloadedIds((prev) => [...prev, pairId]);
-            // Refresh storage
-            const storageInfo = await pairManager.getStorageInfo();
-            setUsedBytes(storageInfo.usedBytes);
-            setFreeBytes(storageInfo.freeBytes);
-        } else {
-            haptic.error();
-            Alert.alert('Download Failed', 'Could not download this translation pair. Please try again.');
+            if (success === true) {
+                haptic.success();
+                setDownloadedIds((prev) => [...prev, pairId]);
+                // Refresh storage
+                const storageInfo = await pairManager.getStorageInfo();
+                setUsedBytes(storageInfo.usedBytes);
+                setFreeBytes(storageInfo.freeBytes);
+            } else {
+                haptic.error();
+                Alert.alert('Download Failed', 'Could not download this translation pair. Please try again.');
+            }
+        } finally {
+            activeDownloadsRef.current.delete(pairId);
         }
     };
 
@@ -209,6 +222,26 @@ function MarketScreenInner() {
             <SafeAreaView style={styles.loadingContainer} edges={['top']}>
                 <ActivityIndicator size="large" color={colors.accent} />
                 <Text style={styles.loadingText}>Loading marketplace…</Text>
+            </SafeAreaView>
+        );
+    }
+
+    if (error && catalog.length === 0) {
+        return (
+            <SafeAreaView style={styles.loadingContainer} edges={['top']}>
+                <Text style={styles.errorEmoji}>⚠️</Text>
+                <Text style={styles.errorText}>{error}</Text>
+                <Pressable
+                    style={styles.retryBtn}
+                    onPress={() => {
+                        setLoading(true);
+                        loadAllData();
+                    }}
+                    accessibilityLabel="Retry loading marketplace"
+                    accessibilityRole="button"
+                >
+                    <Text style={styles.retryBtnText}>Retry</Text>
+                </Pressable>
             </SafeAreaView>
         );
     }
@@ -496,6 +529,30 @@ const styles = StyleSheet.create({
     loadingText: {
         fontSize: 15,
         color: colors.textSecondary,
+    },
+    errorEmoji: {
+        fontSize: 48,
+        marginBottom: spacing.sm,
+    },
+    errorText: {
+        fontSize: 15,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        paddingHorizontal: spacing.xl,
+    },
+    retryBtn: {
+        backgroundColor: colors.accent,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.xl,
+        borderRadius: borderRadius.md,
+        marginTop: spacing.md,
+        minHeight: 48,
+        justifyContent: 'center',
+    },
+    retryBtnText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.background,
     },
 
     // Header

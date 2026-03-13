@@ -11,6 +11,7 @@ import {
     Pressable,
     Alert,
     Linking,
+    ActivityIndicator,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -29,6 +30,8 @@ export default function MarcoPolo() {
     const haptic = useHaptic();
     const [pairCount, setPairCount] = useState(50);
     const [freeMB, setFreeMB] = useState(0);
+    const [purchasing, setPurchasing] = useState(false);
+    const [loadingStorage, setLoadingStorage] = useState(true);
 
     useEffect(() => {
         const catalog = pairCatalogService.getCatalog();
@@ -36,7 +39,7 @@ export default function MarcoPolo() {
 
         pairManager.getStorageInfo().then((info) => {
             setFreeMB(Math.round(info.freeBytes / (1024 * 1024)));
-        }).catch(() => {});
+        }).catch(() => {}).finally(() => setLoadingStorage(false));
     }, []);
 
     const totalValue = Math.round(pairCount * PAIR_PRICE * 100) / 100;
@@ -45,10 +48,12 @@ export default function MarcoPolo() {
     const hasEnoughStorage = freeMB > estimatedStorageGB * 1024;
 
     const handlePurchase = () => {
+        if (purchasing) return;
+        setPurchasing(true);
         haptic.medium();
         Linking.openURL('https://windypro.thewindstorm.uk/marco-polo').catch(() => {
             Alert.alert('Error', 'Could not open the purchase page.');
-        });
+        }).finally(() => setPurchasing(false));
     };
 
     return (
@@ -106,29 +111,38 @@ export default function MarcoPolo() {
                 </View>
 
                 {/* Storage check */}
-                <View style={[styles.storageCard, !hasEnoughStorage && styles.storageWarning]}>
-                    <Text style={styles.storageTitle}>
-                        {hasEnoughStorage ? '✅ Storage Check' : '⚠️ Storage Warning'}
-                    </Text>
-                    <Text style={styles.storageText}>
-                        Estimated total: ~{estimatedStorageGB} GB
-                    </Text>
-                    <Text style={styles.storageText}>
-                        Available: {(freeMB / 1024).toFixed(1)} GB
-                    </Text>
-                    {!hasEnoughStorage && (
-                        <Text style={styles.storageWarnText}>
-                            You may not have enough space for all pairs. You can download them selectively.
+                {loadingStorage ? (
+                    <View style={[styles.storageCard, { alignItems: 'center' as const }]}>
+                        <ActivityIndicator size="small" color={colors.accent} />
+                        <Text style={[styles.storageText, { marginTop: spacing.sm }]}>Checking storage…</Text>
+                    </View>
+                ) : (
+                    <View style={[styles.storageCard, !hasEnoughStorage && styles.storageWarning]}>
+                        <Text style={styles.storageTitle}>
+                            {hasEnoughStorage ? '✅ Storage Check' : '⚠️ Storage Warning'}
                         </Text>
-                    )}
-                </View>
+                        <Text style={styles.storageText}>
+                            Estimated total: ~{estimatedStorageGB} GB
+                        </Text>
+                        <Text style={styles.storageText}>
+                            Available: {(freeMB / 1024).toFixed(1)} GB
+                        </Text>
+                        {!hasEnoughStorage && (
+                            <Text style={styles.storageWarnText}>
+                                You may not have enough space for all pairs. You can download them selectively.
+                            </Text>
+                        )}
+                    </View>
+                )}
 
                 {/* Purchase CTA */}
                 <Pressable
-                    style={styles.purchaseBtn}
+                    style={[styles.purchaseBtn, purchasing && { opacity: 0.6 }]}
                     onPress={handlePurchase}
+                    disabled={purchasing}
                     accessibilityLabel="Purchase Marco Polo bundle for $999"
                     accessibilityRole="button"
+                    accessibilityState={{ disabled: purchasing }}
                 >
                     <Text style={styles.purchaseBtnText}>🧭 Get Marco Polo — $999</Text>
                 </Pressable>

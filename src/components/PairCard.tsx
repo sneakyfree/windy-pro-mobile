@@ -2,6 +2,7 @@
  * 🧬 L3.4 — Pair Card Component
  * Reusable card for displaying a translation pair with action buttons.
  */
+import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, spacing, borderRadius } from '@/theme';
@@ -24,8 +25,21 @@ const QUALITY_LABELS: Record<number, { label: string; color: string }> = {
     1: { label: '★☆☆☆☆', color: colors.textTertiary },
 };
 
-export function PairCard({ pair, onBuy, onDownload, progress, isOwned, isDownloaded }: PairCardProps) {
+function PairCardInner({
+    pair,
+    onBuy,
+    onDownload,
+    progress,
+    isOwned = false,
+    isDownloaded = false,
+}: PairCardProps) {
     const router = useRouter();
+
+    // Guard against missing/undefined pair
+    if (!pair || !pair.id) {
+        return null;
+    }
+
     const quality = QUALITY_LABELS[pair.quality] ?? QUALITY_LABELS[3];
 
     const handlePress = () => {
@@ -108,6 +122,8 @@ export function PairCard({ pair, onBuy, onDownload, progress, isOwned, isDownloa
         </Pressable>
     );
 }
+
+export const PairCard = React.memo(PairCardInner);
 
 const styles = StyleSheet.create({
     card: {

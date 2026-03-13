@@ -77,6 +77,7 @@ export default function PairDetail() {
     const [isDownloaded, setIsDownloaded] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [downloadProgress, setDownloadProgress] = useState(0);
+    const [buyDisabled, setBuyDisabled] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -92,15 +93,16 @@ export default function PairDetail() {
     }, [id]);
 
     const handleBuy = () => {
-        if (!pair) return;
+        if (!pair || buyDisabled) return;
+        setBuyDisabled(true);
         haptic.medium();
         Linking.openURL(`https://windypro.thewindstorm.uk/pairs/${pair.revenueCatProductId}`).catch(() => {
             Alert.alert('Error', 'Could not open the purchase page.');
-        });
+        }).finally(() => setBuyDisabled(false));
     };
 
     const handleDownload = async () => {
-        if (!pair) return;
+        if (!pair || downloading) return;
         haptic.medium();
         setDownloading(true);
 
@@ -256,19 +258,23 @@ export default function PairDetail() {
                         </View>
                     ) : isOwned ? (
                         <Pressable
-                            style={styles.downloadBtn}
+                            style={[styles.downloadBtn, downloading && { opacity: 0.6 }]}
                             onPress={handleDownload}
+                            disabled={downloading}
                             accessibilityLabel={`Download ${pair.sourceName} to ${pair.targetName}`}
                             accessibilityRole="button"
+                            accessibilityState={{ disabled: downloading }}
                         >
                             <Text style={styles.downloadBtnText}>⬇️ Download ({pair.sizeMB} MB)</Text>
                         </Pressable>
                     ) : (
                         <Pressable
-                            style={styles.buyBtn}
+                            style={[styles.buyBtn, buyDisabled && { opacity: 0.6 }]}
                             onPress={handleBuy}
+                            disabled={buyDisabled}
                             accessibilityLabel={`Buy ${pair.sourceName} to ${pair.targetName} for $${pair.price}`}
                             accessibilityRole="button"
+                            accessibilityState={{ disabled: buyDisabled }}
                         >
                             <Text style={styles.buyBtnText}>Buy — ${pair.price}</Text>
                         </Pressable>

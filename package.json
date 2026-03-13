@@ -1,7 +1,7 @@
 {
   "name": "windy-pro-mobile",
   "version": "0.1.0",
-  "description": "Windy Pro \u2014 Voice to Text, Your Way. iOS & Android.",
+  "description": "Windy Pro — Voice to Text, Your Way. iOS & Android.",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -30,6 +30,7 @@
     "expo-camera": "~16.0.0",
     "expo-clipboard": "~7.0.0",
     "expo-constants": "~17.0.0",
+    "expo-crypto": "~14.0.2",
     "expo-dev-client": "~5.0.20",
     "expo-device": "~7.0.3",
     "expo-file-system": "~18.0.0",

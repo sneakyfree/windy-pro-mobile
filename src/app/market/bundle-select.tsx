@@ -16,7 +16,7 @@ import {
     Platform,
     ActivityIndicator,
 } from 'react-native';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius } from '@/theme';
@@ -49,10 +49,13 @@ export default function BundleSelect() {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [downloading, setDownloading] = useState(false);
     const [downloadStatus, setDownloadStatus] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [confirmDisabled, setConfirmDisabled] = useState(false);
 
     useEffect(() => {
         const pairs = pairCatalogService.getCatalog();
         setCatalog(pairs);
+        setLoading(false);
 
         // Pre-select top pairs up to max
         const preSelected = new Set(
@@ -100,7 +103,10 @@ export default function BundleSelect() {
             Alert.alert('No Pairs Selected', 'Select at least one translation pair.');
             return;
         }
+        // Prevent double-tap
+        if (confirmDisabled || downloading) return;
 
+        setConfirmDisabled(true);
         haptic.medium();
 
         // Open purchase URL (follows existing pattern)
@@ -108,6 +114,7 @@ export default function BundleSelect() {
             await Linking.openURL(`https://windypro.thewindstorm.uk/bundles/${bundleInfo.rcId}`);
         } catch {
             Alert.alert('Error', 'Could not open the purchase page.');
+            setConfirmDisabled(false);
             return;
         }
 
@@ -118,10 +125,15 @@ export default function BundleSelect() {
             .map((p) => ({ id: p.id, cdnUrl: p.cdnUrl }));
 
         let completed = 0;
+        let failed = 0;
         for (const pair of pairsToDownload) {
             setDownloadStatus(`Downloading ${completed + 1}/${pairsToDownload.length}…`);
-            await pairManager.downloadPair(pair.id, pair.cdnUrl);
-            completed++;
+            const result = await pairManager.downloadPair(pair.id, pair.cdnUrl);
+            if (result === true) {
+                completed++;
+            } else {
+                failed++;
+            }
         }
 
         // Record bundle purchase
@@ -129,17 +141,27 @@ export default function BundleSelect() {
         await pairCatalogService.recordBundlePurchase(bundleId);
 
         setDownloading(false);
+        setConfirmDisabled(false);
         haptic.success();
-        Alert.alert(
-            '🎉 Bundle Activated!',
-            `${completed} translation pairs are ready to use.`,
-            [{ text: 'Awesome!', onPress: () => router.back() }]
-        );
+
+        if (failed > 0) {
+            Alert.alert(
+                '🎉 Bundle Activated',
+                `${completed} pairs downloaded successfully. ${failed} failed — you can retry later from the Marketplace.`,
+                [{ text: 'OK', onPress: () => router.back() }]
+            );
+        } else {
+            Alert.alert(
+                '🎉 Bundle Activated!',
+                `${completed} translation pairs are ready to use.`,
+                [{ text: 'Awesome!', onPress: () => router.back() }]
+            );
+        }
     };
 
     const regions: PairRegion[] = ['europe', 'americas', 'asia', 'meaf'];
 
-    const renderPair = ({ item }: { item: TranslationPair }) => {
+    const renderPair = useCallback(({ item }: { item: TranslationPair }) => {
         const isSelected = selected.has(item.id);
         return (
             <Pressable
@@ -166,7 +188,18 @@ export default function BundleSelect() {
                 </View>
             </Pressable>
         );
-    };
+    }, [selected, haptic]);
+
+    if (loading) {
+        return (
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color={colors.accent} />
+                    <Text style={{ fontSize: 15, color: colors.textSecondary, marginTop: spacing.md }}>Loading pairs…</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -243,12 +276,12 @@ export default function BundleSelect() {
                     </View>
                 ) : (
                     <Pressable
-                        style={[styles.confirmBtn, selected.size === 0 && styles.confirmBtnDisabled]}
+                        style={[styles.confirmBtn, (selected.size === 0 || confirmDisabled) && styles.confirmBtnDisabled]}
                         onPress={handleConfirm}
-                        disabled={selected.size === 0}
+                        disabled={selected.size === 0 || confirmDisabled}
                         accessibilityLabel={`Confirm ${bundleInfo.name} bundle with ${selected.size} pairs for $${bundleInfo.price}`}
                         accessibilityRole="button"
-                        accessibilityState={{ disabled: selected.size === 0 }}
+                        accessibilityState={{ disabled: selected.size === 0 || confirmDisabled }}
                     >
                         <Text style={styles.confirmBtnText}>
                             Confirm {bundleInfo.name} · ${bundleInfo.price}
