@@ -90,6 +90,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="market"
+        options={{
+          title: 'Market',
+          headerShown: false,
+          tabBarIcon: ({ focused }) => null,
+          tabBarLabel: '🛒 Market',
+          tabBarAccessibilityLabel: 'Market tab',
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
