@@ -8,17 +8,22 @@ import {
     View, Text, FlatList, TextInput, TouchableOpacity,
     StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
 import { chatClient, type ChatMessage, type SyncState } from '@/services/chatClient';
 import { chatTranslateService, type TranslatedMessage } from '@/services/chatTranslate';
+import { subscriptionService } from '@/services/subscription';
+import { pairManager } from '@/services/pairManager';
+import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 
 // ─── Types ──────────────────────────────────────────────────────
 
 interface DisplayMessage extends TranslatedMessage {
     pending?: boolean;
+    pairNeeded?: string;
 }
 
 /** Strip HTML tags from display strings to prevent injection */
@@ -327,6 +332,69 @@ export default function ConversationScreen() {
                                     <Text style={styles.pendingText}>🕐 Sending...</Text>
                                 )}
 
+                                {/* L5: Pair purchase banner */}
+                                {!item.wasTranslated && item.pairNeeded && item.detectedLang && (
+                                    <View style={styles.pairBanner}>
+                                        <Text style={styles.pairBannerText}>
+                                            {TIER_1_LANGUAGES.find(l => l.code === item.detectedLang)?.flag || '🌐'}{' '}
+                                            Get EN\u2194{translationService.getLangName(item.detectedLang ?? '')} to understand this message
+                                        </Text>
+                                        <View style={styles.pairBannerActions}>
+                                            <TouchableOpacity
+                                                style={styles.pairBannerBuy}
+                                                onPress={async () => {
+                                                    try {
+                                                        const offerings = await subscriptionService.getOfferings();
+                                                        const pkg = offerings[0]?.packages[0]?.rcPackage;
+                                                        if (pkg) {
+                                                            const result = await subscriptionService.purchasePackage(pkg);
+                                                            if (result.success) {
+                                                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                                                await pairManager.downloadPair(
+                                                                    item.pairNeeded!,
+                                                                    `https://windypro.thewindstorm.uk/pairs/${item.pairNeeded}.bin`,
+                                                                );
+                                                                // Re-translate the message in place
+                                                                const retranslated = await chatTranslateService.translateMessage(item);
+                                                                setMessages(prev => prev.map(m =>
+                                                                    m.eventId === item.eventId ? { ...retranslated, pending: undefined } : m
+                                                                ));
+                                                            }
+                                                        }
+                                                    } catch {
+                                                        Alert.alert('Purchase Error', 'Could not complete purchase.');
+                                                    }
+                                                }}
+                                                accessibilityLabel="Buy translation engine"
+                                                accessibilityRole="button"
+                                            >
+                                                <Text style={styles.pairBannerBuyText}>Get for $6.99</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.pairBannerCloud}
+                                                onPress={async () => {
+                                                    try {
+                                                        const cloudResult = await translationService.translate(
+                                                            item.body, item.detectedLang ?? 'en', chatTranslateService.getUserLanguage()
+                                                        );
+                                                        setMessages(prev => prev.map(m =>
+                                                            m.eventId === item.eventId
+                                                                ? { ...m, translatedBody: cloudResult.translated, wasTranslated: true, pairNeeded: undefined }
+                                                                : m
+                                                        ));
+                                                    } catch {
+                                                        Alert.alert('Cloud Error', 'Cloud translation unavailable.');
+                                                    }
+                                                }}
+                                                accessibilityLabel="Translate once via cloud"
+                                                accessibilityRole="button"
+                                            >
+                                                <Text style={styles.pairBannerCloudText}>Translate once via cloud</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
+
                                 {/* Time */}
                                 <Text style={[
                                     styles.timeText,
@@ -543,4 +611,43 @@ const styles = StyleSheet.create({
     sendIcon: { fontSize: 18, fontWeight: '700', color: colors.background },
 
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+    // L5: Pair purchase banner
+    pairBanner: {
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: 'rgba(255,255,255,0.2)',
+    },
+    pairBannerText: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.85)',
+        marginBottom: 6,
+        lineHeight: 17,
+    },
+    pairBannerActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    pairBannerBuy: {
+        backgroundColor: '#22c55e',
+        borderRadius: 12,
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+    },
+    pairBannerBuyText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#fff',
+    },
+    pairBannerCloud: {
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderRadius: 12,
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+    },
+    pairBannerCloudText: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.8)',
+    },
 });

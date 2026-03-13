@@ -18,6 +18,7 @@ import {
     getUserMessage,
 } from '@/utils/api-error';
 import { createLogger } from './logger';
+import { pairManager } from './pairManager';
 
 const log = createLogger('Translation');
 
@@ -33,6 +34,15 @@ export interface TranslationResult {
     fromLanguage: string;
     toLanguage: string;
     detectedLanguage?: string;
+}
+
+/** Result returned when a local translation pair is not available */
+export interface PairNotFoundResult {
+    translated: false;
+    reason: 'pair_not_found';
+    source: string;
+    target: string;
+    pairId: string;
 }
 
 /** Conversation turn for export */
@@ -95,6 +105,42 @@ class TranslationService {
     private readonly MAX_CACHE = 200;
 
     // ─── Translation ───────────────────────────────────────────
+
+    /**
+     * Check for local pair availability, then translate text.
+     * Returns PairNotFoundResult if the local translation pair is not downloaded,
+     * allowing the UI to trigger a contextual purchase.
+     */
+    async translateText(
+        text: string,
+        from: string,
+        to: string,
+    ): Promise<TranslationResult | PairNotFoundResult> {
+        const pairId = `windy-pair-${from}-${to}`;
+
+        // Check if the local pair is available
+        try {
+            const downloaded = await pairManager.isDownloaded(pairId);
+
+            if (!downloaded) {
+                log.info('translateText', 'Local pair not found', { pairId, from, to });
+                return {
+                    translated: false,
+                    reason: 'pair_not_found',
+                    source: from,
+                    target: to,
+                    pairId,
+                };
+            }
+        } catch (err) {
+            // If pairManager check fails, fall through to cloud translation
+            log.warn('translateText', 'Pair check failed, falling through to cloud', {
+                error: err instanceof Error ? err.message : String(err),
+            });
+        }
+
+        return this.translate(text, from, to);
+    }
 
     /**
      * Translate text from one language to another

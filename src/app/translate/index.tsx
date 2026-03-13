@@ -29,6 +29,8 @@ import { networkMonitor, type NetworkStatus } from '@/services/network-monitor';
 import { analyticsService } from '@/services/analytics';
 import { ratingPromptService } from '@/services/rating-prompt';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { subscriptionService } from '@/services/subscription';
+import { pairManager, type PairLimitResult, PAIR_LIMITS } from '@/services/pairManager';
 import type { TranscriptSegment } from '@/types';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -152,6 +154,66 @@ export default function TranslateScreen() {
     const swapLanguages = () => {
         setSourceLang((prev) => { setTargetLang(prev); return targetLang; });
         feedbackService.tap();
+    };
+
+    // ─── L5: Contextual Pair Purchase Alert ────────────────────
+
+    const showPairPurchaseAlert = (from: string, to: string) => {
+        const pairId = `windy-pair-${from}-${to}`;
+        const targetFlag = TIER_1_LANGUAGES.find(l => l.code === to)?.flag || '🌐';
+        const fromName = translationService.getLangName(from).toUpperCase();
+        const toName = translationService.getLangName(to);
+
+        Alert.alert(
+            `${targetFlag} ${fromName}\u2194${toName} Engine Needed`,
+            `Download once, translate offline forever. \u2b50\u2b50\u2b50 Good \u00b7 590 MB \u00b7 $6.99`,
+            [
+                {
+                    text: 'Buy $6.99',
+                    onPress: async () => {
+                        try {
+                            const offerings = await subscriptionService.getOfferings();
+                            const pkg = offerings[0]?.packages[0]?.rcPackage;
+                            if (pkg) {
+                                const result = await subscriptionService.purchasePackage(pkg);
+                                if (result.success) {
+                                    haptic.success();
+                                    await pairManager.downloadPair(pairId, `https://windypro.thewindstorm.uk/pairs/${pairId}.bin`);
+                                }
+                            } else {
+                                Alert.alert('Store Unavailable', 'Could not load offerings. Try again later.');
+                            }
+                        } catch (err) {
+                            Alert.alert('Purchase Error', 'Could not complete purchase.');
+                        }
+                    },
+                },
+                { text: 'Use Cloud', style: 'default' },
+                { text: 'Cancel', style: 'cancel' },
+            ],
+        );
+    };
+
+    const showPairLimitAlert = (result: PairLimitResult) => {
+        const tierName = result.tier.charAt(0).toUpperCase() + result.tier.slice(1);
+        Alert.alert(
+            'Engine Limit Reached',
+            `Your ${tierName} plan includes ${result.limit} engines. Upgrade to Ultra for 25, or buy individually.`,
+            [
+                {
+                    text: 'Upgrade Plan',
+                    onPress: async () => {
+                        try {
+                            const offerings = await subscriptionService.getOfferings();
+                            const pkg = offerings[0]?.packages[0]?.rcPackage;
+                            if (pkg) await subscriptionService.purchasePackage(pkg);
+                        } catch { /* ignore */ }
+                    },
+                },
+                { text: 'Buy This Engine $6.99', style: 'default' },
+                { text: 'Cancel', style: 'cancel' },
+            ],
+        );
     };
 
     // ─── Press-and-Hold Recording + Speech Translation ─────────
@@ -315,10 +377,21 @@ export default function TranslateScreen() {
                 Alert.alert('Offline', SPEECH_ERROR_MESSAGES.network);
                 setQueueSize(networkMonitor.getQueueSize());
             } else {
-                const message = err instanceof SpeechTranslationError
-                    ? SPEECH_ERROR_MESSAGES[err.type]
-                    : 'Could not translate speech. Check your connection.';
-                Alert.alert('Translation Error', message);
+                // L5: Check if this is a pair-not-found scenario
+                const errFromLang = activeSpeaker === 'A' ? sourceLang : targetLang;
+                const errToLang = activeSpeaker === 'A' ? targetLang : sourceLang;
+                const pairId = `windy-pair-${errFromLang}-${errToLang}`;
+                let hasPair = true;
+                try { hasPair = await pairManager.isDownloaded(pairId); } catch { /* ignore */ }
+
+                if (!hasPair) {
+                    showPairPurchaseAlert(errFromLang, errToLang);
+                } else {
+                    const message = err instanceof SpeechTranslationError
+                        ? SPEECH_ERROR_MESSAGES[err.type]
+                        : 'Could not translate speech. Check your connection.';
+                    Alert.alert('Translation Error', message);
+                }
             }
         } finally {
             setProcessing(false);

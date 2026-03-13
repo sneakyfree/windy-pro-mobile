@@ -15,6 +15,8 @@ import * as Crypto from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { createLogger } from './logger';
+import { licenseService } from './license';
+import type { LicenseTier } from '@/types';
 
 const log = createLogger('PairManager');
 
@@ -57,6 +59,22 @@ export interface StorageInfo {
 }
 
 export type ProgressCallback = (progress: DownloadProgress) => void;
+
+/** Tier → max downloaded pairs */
+export const PAIR_LIMITS: Record<LicenseTier, number> = {
+    free: 1,
+    pro: 5,
+    translate: 25,
+    translate_pro: 100,
+};
+
+/** Result returned when the pair download limit is reached */
+export interface PairLimitResult {
+    success: false;
+    reason: 'limit_reached';
+    limit: number;
+    tier: LicenseTier;
+}
 
 // ─── Errors ──────────────────────────────────────────────────
 
@@ -202,8 +220,30 @@ class PairManager {
         pairId: string,
         cdnUrl: string,
         onProgress?: ProgressCallback,
-    ): Promise<boolean> {
+    ): Promise<boolean | PairLimitResult> {
         log.entry('downloadPair', { pairId, cdnUrl });
+
+        // ── Tier limit check (L5) ────────────────────────────
+        try {
+            const tier = licenseService.getTier();
+            const limit = PAIR_LIMITS[tier];
+            const currentList = await this.loadList();
+
+            // If already downloaded, no limit issue
+            if (!currentList.includes(pairId) && currentList.length >= limit) {
+                log.info('downloadPair', 'Pair limit reached', { tier, limit, current: currentList.length });
+                return {
+                    success: false,
+                    reason: 'limit_reached',
+                    limit,
+                    tier,
+                };
+            }
+        } catch (err) {
+            log.warn('downloadPair', 'Tier limit check failed, proceeding', {
+                error: err instanceof Error ? err.message : String(err),
+            });
+        }
 
         try {
             await this.ensureDir();

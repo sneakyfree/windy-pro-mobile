@@ -13,6 +13,9 @@ import { TIER_1_LANGUAGES } from '@/services/translation';
 import { feedbackService } from '@/services/feedback';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { networkMonitor } from '@/services/network-monitor';
+import { pairManager } from '@/services/pairManager';
+import { subscriptionService } from '@/services/subscription';
+import * as Haptics from 'expo-haptics';
 
 export default function OcrTranslateScreen() {
     const router = useRouter();
@@ -25,6 +28,7 @@ export default function OcrTranslateScreen() {
     const [results, setResults] = useState<OcrTranslation[]>([]);
     const [showLangPicker, setShowLangPicker] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pairNeeded, setPairNeeded] = useState<{ pairId: string; fromLang: string } | null>(null);
 
     const getFlag = (code: string): string => {
         const lang = TIER_1_LANGUAGES.find((l) => l.code === code);
@@ -76,6 +80,21 @@ export default function OcrTranslateScreen() {
 
             setResults((prev) => [result, ...prev]);
             feedbackService.success().catch(() => { });
+
+            // L5: Check if local pair is available for offline OCR
+            if (result.fromLang && result.fromLang !== targetLang) {
+                const pairId = `windy-pair-${result.fromLang}-${targetLang}`;
+                try {
+                    const hasPair = await pairManager.isDownloaded(pairId);
+                    if (!hasPair) {
+                        setPairNeeded({ pairId, fromLang: result.fromLang });
+                    } else {
+                        setPairNeeded(null);
+                    }
+                } catch {
+                    setPairNeeded(null);
+                }
+            }
         } catch (err) {
             console.error('[OCR] Error:', err);
             const message = err instanceof Error ? err.message : String(err);
@@ -194,6 +213,42 @@ export default function OcrTranslateScreen() {
                 </View>
 
                 {/* Results */}
+                {pairNeeded && (
+                    <View style={styles.pairOverlay}>
+                        <Text style={styles.pairOverlayText}>
+                            {TIER_1_LANGUAGES.find(l => l.code === pairNeeded.fromLang)?.flag || '🌐'}{' '}
+                            EN\u2194{TIER_1_LANGUAGES.find(l => l.code === pairNeeded.fromLang)?.name || pairNeeded.fromLang} engine needed for offline OCR
+                        </Text>
+                        <Pressable
+                            style={styles.pairOverlayBtn}
+                            onPress={async () => {
+                                try {
+                                    const offerings = await subscriptionService.getOfferings();
+                                    const pkg = offerings[0]?.packages[0]?.rcPackage;
+                                    if (pkg) {
+                                        const purchaseResult = await subscriptionService.purchasePackage(pkg);
+                                        if (purchaseResult.success) {
+                                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                            await pairManager.downloadPair(
+                                                pairNeeded.pairId,
+                                                `https://windypro.thewindstorm.uk/pairs/${pairNeeded.pairId}.bin`,
+                                            );
+                                            setPairNeeded(null);
+                                        }
+                                    } else {
+                                        Alert.alert('Store Unavailable', 'Could not load offerings.');
+                                    }
+                                } catch {
+                                    Alert.alert('Purchase Error', 'Could not complete purchase.');
+                                }
+                            }}
+                            accessibilityLabel="Buy and translate"
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.pairOverlayBtnText}>Buy \u0026 Translate $6.99</Text>
+                        </Pressable>
+                    </View>
+                )}
                 {results.length > 0 && (
                     <ScrollView style={styles.results} contentContainerStyle={styles.resultsContent}>
                         {results.map((r, i) => (
@@ -319,4 +374,36 @@ const styles = StyleSheet.create({
     resultOriginal: { fontSize: 15, color: colors.textPrimary, lineHeight: 22 },
     resultDivider: { height: 1, backgroundColor: colors.borderLight, marginVertical: spacing.sm },
     resultTranslated: { fontSize: 15, color: colors.accent, lineHeight: 22 },
+
+    // L5: Pair purchase overlay
+    pairOverlay: {
+        marginHorizontal: spacing.screenPadding,
+        marginBottom: spacing.sm,
+        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(59, 130, 246, 0.3)',
+        borderRadius: borderRadius.md,
+        padding: spacing.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.sm,
+    },
+    pairOverlayText: {
+        flex: 1,
+        fontSize: 13,
+        color: colors.textPrimary,
+        lineHeight: 18,
+    },
+    pairOverlayBtn: {
+        backgroundColor: '#22c55e',
+        borderRadius: borderRadius.md,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
+    },
+    pairOverlayBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#fff',
+    },
 });

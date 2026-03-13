@@ -12,6 +12,7 @@
 import { translationService, TIER_1_LANGUAGES } from './translation';
 import type { ChatMessage } from './chatClient';
 import { createLogger } from './logger';
+import { pairManager } from './pairManager';
 
 const log = createLogger('ChatTranslate');
 
@@ -28,6 +29,14 @@ export interface TranslatedMessage extends ChatMessage {
     langName: string | null;
     /** Whether translation was applied */
     wasTranslated: boolean;
+}
+
+/** Result returned when a chat message needs a missing translation pair */
+export interface ChatPairNeededResult {
+    translated: false;
+    originalText: string;
+    detectedLang: string;
+    pairNeeded: string;
 }
 
 // ─── LRU Cache ──────────────────────────────────────────────────
@@ -172,7 +181,14 @@ class ChatTranslateService {
             return result;
         } catch (err) {
             log.error('translateMessage', err, { from: sourceLang, to: this.userLanguage });
-            return {
+
+            // Check if a local pair is needed for this language pair
+            const pairId = `windy-pair-${sourceLang}-${this.userLanguage}`;
+            let pairDownloaded = false;
+            try { pairDownloaded = await pairManager.isDownloaded(pairId); } catch { /* ignore */ }
+
+            // Attach pairNeeded metadata if pair is missing
+            const base: TranslatedMessage = {
                 ...message,
                 translatedBody: null,
                 detectedLang: sourceLang,
@@ -180,6 +196,15 @@ class ChatTranslateService {
                 langName: null,
                 wasTranslated: false,
             };
+
+            if (!pairDownloaded) {
+                // Attach pair-needed info as extra properties for the UI to consume
+                return Object.assign(base, {
+                    pairNeeded: pairId,
+                });
+            }
+
+            return base;
         }
     }
 
