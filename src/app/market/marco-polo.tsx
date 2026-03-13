@@ -24,18 +24,21 @@ import { useHaptic } from '@/hooks/useHaptic';
 const PAIR_PRICE = 6.99;
 const MARCO_POLO_PRICE = 999;
 const ESTIMATED_PAIR_SIZE_MB = 550;
+/** Minimum pair count for savings math — matches marketing (includes future pairs) */
+const MIN_MARKETED_PAIRS = 2500;
 
 export default function MarcoPolo() {
     const router = useRouter();
     const haptic = useHaptic();
-    const [pairCount, setPairCount] = useState(50);
+    const [pairCount, setPairCount] = useState(MIN_MARKETED_PAIRS);
     const [freeMB, setFreeMB] = useState(0);
     const [purchasing, setPurchasing] = useState(false);
     const [loadingStorage, setLoadingStorage] = useState(true);
 
     useEffect(() => {
         const catalog = pairCatalogService.getCatalog();
-        setPairCount(catalog.length || 50);
+        // Use the larger of catalog length or marketed count (includes future pairs)
+        setPairCount(Math.max(catalog.length, MIN_MARKETED_PAIRS));
 
         pairManager.getStorageInfo().then((info) => {
             setFreeMB(Math.round(info.freeBytes / (1024 * 1024)));
@@ -43,7 +46,7 @@ export default function MarcoPolo() {
     }, []);
 
     const totalValue = Math.round(pairCount * PAIR_PRICE * 100) / 100;
-    const savings = Math.round((totalValue - MARCO_POLO_PRICE) * 100) / 100;
+    const savings = Math.max(0, Math.round((totalValue - MARCO_POLO_PRICE) * 100) / 100);
     const estimatedStorageGB = Math.round((pairCount * ESTIMATED_PAIR_SIZE_MB) / 1024 * 10) / 10;
     const hasEnoughStorage = freeMB > estimatedStorageGB * 1024;
 
