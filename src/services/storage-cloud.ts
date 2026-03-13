@@ -134,8 +134,8 @@ class CloudStorageClient {
                 return true;
             }
             return false;
-        } catch (err) {
-            log.warn('restoreSession', 'restoreSession failed', err);
+        } catch (err: unknown) {
+            log.warn('restoreSession', 'restoreSession failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return false;
         }
     }
@@ -164,8 +164,8 @@ class CloudStorageClient {
             }
 
             return true;
-        } catch (err) {
-            log.warn('refreshAuth', 'refreshAuth failed', err);
+        } catch (err: unknown) {
+            log.warn('refreshAuth', 'refreshAuth failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return false;
         }
     }
@@ -360,8 +360,8 @@ class CloudStorageClient {
                 return null;
             }
             return await response.json();
-        } catch (err) {
-            log.warn('getRecording', 'getRecording failed', err);
+        } catch (err: unknown) {
+            log.warn('getRecording', 'getRecording failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return null;
         }
     }
@@ -389,8 +389,8 @@ class CloudStorageClient {
                 return false;
             }
             return true;
-        } catch (err) {
-            log.warn('deleteRecording', 'deleteRecording failed', err);
+        } catch (err: unknown) {
+            log.warn('deleteRecording', 'deleteRecording failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return false;
         }
     }

@@ -29,7 +29,7 @@ export async function fetchWithTimeout(
         });
         return response;
     } catch (err: unknown) {
-        if (err?.name === 'AbortError') {
+        if (err instanceof Error && err.name === 'AbortError') {
             throw new Error('Request timed out');
         }
         throw err;

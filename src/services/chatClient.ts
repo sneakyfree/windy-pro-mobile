@@ -285,7 +285,7 @@ class ChatClient {
 
             return { success: true, userId: response.user_id };
         } catch (err: unknown) {
-            log.warn('Login', 'Login failed', sanitizeError(err));
+            log.warn('Login', 'Login failed', { error: sanitizeError(err) });
             const classified = classifyMatrixError(err);
             return { success: false, error: classified.message, errorCode: classified.code };
         }
@@ -329,7 +329,7 @@ class ChatClient {
 
             return { success: true, userId: response.user_id };
         } catch (err: unknown) {
-            log.warn('Register', 'Register failed', sanitizeError(err));
+            log.warn('Register', 'Register failed', { error: sanitizeError(err) });
 
             // PC-3: Detect UIAA interactive auth (401 with flows)
             const errObj = err as Record<string, any> | undefined;
@@ -370,7 +370,7 @@ class ChatClient {
             }
             return false;
         } catch (err) {
-            log.warn('restoreSession', 'restoreSession failed', sanitizeError(err));
+            log.warn('restoreSession', 'restoreSession failed', { error: sanitizeError(err) });
             return false;
         }
     }
@@ -384,12 +384,12 @@ class ChatClient {
                 // ML-2: Remove stored event handlers before stopping
                 this.removeClientListeners();
                 await this.client.logout().catch((e: unknown) => {
-                    log.warn('logout_API_call', 'logout API call failed', sanitizeError(e));
+                    log.warn('logout_API_call', 'logout API call failed', { error: sanitizeError(e) });
                 });
                 this.client.stopClient();
             }
         } catch (e) {
-            log.warn('logout_cleanup', 'logout cleanup error', sanitizeError(e));
+            log.warn('logout_cleanup', 'logout cleanup error', { error: sanitizeError(e) });
         }
         this.client = null;
         this.session = null;
@@ -449,7 +449,7 @@ class ChatClient {
             await this.initClient();
             return { success: true, userId };
         } catch (err: unknown) {
-            log.warn('loginWithCredentials', 'loginWithCredentials failed', sanitizeError(err));
+            log.warn('loginWithCredentials', 'loginWithCredentials failed', { error: sanitizeError(err) });
             return {
                 success: false,
                 error: 'Failed to initialize chat connection',
@@ -469,7 +469,7 @@ class ChatClient {
             await this.client.setDisplayName(name.trim());
             return { success: true };
         } catch (err: unknown) {
-            log.warn('setDisplayName', 'setDisplayName failed', sanitizeError(err));
+            log.warn('setDisplayName', 'setDisplayName failed', { error: sanitizeError(err) });
             return { success: false, error: 'Could not update display name' };
         }
     }
@@ -502,7 +502,7 @@ class ChatClient {
             }
             return { success: true };
         } catch (err: unknown) {
-            log.warn('setAvatar', 'setAvatar failed', sanitizeError(err));
+            log.warn('setAvatar', 'setAvatar failed', { error: sanitizeError(err) });
             return { success: false, error: 'Could not update avatar' };
         }
     }
@@ -544,7 +544,7 @@ class ChatClient {
                 log.info('E2E_encryption_enabled', 'E2E encryption enabled');
             }
         } catch (e) {
-            log.warn('Crypto_init_not_available_Olm_', 'Crypto init not available (Olm not bundled)', sanitizeError(e));
+            log.warn('Crypto_init_not_available_Olm_', 'Crypto init not available (Olm not bundled)', { error: sanitizeError(e) });
             this.cryptoEnabled = false;
         }
 
@@ -674,7 +674,7 @@ class ChatClient {
                 this.started = true;
                 log.info('Sync_resumed_app_foregrounded', 'Sync resumed (app foregrounded)');
             } catch (e) {
-                log.warn('Resume_sync', 'Resume sync failed', sanitizeError(e));
+                log.warn('Resume_sync', 'Resume sync failed', { error: sanitizeError(e) });
                 this.setSyncState('error');
             }
         }
@@ -774,7 +774,7 @@ class ChatClient {
 
             return { roomId: result.room_id };
         } catch (err) {
-            log.warn('createDM', 'createDM failed', sanitizeError(err));
+            log.warn('createDM', 'createDM failed', { error: sanitizeError(err) });
             const classified = classifyMatrixError(err);
             return { roomId: null, error: classified.message };
         }
@@ -806,7 +806,7 @@ class ChatClient {
             });
             return { success: true };
         } catch (err) {
-            log.warn('sendMessage', 'sendMessage failed', sanitizeError(err));
+            log.warn('sendMessage', 'sendMessage failed', { error: sanitizeError(err) });
 
             // Queue for offline retry if it's a network error
             const classified = classifyMatrixError(err);
@@ -865,14 +865,14 @@ class ChatClient {
                     body: msg.text,
                     'uk.windypro.lang': msg.lang,
                 });
-                log.info('Flushed_pending_message', 'Flushed pending message', msg.id);
+                log.info('Flushed_pending_message', 'Flushed pending message', { messageId: msg.id });
             } catch (err) {
-                log.warn('Failed_to_flush_pending_messag', 'Failed to flush pending message', sanitizeError(err));
+                log.warn('Failed_to_flush_pending_messag', 'Failed to flush pending message', { error: sanitizeError(err) });
                 if (retries < 5) {
                     (msg as any)._retryCount = retries + 1;
                     this.pendingMessages.push(msg);
                 } else {
-                    log.warn('Dropping_message_after_5_retri', 'Dropping message after 5 retries', msg.id);
+                    log.warn('Dropping_message_after_5_retri', 'Dropping message after 5 retries', { messageId: msg.id });
                 }
             }
         }
@@ -932,7 +932,7 @@ class ChatClient {
         try {
             await this.client.sendTyping(roomId, isTyping, isTyping ? 20000 : undefined);
         } catch (e) {
-            log.warn('sendTyping', 'sendTyping failed', sanitizeError(e));
+            log.warn('sendTyping', 'sendTyping failed', { error: sanitizeError(e) });
         }
     }
 
@@ -946,7 +946,7 @@ class ChatClient {
         try {
             await this.client.setPresence({ presence });
         } catch (err) {
-            log.warn('setPresence', 'setPresence failed', sanitizeError(err));
+            log.warn('setPresence', 'setPresence failed', { error: sanitizeError(err) });
         }
     }
 
@@ -976,7 +976,7 @@ class ChatClient {
                         lastActiveAgo = user.lastActiveAgo;
                     }
                 } catch (e) {
-                    log.warn('getUser_presence', 'getUser presence failed', sanitizeError(e));
+                    log.warn('getUser_presence', 'getUser presence failed', { error: sanitizeError(e) });
                 }
 
                 seenUsers.set(member.userId, {
@@ -1012,7 +1012,7 @@ class ChatClient {
                 presence: 'offline' as const,
             }));
         } catch (err) {
-            log.warn('searchUsers', 'searchUsers failed', sanitizeError(err));
+            log.warn('searchUsers', 'searchUsers failed', { error: sanitizeError(err) });
             return [];
         }
     }
@@ -1035,16 +1035,16 @@ class ChatClient {
     private async persistSession(): Promise<void> {
         if (!this.session) return;
         await SecureStore.setItemAsync(MATRIX_TOKEN_KEY, this.session.accessToken).catch((e) => {
-            log.warn('persistSession_token', 'persistSession token failed', sanitizeError(e));
+            log.warn('persistSession_token', 'persistSession token failed', { error: sanitizeError(e) });
         });
         await SecureStore.setItemAsync(MATRIX_USER_KEY, this.session.userId).catch((e) => {
-            log.warn('persistSession_user', 'persistSession user failed', sanitizeError(e));
+            log.warn('persistSession_user', 'persistSession user failed', { error: sanitizeError(e) });
         });
         await SecureStore.setItemAsync(MATRIX_SERVER_KEY, this.session.homeserverUrl).catch((e) => {
-            log.warn('persistSession_server', 'persistSession server failed', sanitizeError(e));
+            log.warn('persistSession_server', 'persistSession server failed', { error: sanitizeError(e) });
         });
         await SecureStore.setItemAsync(MATRIX_DEVICE_KEY, this.session.deviceId).catch((e) => {
-            log.warn('persistSession_device', 'persistSession device failed', sanitizeError(e));
+            log.warn('persistSession_device', 'persistSession device failed', { error: sanitizeError(e) });
         });
     }
 

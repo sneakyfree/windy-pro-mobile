@@ -349,8 +349,8 @@ class SpeechTranslationService {
                     confidence: data.confidence ?? 0.5,
                 };
             }
-        } catch (err) {
-            log.warn('Language_detection', 'Language detection failed', err);
+        } catch (err: unknown) {
+            log.warn('Language_detection', 'Language detection failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
         }
 
         return { language: 'en', confidence: 0.3 };

@@ -43,8 +43,8 @@ class OcrService {
         // Try cloud OCR first
         try {
             return await this.cloudOcr(base64Image);
-        } catch (error) {
-            log.warn('Cloud_OCR_failed_using_fallbac', 'Cloud OCR failed, using fallback', error);
+        } catch (error: unknown) {
+            log.warn('Cloud_OCR_failed_using_fallbac', 'Cloud OCR failed, using fallback', error instanceof Error ? { message: error.message, stack: error.stack } : { error: String(error) });
             return this.fallbackOcr(base64Image);
         }
     }
@@ -124,8 +124,8 @@ class OcrService {
                 fromLang: data.detected_language || 'en',
                 toLang: targetLang,
             };
-        } catch (err) {
-            log.warn('Backend_OCR_failed_falling_bac', 'Backend OCR failed, falling back to local', err);
+        } catch (err: unknown) {
+            log.warn('Backend_OCR_failed_falling_bac', 'Backend OCR failed, falling back to local', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return this.extractAndTranslate(base64Frame, targetLang);
         }
     }

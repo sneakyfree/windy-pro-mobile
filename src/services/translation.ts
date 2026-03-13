@@ -151,8 +151,8 @@ class TranslationService {
             this.cache.set(cacheKey, result);
 
             return result;
-        } catch (error) {
-            log.warn('Cloud', 'Cloud failed', error);
+        } catch (error: unknown) {
+            log.warn('Cloud', 'Cloud failed', error instanceof Error ? { message: error.message, stack: error.stack } : { error: String(error) });
             return {
                 translated: `[Translation unavailable] ${text}`,
                 confidence: 0,
@@ -211,8 +211,8 @@ class TranslationService {
                 toLanguage: to,
                 detectedLanguage: data.detected_language || data.detectedLanguage,
             };
-        } catch (error) {
-            log.warn('Speech_API', 'Speech API failed', error);
+        } catch (error: unknown) {
+            log.warn('Speech_API', 'Speech API failed', error instanceof Error ? { message: error.message, stack: error.stack } : { error: String(error) });
 
             // Fallback: return error state
             return {
@@ -296,8 +296,8 @@ class TranslationService {
                 onDone: () => { /* done */ },
                 onError: () => log.warn('speak', 'TTS playback error'),
             });
-        } catch (err) {
-            log.warn('Speak', 'Speak failed', err);
+        } catch (err: unknown) {
+            log.warn('Speak', 'Speak failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
         }
     }
 

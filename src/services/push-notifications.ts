@@ -130,8 +130,8 @@ class PushNotificationService {
                     version: Constants.expoConfig?.version || '1.0.0',
                 }),
             });
-        } catch (err) {
-            log.warn('Backend_registration', 'Backend registration failed', err);
+        } catch (err: unknown) {
+            log.warn('Backend_registration', 'Backend registration failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
         }
     }
 

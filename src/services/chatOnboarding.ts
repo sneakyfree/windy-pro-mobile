@@ -156,7 +156,7 @@ class ChatOnboardingService {
             const err = classifyError(res.status, body);
             return { success: false, error: err.message };
         } catch (err: unknown) {
-            log.warn('requestVerification', 'requestVerification error', err);
+            log.warn('requestVerification', 'requestVerification error', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return {
                 success: false,
                 error: err instanceof Error ? err.message : 'Network error — check your connection',
@@ -200,7 +200,7 @@ class ChatOnboardingService {
             const err = classifyError(res.status, body);
             return { success: false, error: err.message };
         } catch (err: unknown) {
-            log.warn('verifyOtp', 'verifyOtp error', err);
+            log.warn('verifyOtp', 'verifyOtp error', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return {
                 success: false,
                 error: err instanceof Error ? err.message : 'Network error — check your connection',
@@ -248,7 +248,7 @@ class ChatOnboardingService {
             const err = classifyError(res.status, body);
             return { success: false, error: err.message };
         } catch (err: unknown) {
-            log.warn('setProfile', 'setProfile error', err);
+            log.warn('setProfile', 'setProfile error', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             // Even if server call fails, store locally — the name will sync eventually
             await SecureStore.setItemAsync(CHAT_DISPLAY_NAME_KEY, displayName.trim()).catch(() => {});
             return { success: true }; // Soft failure — don't block onboarding
@@ -292,7 +292,7 @@ class ChatOnboardingService {
             await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
             return { success: true };
         } catch (err: unknown) {
-            log.warn('completeOnboarding', 'completeOnboarding error', err);
+            log.warn('completeOnboarding', 'completeOnboarding error', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return {
                 success: false,
                 error: err instanceof Error ? err.message : 'Failed to complete setup',

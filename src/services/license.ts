@@ -198,8 +198,8 @@ class LicenseService {
                 const data = await response.json();
                 if (data.url) return data.url;
             }
-        } catch (err) {
-            log.warn('getPurchaseUrl', 'getPurchaseUrl failed', err);
+        } catch (err: unknown) {
+            log.warn('getPurchaseUrl', 'getPurchaseUrl failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             // Fall back to static URL
         }
         return `${API_BASE_URL}/pricing?device=${encodeURIComponent(deviceId)}`;

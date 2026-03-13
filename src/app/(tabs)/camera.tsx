@@ -105,7 +105,7 @@ export default function CameraTab() {
             translationService.speak(ocrResult.translated, targetLang);
         } catch (err: unknown) {
             console.error('[OCR Camera] Error:', err);
-            setError(err?.message || 'Translation failed. Check your connection.');
+            setError(err instanceof Error ? err.message : 'Translation failed. Check your connection.');
             feedbackService.error();
         } finally {
             setCapturing(false);

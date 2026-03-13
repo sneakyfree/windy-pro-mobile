@@ -55,7 +55,8 @@ export default function QuickTranslateScreen() {
             setConfidence(result.confidence);
             haptic.success();
         } catch (err: unknown) {
-            const isOffline = err?.message?.includes('Network') || err?.message?.includes('fetch');
+            const errMsg = err instanceof Error ? err.message : '';
+            const isOffline = errMsg.includes('Network') || errMsg.includes('fetch');
             const msg = isOffline
                 ? 'You appear to be offline. Please check your connection and try again.'
                 : 'Translation failed. Please try again.';

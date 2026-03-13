@@ -184,7 +184,8 @@ export default function TranslateScreen() {
         } catch (err: unknown) {
             console.error('[Translate] Start recording failed:', err);
             haptic.error();
-            const isPermission = err?.message?.includes('permission') || err?.message?.includes('not granted');
+            const errMsg = err instanceof Error ? err.message : '';
+            const isPermission = errMsg.includes('permission') || errMsg.includes('not granted');
             if (isPermission) {
                 Alert.alert(
                     'Microphone Access Required',

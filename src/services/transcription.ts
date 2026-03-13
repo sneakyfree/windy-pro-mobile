@@ -91,8 +91,8 @@ class TranscriptionService {
 
             await whisperManager.release();
             return segments;
-        } catch (err) {
-            log.warn('Local_failed_falling_back_to_c', 'Local failed, falling back to cloud', err);
+        } catch (err: unknown) {
+            log.warn('Local_failed_falling_back_to_c', 'Local failed, falling back to cloud', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return this.cloudTranscribe(uri, 'cloud-standard');
         }
     }
@@ -108,16 +108,16 @@ class TranscriptionService {
         try {
             const segments = await this.httpTranscribe(uri, engine);
             if (segments.length > 0) return segments;
-        } catch (httpErr) {
-            log.warn('HTTP_POST', 'HTTP POST failed', httpErr);
+        } catch (httpErr: unknown) {
+            log.warn('HTTP_POST', 'HTTP POST failed', httpErr instanceof Error ? { message: httpErr.message, stack: httpErr.stack } : { error: String(httpErr) });
         }
 
         // Fallback: WebSocket streaming
         try {
             const segments = await this.wsTranscribe(uri, engine);
             if (segments.length > 0) return segments;
-        } catch (wsErr) {
-            log.warn('WebSocket', 'WebSocket failed', wsErr);
+        } catch (wsErr: unknown) {
+            log.warn('WebSocket', 'WebSocket failed', wsErr instanceof Error ? { message: wsErr.message, stack: wsErr.stack } : { error: String(wsErr) });
         }
 
         // Both failed — throw so the caller can handle it

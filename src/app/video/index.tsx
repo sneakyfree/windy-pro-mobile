@@ -144,7 +144,7 @@ export default function VideoRecordScreen() {
             console.error('[Video] Start failed:', err);
             setError();
             feedbackService.error().catch(() => { });
-            Alert.alert('Recording Error', err.message || 'Could not start recording.');
+            Alert.alert('Recording Error', err instanceof Error ? err.message : 'Could not start recording.');
         }
     };
 

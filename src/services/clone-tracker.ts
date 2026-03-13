@@ -108,8 +108,8 @@ class CloneTracker {
                         },
                         trigger: null,
                     });
-                } catch (e) {
-                    log.warn('Notification', 'Notification failed', e);
+                } catch (e: unknown) {
+                    log.warn('Notification', 'Notification failed', e instanceof Error ? { message: e.message, stack: e.stack } : { error: String(e) });
                 }
 
                 // Persist milestone to storage
@@ -157,8 +157,8 @@ class CloneTracker {
 
             // Restore persisted milestone dates
             await this.restoreMilestones();
-        } catch (e) {
-            log.warn('Recalculate_from_DB', 'Recalculate from DB failed', e);
+        } catch (e: unknown) {
+            log.warn('Recalculate_from_DB', 'Recalculate from DB failed', e instanceof Error ? { message: e.message, stack: e.stack } : { error: String(e) });
         }
 
         return this.getProgress();

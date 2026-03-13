@@ -339,8 +339,8 @@ class CloudApiClient {
             }
 
             return download.status >= 200 && download.status < 300 ? destPath : null;
-        } catch (err) {
-            log.warn('downloadFile', 'downloadFile failed', err);
+        } catch (err: unknown) {
+            log.warn('downloadFile', 'downloadFile failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return null;
         }
     }

@@ -118,8 +118,8 @@ class LocalStorageService {
                     from: session.audioFilePath,
                     to: permanentAudioPath,
                 });
-            } catch (err) {
-                log.warn('Could_not_move_audio_file', 'Could not move audio file', err);
+            } catch (err: unknown) {
+                log.warn('Could_not_move_audio_file', 'Could not move audio file', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
                 permanentAudioPath = session.audioFilePath;
             }
         }
@@ -395,8 +395,8 @@ class LocalStorageService {
 function safeParseQuality(json: string, score: number): any {
     try {
         return JSON.parse(json);
-    } catch (err) {
-        log.warn('safeParseQuality', 'safeParseQuality failed', err);
+    } catch (err: unknown) {
+        log.warn('safeParseQuality', 'safeParseQuality failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
         return {
             score, label: score >= 80 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'fair' : 'poor',
             snrDb: 0, speechRatio: 0, hasClipping: false, sampleRate: 44100

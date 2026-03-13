@@ -251,8 +251,8 @@ class SyncEngine {
             }
 
             return true;
-        } catch (err) {
-            log.warn('Condition_check', 'Condition check failed', err);
+        } catch (err: unknown) {
+            log.warn('Condition_check', 'Condition check failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return false;
         }
     }
@@ -300,8 +300,8 @@ class SyncEngine {
                 stopOnTerminate: false,
                 startOnBoot: true,
             });
-        } catch (err) {
-            log.warn('Failed_to_register_background_', 'Failed to register background sync', err);
+        } catch (err: unknown) {
+            log.warn('Failed_to_register_background_', 'Failed to register background sync', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
         }
     }
 

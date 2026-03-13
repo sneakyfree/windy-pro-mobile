@@ -183,8 +183,8 @@ class CloudSyncService {
                     downloaded++;
                 }
             }
-        } catch (error) {
-            log.warn('Download', 'Download failed', error);
+        } catch (error: unknown) {
+            log.warn('Download', 'Download failed', error instanceof Error ? { message: error.message, stack: error.stack } : { error: String(error) });
         }
 
         return { downloaded, skipped, conflicts };
@@ -205,8 +205,8 @@ class CloudSyncService {
             const download = await FileSystem.downloadAsync(recording.audioUrl, localPath);
 
             return download.status === 200 ? localPath : null;
-        } catch (err) {
-            log.warn('downloadAudio', 'downloadAudio failed', err);
+        } catch (err: unknown) {
+            log.warn('downloadAudio', 'downloadAudio failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return null;
         }
     }
@@ -238,8 +238,8 @@ class CloudSyncService {
                 localUpdatedAt: local.syncedAt || local.createdAt,
                 cloudUpdatedAt: cloudRecording.createdAt,
             };
-        } catch (err) {
-            log.warn('resolveConflict', 'resolveConflict failed', err);
+        } catch (err: unknown) {
+            log.warn('resolveConflict', 'resolveConflict failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             return { resolution: 'keep-cloud' };
         }
     }
@@ -462,8 +462,8 @@ class CloudSyncService {
         try {
             const raw = await AsyncStorage.getItem(QUEUE_KEY);
             this.queue = raw ? JSON.parse(raw) : [];
-        } catch (err) {
-            log.warn('loadQueue', 'loadQueue failed', err);
+        } catch (err: unknown) {
+            log.warn('loadQueue', 'loadQueue failed', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             this.queue = [];
         }
     }

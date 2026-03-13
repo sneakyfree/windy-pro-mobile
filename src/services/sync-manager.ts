@@ -227,8 +227,8 @@ class SyncManager {
             const retryResult = await cloudApi.processRetryQueue();
             uploaded += retryResult.succeeded;
 
-        } catch (err) {
-            log.warn('cloudSync', 'cloudSync error', err);
+        } catch (err: unknown) {
+            log.warn('cloudSync', 'cloudSync error', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
         }
 
         return { uploaded, downloaded, conflicts };
@@ -784,7 +784,7 @@ try {
             return BackgroundFetch.BackgroundFetchResult.Failed;
         }
     });
-} catch (e) {
-    log.warn('Failed_to_register_background_', 'Failed to register background task', e);
+} catch (e: unknown) {
+    log.warn('Failed_to_register_background_', 'Failed to register background task', e instanceof Error ? { message: e.message, stack: e.stack } : { error: String(e) });
 }
 
