@@ -63,3 +63,8 @@
 -keep class uk.thewindstorm.windypro.OverlayPermissionHelper { *; }
 -keep class uk.thewindstorm.windypro.MainActivity { *; }
 -keep class uk.thewindstorm.windypro.MainApplication { *; }
+
+# ─── RevenueCat (react-native-purchases) ────────────────────────
+-keep class com.revenuecat.** { *; }
+-dontwarn com.revenuecat.**
+

@@ -98,11 +98,13 @@ class CloneTracker {
                 // Push notification celebration
                 try {
                     const Notifications = require('expo-notifications');
+                    const { Platform } = require('react-native');
                     Notifications.scheduleNotificationAsync({
                         content: {
                             title: `${milestone.emoji} Clone Milestone!`,
                             body: `You reached ${milestone.label}! ${this.getMilestoneMessage(milestone.percent)}`,
                             sound: true,
+                            ...(Platform.OS === 'android' ? { channelId: 'translation' } : {}),
                         },
                         trigger: null,
                     });

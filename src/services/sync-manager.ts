@@ -13,6 +13,7 @@
  * - Settings: "Sync on Cellular" (default OFF), "Auto-Sync" (default ON)
  * - Cloud file sync: pull cloud list, compare local, auto-upload/download
  */
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo, { NetInfoState, NetInfoStateType } from '@react-native-community/netinfo';
 import * as FileSystem from 'expo-file-system';
@@ -555,8 +556,8 @@ class SyncManager {
                 item.bytes_uploaded = Math.min((i + 1) * CHUNK_SIZE, item.total_bytes);
                 item.progress = Math.round((item.bytes_uploaded / item.total_bytes) * 100);
                 this.emit();
-            } catch (err: unknown) {
-                if (err.name === 'AbortError') {
+            } catch (err: any) {
+                if (err?.name === 'AbortError') {
                     item.chunk_index = i;
                     item.status = 'paused';
                     return false;
@@ -662,6 +663,7 @@ class SyncManager {
                 content: {
                     title: '📦 Recordings Ready to Sync',
                     body: `${pending} recording${pending > 1 ? 's' : ''} waiting — connect to Wi-Fi to sync`,
+                    ...(Platform.OS === 'android' ? { channelId: 'sync' } : {}),
                 },
                 trigger: null,
             });

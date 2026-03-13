@@ -107,6 +107,12 @@ class PushNotificationService {
             name: 'App Updates',
             importance: Notifications.AndroidImportance.LOW,
         });
+
+        await Notifications.setNotificationChannelAsync('sync', {
+            name: 'Sync Status',
+            importance: Notifications.AndroidImportance.LOW,
+            description: 'Background sync progress and Wi-Fi reminders',
+        });
     }
 
     /**
