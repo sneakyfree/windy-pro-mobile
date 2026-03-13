@@ -19,7 +19,14 @@
  */
 import * as FileSystem from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
-import * as Crypto from 'expo-crypto';
+// Graceful import: expo-crypto may not be available in dev builds
+// that haven't been rebuilt with the native module
+let Crypto: typeof import('expo-crypto') | null = null;
+try {
+    Crypto = require('expo-crypto');
+} catch {
+    // Native module not available — will use fallback hash
+}
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { Alert, Platform } from 'react-native';
@@ -305,7 +312,17 @@ class PairManager {
             log.warn('computeHash', 'Could not read license token for hashing');
         }
         const payload = `${pairId}${licenseToken}${fileSize}`;
-        return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, payload);
+        if (Crypto) {
+            return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, payload);
+        }
+        // Fallback: simple string hash when native crypto isn't available
+        let hash = 0;
+        for (let i = 0; i < payload.length; i++) {
+            const char = payload.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+        return `fallback-${Math.abs(hash).toString(16)}`;
     }
 
     /**

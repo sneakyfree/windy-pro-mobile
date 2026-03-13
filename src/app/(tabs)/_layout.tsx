@@ -95,7 +95,7 @@ export default function TabLayout() {
           title: 'Market',
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '🛒 Market',
+          tabBarLabel: '🛒 Mkt',
           tabBarAccessibilityLabel: 'Market tab',
         }}
       />

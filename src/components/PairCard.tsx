@@ -50,7 +50,7 @@ function PairCardInner({
         if (isDownloaded) {
             return (
                 <View style={[styles.actionBtn, styles.downloadedBtn]}>
-                    <Text style={styles.downloadedText}>✅</Text>
+                    <Text style={styles.downloadedText}>✅ Downloaded</Text>
                 </View>
             );
         }
@@ -192,12 +192,14 @@ const styles = StyleSheet.create({
         color: colors.background,
     },
     downloadedBtn: {
-        backgroundColor: 'transparent',
+        backgroundColor: 'rgba(163, 230, 53, 0.08)',
         borderWidth: 1,
         borderColor: colors.accent,
     },
     downloadedText: {
-        fontSize: 18,
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.accent,
     },
     progressContainer: {
         gap: spacing.xs,
