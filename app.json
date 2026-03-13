@@ -111,8 +111,8 @@
       ]
     ],
     "extra": {
-      "revenueCatIosKey": "appl_REPLACE_WITH_YOUR_IOS_KEY",
-      "revenueCatAndroidKey": "goog_REPLACE_WITH_YOUR_ANDROID_KEY",
+      "revenueCatIosKey": "test_sRWCoNXTMzpinPzDkvknRgtsQDh",
+      "revenueCatAndroidKey": "test_sRWCoNXTMzpinPzDkvknRgtsQDh",
       "router": {
         "origin": false
       },
