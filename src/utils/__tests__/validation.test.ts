@@ -184,7 +184,7 @@ describe('INPUT_LIMITS', () => {
         expect(INPUT_LIMITS.PASSWORD).toBe(128);
         expect(INPUT_LIMITS.PHONE).toBe(20);
         expect(INPUT_LIMITS.OTP).toBe(6);
-        expect(INPUT_LIMITS.CHAT_MESSAGE).toBe(4000);
+        expect(INPUT_LIMITS.CHAT_MESSAGE).toBe(10000);
         expect(INPUT_LIMITS.SEARCH_QUERY).toBe(200);
         expect(INPUT_LIMITS.SERVER_URL).toBe(512);
     });

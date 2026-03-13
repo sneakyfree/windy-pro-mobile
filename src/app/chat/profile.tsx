@@ -19,6 +19,12 @@ import { chatOnboarding } from '@/services/chatOnboarding';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { TIER_1_LANGUAGES } from '@/services/translation';
 
+/** Strip HTML tags from display strings to prevent injection */
+function stripHtml(str: string): string {
+    if (!str) return '';
+    return str.replace(/<[^>]*>/g, '').trim();
+}
+
 // ─── Component ──────────────────────────────────────────────────
 
 export default function ChatProfileScreen() {
@@ -48,28 +54,39 @@ export default function ChatProfileScreen() {
     const defaultLang = useSettingsStore(s => s.defaultLanguage);
     const langInfo = TIER_1_LANGUAGES.find(l => l.code === defaultLang);
 
+    // ML-3: Unmount guard for async callbacks
+    const isMounted = useRef(true);
+
     // ─── Init ───────────────────────────────────────────────────
 
     useEffect(() => {
+        isMounted.current = true;
         const checkLogin = async () => {
             try {
                 const restored = await chatClient.restoreSession();
+                if (!isMounted.current) return;
                 setIsLoggedIn(restored);
                 if (restored) {
                     setUserId(chatClient.getUserId() || '');
                     chatClient.setPresence('online');
                     // Get user-facing display name
                     const name = await chatOnboarding.getDisplayName();
-                    setDisplayNameState(name || chatClient.getUserId()?.replace(/^@/, '').split(':')[0] || '');
+                    if (isMounted.current) {
+                        setDisplayNameState(stripHtml(name || chatClient.getUserId()?.replace(/^@/, '').split(':')[0] || ''));
+                    }
                 }
             } catch (err) {
                 console.warn('[ChatProfile] restoreSession error:', err);
+                if (isMounted.current) {
+                    Alert.alert('Connection Error', 'Could not connect to chat. Please try again.');
+                }
             }
-            setLoading(false);
+            if (isMounted.current) setLoading(false);
         };
         checkLogin();
         // ML-AUDIT: Clean up triple-tap timer on unmount
         return () => {
+            isMounted.current = false;
             if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
         };
     }, []);
@@ -120,8 +137,10 @@ export default function ChatProfileScreen() {
                 setAuthError(result.error || 'Authentication failed');
             }
         } catch (err) {
-            setAuthLoading(false);
-            setAuthError('An unexpected error occurred. Please try again.');
+            if (isMounted.current) {
+                setAuthLoading(false);
+                setAuthError('An unexpected error occurred. Please try again.');
+            }
             console.warn('[ChatProfile] handleAuth error:', err);
         }
     };
@@ -141,10 +160,13 @@ export default function ChatProfileScreen() {
                             await chatOnboarding.resetOnboarding();
                         } catch (err) {
                             console.warn('[ChatProfile] logout error:', err);
+                            Alert.alert('Error', 'Could not disconnect cleanly. Please try again.');
                         }
-                        setIsLoggedIn(false);
-                        setUserId('');
-                        setDisplayNameState('');
+                        if (isMounted.current) {
+                            setIsLoggedIn(false);
+                            setUserId('');
+                            setDisplayNameState('');
+                        }
                     },
                 },
             ]
@@ -349,7 +371,7 @@ export default function ChatProfileScreen() {
                             {(displayName || '?')[0].toUpperCase()}
                         </Text>
                     </View>
-                    <Text style={styles.profileName}>{displayName || 'User'}</Text>
+                    <Text style={styles.profileName}>{stripHtml(displayName) || 'User'}</Text>
                     <Text style={styles.profileServer}>{chatClient.getHomeserver()}</Text>
                     {chatClient.isCryptoEnabled() && (
                         <Text style={styles.cryptoBadge}

@@ -31,8 +31,12 @@ const MATRIX_DEVICE_KEY = 'windy_matrix_device';
 const DEFAULT_HOMESERVER = 'https://matrix.org';
 
 // ─── Constants ──────────────────────────────────────────────────
-const MAX_MESSAGE_LENGTH = 4000;
+const MAX_MESSAGE_LENGTH = 10_000;
 const MAX_PENDING_MESSAGES = 50;
+const CONNECT_TIMEOUT_MS = 10_000;
+const REQUEST_TIMEOUT_MS = 30_000;
+const RECONNECT_MAX_DELAY_MS = 30_000;
+const RECONNECT_BASE_DELAY_MS = 1_000;
 
 // ─── Error Codes ────────────────────────────────────────────────
 
@@ -116,6 +120,14 @@ function sanitizeMessageBody(body: string): string {
     const collapsed = cleaned.replace(/\n{4,}/g, '\n\n\n');
     // Trim and enforce max length
     return collapsed.trim().slice(0, MAX_MESSAGE_LENGTH);
+}
+
+/**
+ * Strip HTML tags from display names to prevent injection.
+ */
+function stripHtml(str: string): string {
+    if (!str) return '';
+    return str.replace(/<[^>]*>/g, '').trim();
 }
 
 /**
@@ -229,6 +241,10 @@ class ChatClient {
     private timelineHandler: ((...args: any[]) => void) | null = null;
     private typingHandler: ((...args: any[]) => void) | null = null;
     private syncHandler: ((...args: any[]) => void) | null = null;
+
+    // RECONN: Exponential backoff state
+    private reconnectAttempt = 0;
+    private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     // ─── SDK Loading ────────────────────────────────────────────
 
@@ -397,6 +413,8 @@ class ChatClient {
         this.cryptoEnabled = false;
         this.pendingMessages = [];
         this.activeScreens = 0;
+        this.reconnectAttempt = 0;
+        if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
         this.setSyncState('stopped');
         await SecureStore.deleteItemAsync(MATRIX_TOKEN_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(MATRIX_USER_KEY).catch(() => {});
@@ -533,6 +551,9 @@ class ChatClient {
             accessToken: this.session.accessToken,
             userId: this.session.userId,
             deviceId: this.session.deviceId,
+            fetchOpts: {
+                timeout: REQUEST_TIMEOUT_MS,
+            },
         });
 
         // ── Attempt E2E encryption initialization ───────────────
@@ -568,7 +589,7 @@ class ChatClient {
                 eventId: event.getId(),
                 roomId: room.roomId,
                 sender: event.getSender(),
-                senderName: room.getMember(event.getSender())?.name,
+                senderName: stripHtml(room.getMember(event.getSender())?.name || ''),
                 body: sanitizeMessageBody(content.body || ''),
                 timestamp: event.getTs(),
                 type: this.mapMsgType(content.msgtype),
@@ -600,15 +621,19 @@ class ChatClient {
             switch (state) {
                 case 'SYNCING':
                 case 'PREPARED':
+                    this.reconnectAttempt = 0;
+                    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
                     this.setSyncState('syncing');
                     // Flush pending messages when we reconnect
                     this.flushPendingMessages();
                     break;
                 case 'RECONNECTING':
                     this.setSyncState('reconnecting');
+                    this.scheduleReconnect();
                     break;
                 case 'ERROR':
                     this.setSyncState('error');
+                    this.scheduleReconnect();
                     break;
                 case 'STOPPED':
                     this.setSyncState('stopped');
@@ -648,6 +673,32 @@ class ChatClient {
             this.client.removeListener?.('sync', this.syncHandler);
             this.syncHandler = null;
         }
+    }
+
+    // RECONN: Exponential backoff reconnection
+    private scheduleReconnect(): void {
+        if (this.reconnectTimer) return; // Already scheduled
+        const delay = Math.min(
+            RECONNECT_BASE_DELAY_MS * Math.pow(2, this.reconnectAttempt),
+            RECONNECT_MAX_DELAY_MS,
+        );
+        log.info('Scheduling_reconnect', `Reconnect attempt ${this.reconnectAttempt + 1} in ${delay}ms`);
+        this.reconnectTimer = setTimeout(async () => {
+            this.reconnectTimer = null;
+            this.reconnectAttempt++;
+            if (!this.client || !this.session) return;
+            try {
+                if (this.started) {
+                    this.client.stopClient();
+                    this.started = false;
+                }
+                await this.client.startClient({ initialSyncLimit: 10 });
+                this.started = true;
+            } catch (e) {
+                log.warn('Reconnect_failed', 'Reconnect attempt failed', { error: sanitizeError(e) });
+                this.scheduleReconnect(); // Retry with next backoff level
+            }
+        }, delay);
     }
 
     // ─── Sync Lifecycle ─────────────────────────────────────────
@@ -898,7 +949,7 @@ class ChatClient {
                 eventId: event.getId(),
                 roomId,
                 sender: event.getSender(),
-                senderName: room.getMember(event.getSender())?.name,
+                senderName: stripHtml(room.getMember(event.getSender())?.name || ''),
                 body: sanitizeMessageBody(content.body || ''),
                 timestamp: event.getTs(),
                 type: this.mapMsgType(content.msgtype),
@@ -981,7 +1032,7 @@ class ChatClient {
 
                 seenUsers.set(member.userId, {
                     userId: member.userId,
-                    displayName: member.name || member.userId,
+                    displayName: stripHtml(member.name || member.userId),
                     avatarUrl: member.getAvatarUrl?.(this.session?.homeserverUrl || '', 48, 48, 'crop', false, false) || undefined,
                     presence,
                     lastActiveAgo,
@@ -1027,7 +1078,7 @@ class ChatClient {
         // For DMs, show the other person's name
         const members = room.getJoinedMembers() || [];
         const other = members.find((m: any) => m.userId !== this.session?.userId);
-        return other?.name || room.name || roomId;
+        return stripHtml(other?.name || room.name || roomId);
     }
 
     // ─── Helpers ────────────────────────────────────────────────
@@ -1082,9 +1133,9 @@ class ChatClient {
 
         return {
             roomId: room.roomId,
-            name: otherMember?.name || room.name || 'Chat',
+            name: stripHtml(otherMember?.name || room.name || 'Chat'),
             avatarUrl: otherMember?.getAvatarUrl?.(this.session?.homeserverUrl || '', 48, 48, 'crop', false, false) || undefined,
-            lastMessage: lastEvent?.getContent()?.body,
+            lastMessage: sanitizeMessageBody(lastEvent?.getContent()?.body || '') || undefined,
             lastMessageTime: lastEvent?.getTs(),
             lastMessageSender: lastEvent?.getSender(),
             unreadCount: room.getUnreadNotificationCount?.('total') || 0,

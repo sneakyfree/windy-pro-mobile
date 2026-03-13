@@ -432,14 +432,14 @@ describe('Windy Chat — Mobile Smoke Tests', () => {
             expect(mockMatrixClient.sendEvent).not.toHaveBeenCalled();
         });
 
-        it('should truncate messages exceeding 4000 chars', async () => {
+        it('should truncate messages exceeding 10000 chars', async () => {
             mockMatrixClient.sendEvent.mockResolvedValueOnce({ event_id: '$evt_long' });
-            const longMsg = 'a'.repeat(5000);
+            const longMsg = 'a'.repeat(15000);
 
             await chatClient.sendMessage('!room:test', longMsg);
 
             const sentBody = mockMatrixClient.sendEvent.mock.calls[0][2].body;
-            expect(sentBody.length).toBeLessThanOrEqual(4000);
+            expect(sentBody.length).toBeLessThanOrEqual(10000);
         });
     });
 

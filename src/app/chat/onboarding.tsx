@@ -66,6 +66,13 @@ export default function ChatOnboardingScreen() {
     const fadeAnim = useRef(new Animated.Value(1)).current;
     const slideAnim = useRef(new Animated.Value(0)).current;
 
+    // ML-3: Unmount guard for async callbacks
+    const isMounted = useRef(true);
+    useEffect(() => {
+        isMounted.current = true;
+        return () => { isMounted.current = false; };
+    }, []);
+
     // ─── Step Transition ────────────────────────────────────────
 
     const animateToStep = useCallback((nextStep: OnboardingStep) => {
@@ -109,6 +116,7 @@ export default function ChatOnboardingScreen() {
             type: identifierType,
         });
 
+        if (!isMounted.current) return;
         setLoading(false);
         if (result.success && result.sessionId) {
             setSessionId(result.sessionId);
@@ -169,6 +177,7 @@ export default function ChatOnboardingScreen() {
 
         const result = await chatOnboarding.verifyOtp(sessionId, code);
 
+        if (!isMounted.current) return;
         setLoading(false);
         if (result.success && result.credentials) {
             setCredentials(result.credentials);
@@ -202,6 +211,7 @@ export default function ChatOnboardingScreen() {
             displayName.trim(),
         );
 
+        if (!isMounted.current) return;
         setLoading(false);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         animateToStep(4);
@@ -231,6 +241,7 @@ export default function ChatOnboardingScreen() {
 
         setLoading(true);
         const result = await chatOnboarding.completeOnboarding(credentials);
+        if (!isMounted.current) return;
         setLoading(false);
 
         if (result.success) {

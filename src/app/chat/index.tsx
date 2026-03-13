@@ -18,6 +18,12 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 
 // ─── Helpers ────────────────────────────────────────────────────
 
+/** Strip HTML tags from display strings to prevent injection */
+function stripHtml(str: string): string {
+    if (!str) return '';
+    return str.replace(/<[^>]*>/g, '').trim();
+}
+
 function timeAgo(ts: number): string {
     const diff = Date.now() - ts;
     if (diff < 60_000) return 'now';
@@ -68,6 +74,13 @@ export default function ChatHomeScreen() {
         return () => { chatClient.decrementActiveScreens(); };
     }, []);
 
+    // ML-3: Track unmount to prevent setState on unmounted component
+    const isMounted = useRef(true);
+    useEffect(() => {
+        isMounted.current = true;
+        return () => { isMounted.current = false; };
+    }, []);
+
     const isOffline = syncState === 'reconnecting' || syncState === 'error';
 
     // ─── Load ───────────────────────────────────────────────────
@@ -82,13 +95,16 @@ export default function ChatHomeScreen() {
 
         try {
             const dms = chatClient.getDMs();
-            setRooms(dms);
+            if (isMounted.current) setRooms(dms);
             // PERF-AUDIT: Cache contacts once per load
-            setContacts(chatClient.getContacts());
+            if (isMounted.current) setContacts(chatClient.getContacts());
         } catch (err) {
             console.warn('[ChatHome] loadRooms error:', err);
+            if (isMounted.current) {
+                Alert.alert('Connection Error', 'Could not load conversations. Pull down to retry.');
+            }
         } finally {
-            setLoading(false);
+            if (isMounted.current) setLoading(false);
         }
     }, []);
 
@@ -127,9 +143,15 @@ export default function ChatHomeScreen() {
         }
         setSearching(true);
         searchDebounce.current = setTimeout(async () => {
-            const results = await chatClient.searchUsers(query.trim());
-            setSearchResults(results);
-            setSearching(false);
+            try {
+                const results = await chatClient.searchUsers(query.trim());
+                if (isMounted.current) {
+                    setSearchResults(results);
+                    setSearching(false);
+                }
+            } catch {
+                if (isMounted.current) setSearching(false);
+            }
         }, 300);
     };
 
@@ -256,11 +278,11 @@ export default function ChatHomeScreen() {
                             >
                                 <View style={styles.avatar}>
                                     <Text style={styles.avatarText}>
-                                        {(user.displayName || '?')[0].toUpperCase()}
+                                        {stripHtml(user.displayName || '?')[0].toUpperCase()}
                                     </Text>
                                 </View>
                                 <View style={styles.searchResultInfo}>
-                                    <Text style={styles.searchResultName}>{user.displayName}</Text>
+                                    <Text style={styles.searchResultName}>{stripHtml(user.displayName)}</Text>
                                     <Text style={styles.searchResultId}>{user.userId}</Text>
                                 </View>
                             </TouchableOpacity>

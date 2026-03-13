@@ -21,6 +21,12 @@ interface DisplayMessage extends TranslatedMessage {
     pending?: boolean;
 }
 
+/** Strip HTML tags from display strings to prevent injection */
+function stripHtml(str: string): string {
+    if (!str) return '';
+    return str.replace(/<[^>]*>/g, '').trim();
+}
+
 // ─── Component ──────────────────────────────────────────────────
 
 export default function ConversationScreen() {
@@ -73,6 +79,7 @@ export default function ConversationScreen() {
     useEffect(() => {
         if (!roomId) return;
         let cleanupFns: (() => void)[] = [];
+        let cancelled = false;
 
         const init = async () => {
             // Load initial messages first
@@ -82,7 +89,7 @@ export default function ConversationScreen() {
 
                 const rawMessages = chatClient.getMessages(roomId, 100);
                 const translated = await chatTranslateService.translateMessages(rawMessages);
-                if (!isMounted.current) return;
+                if (!isMounted.current || cancelled) return;
 
                 // Append any pending (queued) messages
                 const pending = chatClient.getPendingMessages(roomId).map(m => ({
@@ -134,6 +141,7 @@ export default function ConversationScreen() {
         init();
 
         return () => {
+            cancelled = true;
             cleanupFns.forEach(fn => fn());
             // PC-5: Set presence back to unavailable when leaving room
             chatClient.setPresence('unavailable');
@@ -291,7 +299,7 @@ export default function ConversationScreen() {
                             ]}>
                                 {/* Sender name (for received messages) */}
                                 {!item.isOwn && item.senderName && (
-                                    <Text style={styles.senderName}>{item.senderName}</Text>
+                                    <Text style={styles.senderName}>{stripHtml(item.senderName)}</Text>
                                 )}
 
                                 {/* Original message */}
@@ -364,7 +372,7 @@ export default function ConversationScreen() {
                         placeholder="Type a message..."
                         placeholderTextColor={colors.textTertiary}
                         multiline
-                        maxLength={4000}
+                        maxLength={10000}
                         returnKeyType="default"
                         accessibilityLabel="Type a message"
                         accessibilityHint="Type and send a message in this conversation"
