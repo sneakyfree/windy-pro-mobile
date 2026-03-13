@@ -145,20 +145,26 @@ function MarketScreenInner() {
         };
 
         try {
-            const success = await pairManager.downloadPair(pairId, pair.cdnUrl, onProgress);
+            const result = await pairManager.downloadPair(pairId, pair.cdnUrl, onProgress);
             setDownloadProgress((prev) => {
                 const next = { ...prev };
                 delete next[pairId];
                 return next;
             });
 
-            if (success === true) {
+            if (result === true) {
                 haptic.success();
                 setDownloadedIds((prev) => [...prev, pairId]);
                 // Refresh storage
                 const storageInfo = await pairManager.getStorageInfo();
                 setUsedBytes(storageInfo.usedBytes);
                 setFreeBytes(storageInfo.freeBytes);
+            } else if (typeof result === 'object' && result.reason === 'offline_queued') {
+                haptic.error();
+                Alert.alert('You\'re Offline', 'This download has been queued and will start when you reconnect.');
+            } else if (typeof result === 'object' && result.reason === 'limit_reached') {
+                haptic.error();
+                Alert.alert('Pair Limit Reached', `Your ${result.tier} plan allows ${result.limit} pairs. Upgrade to download more.`);
             } else {
                 haptic.error();
                 Alert.alert('Download Failed', 'Could not download this translation pair. Please try again.');

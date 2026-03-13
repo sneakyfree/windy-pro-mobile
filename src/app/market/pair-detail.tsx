@@ -110,14 +110,20 @@ export default function PairDetail() {
             setDownloadProgress(progress.fraction);
         };
 
-        const success = await pairManager.downloadPair(pair.id, pair.cdnUrl, onProgress);
+        const result = await pairManager.downloadPair(pair.id, pair.cdnUrl, onProgress);
 
         setDownloading(false);
         setDownloadProgress(0);
 
-        if (success) {
+        if (result === true) {
             haptic.success();
             setIsDownloaded(true);
+        } else if (typeof result === 'object' && result.reason === 'offline_queued') {
+            haptic.error();
+            Alert.alert('You\'re Offline', 'This download has been queued and will start when you reconnect.');
+        } else if (typeof result === 'object' && result.reason === 'limit_reached') {
+            haptic.error();
+            Alert.alert('Pair Limit Reached', `Your ${result.tier} plan allows ${result.limit} pairs. Upgrade to download more.`);
         } else {
             haptic.error();
             Alert.alert('Download Failed', 'Could not download this pair. Check storage and try again.');

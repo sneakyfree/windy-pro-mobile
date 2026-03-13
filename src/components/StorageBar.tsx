@@ -52,7 +52,7 @@ function StorageBarInner({ usedBytes: rawUsed, freeBytes: rawFree }: StorageBarP
                     style={[
                         styles.fill,
                         {
-                            width: `${Math.max(fraction * 100, 1)}%`,
+                            width: `${fraction > 0 ? Math.max(fraction * 100, 1) : 0}%`,
                             backgroundColor: barColor,
                         },
                     ]}

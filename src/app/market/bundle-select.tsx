@@ -64,7 +64,7 @@ export default function BundleSelect() {
         setSelected(preSelected);
     }, [maxCount]);
 
-    const togglePair = (pairId: string) => {
+    const togglePair = useCallback((pairId: string) => {
         haptic.light();
         setSelected((prev) => {
             const next = new Set(prev);
@@ -77,7 +77,7 @@ export default function BundleSelect() {
             }
             return next;
         });
-    };
+    }, [maxCount, haptic]);
 
     const selectRegion = (region: PairRegion) => {
         haptic.light();
@@ -188,7 +188,7 @@ export default function BundleSelect() {
                 </View>
             </Pressable>
         );
-    }, [selected, haptic]);
+    }, [selected, togglePair]);
 
     if (loading) {
         return (
