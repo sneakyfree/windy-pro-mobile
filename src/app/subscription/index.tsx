@@ -42,6 +42,7 @@ const PLANS: PlanInfo[] = [
             'English only',
             'Local history',
             'Text export',
+            '1 offline translation engine',
         ],
         cta: 'Current Plan',
     },
@@ -65,6 +66,7 @@ const PLANS: PlanInfo[] = [
             'Batch mode',
             'All export formats',
             'Quality scoring',
+            '5 offline translation engines',
         ],
         cta: 'Start Free Trial',
     },
@@ -82,6 +84,7 @@ const PLANS: PlanInfo[] = [
             'Live translation (5 pairs)',
             'Conversation mode',
             'Cloud translation API',
+            '25 offline translation engines',
         ],
         cta: 'Upgrade',
     },
@@ -102,6 +105,7 @@ const PLANS: PlanInfo[] = [
             'Medical glossary',
             'Legal glossary',
             'Priority cloud processing',
+            '100 offline translation engines',
         ],
         cta: 'Upgrade',
     },
@@ -112,6 +116,7 @@ const COMPARISON_FEATURES = [
     { name: 'Recording Limit', free: '5 min', pro: '30 min', translate: '30 min', translate_pro: '30 min' },
     { name: 'Engines', free: 'Tiny, Base', pro: 'All', translate: 'All', translate_pro: 'All' },
     { name: 'Languages', free: 'English', pro: 'All', translate: 'All', translate_pro: 'All' },
+    { name: 'Offline Engines', free: '1', pro: '5', translate: '25', translate_pro: '100' },
     { name: 'Cloud Sync', free: '—', pro: '✓', translate: '✓', translate_pro: '✓' },
     { name: 'Translation', free: '—', pro: '—', translate: '5 pairs', translate_pro: '99 pairs' },
     { name: 'Conversation Mode', free: '—', pro: '—', translate: '✓', translate_pro: '✓' },
@@ -381,6 +386,33 @@ export default function SubscriptionScreen() {
                 </View>
             )}
 
+            {/* Marco Polo Card */}
+            <View style={styles.marcoPoloCard} accessible={true} accessibilityLabel="Marco Polo bundle. $999 one-time. Every translation pair, forever. Includes all current and future language pairs." accessibilityRole="summary">
+                <View style={styles.marcoPoloBadge}>
+                    <Text style={styles.badgeText}>ULTIMATE</Text>
+                </View>
+                <Text style={styles.marcoPoloEmoji}>🧭</Text>
+                <Text style={styles.marcoPoloTitle}>Marco Polo</Text>
+                <Text style={styles.marcoPoloSubtitle}>Every translation pair, forever</Text>
+                <View style={styles.priceRow}>
+                    <Text style={styles.marcoPoloPrice}>$999</Text>
+                    <Text style={styles.cardPeriod}>one-time</Text>
+                </View>
+                <View style={styles.marcoPoloFeatures}>
+                    <Text style={styles.marcoPoloFeature}>🌍 All current & future language pairs</Text>
+                    <Text style={styles.marcoPoloFeature}>⚡ Lifetime access, no recurring fees</Text>
+                    <Text style={styles.marcoPoloFeature}>🥇 Priority support & early access</Text>
+                </View>
+                <Pressable
+                    style={styles.marcoPoloCta}
+                    onPress={() => Linking.openURL('https://windypro.thewindstorm.uk/marco-polo')}
+                    accessibilityLabel="Purchase Marco Polo bundle for $999"
+                    accessibilityRole="button"
+                >
+                    <Text style={styles.marcoPoloCtaText}>Get Marco Polo</Text>
+                </Pressable>
+            </View>
+
             {/* Restore Purchases */}
             <Pressable
                 style={[styles.restoreButton, restoring && { opacity: 0.6 }]}
@@ -547,6 +579,46 @@ const styles = StyleSheet.create({
     },
     guaranteeEmoji: { fontSize: 24 },
     guaranteeText: { fontSize: 13, color: colors.textSecondary, flex: 1, lineHeight: 18 },
+
+    // Marco Polo card
+    marcoPoloCard: {
+        backgroundColor: colors.surface,
+        borderRadius: borderRadius.lg,
+        padding: spacing.lg,
+        marginBottom: spacing.lg,
+        borderWidth: 2,
+        borderColor: '#d4a017',
+        alignItems: 'center',
+        shadowColor: '#d4a017',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+        elevation: 6,
+    },
+    marcoPoloBadge: {
+        position: 'absolute',
+        top: -10,
+        right: 16,
+        paddingHorizontal: spacing.sm + 2,
+        paddingVertical: 3,
+        borderRadius: borderRadius.sm,
+        backgroundColor: '#d4a017',
+    },
+    marcoPoloEmoji: { fontSize: 48, marginBottom: spacing.sm },
+    marcoPoloTitle: { fontSize: 24, fontWeight: '800', color: '#d4a017', marginBottom: 4 },
+    marcoPoloSubtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: spacing.md },
+    marcoPoloPrice: { fontSize: 36, fontWeight: '800', color: colors.textPrimary },
+    marcoPoloFeatures: { marginVertical: spacing.md, gap: spacing.sm, alignSelf: 'stretch' },
+    marcoPoloFeature: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
+    marcoPoloCta: {
+        backgroundColor: '#d4a017',
+        paddingVertical: spacing.md - 2,
+        paddingHorizontal: spacing.xl,
+        borderRadius: borderRadius.md,
+        alignItems: 'center',
+        width: '100%',
+    },
+    marcoPoloCtaText: { fontSize: 16, fontWeight: '700', color: colors.background },
 
     // Footer
     footer: { alignItems: 'center', paddingVertical: spacing.md },

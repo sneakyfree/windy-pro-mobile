@@ -29,6 +29,7 @@ export const FEATURE_MATRIX: Record<LicenseTier, string[]> = {
         'language-en',
         'history',
         'export-text',
+        'offline-pairs-1',
     ],
     pro: [
         // All free features plus:
@@ -41,12 +42,14 @@ export const FEATURE_MATRIX: Record<LicenseTier, string[]> = {
         'long-recording', // 30 min
         'export-all',
         'quality-scoring',
+        'offline-pairs-5',
     ],
     translate: [
         // All Pro features plus:
         'translate-cloud',
         'conversation-mode',
         'translate-5-pairs',
+        'offline-pairs-25',
     ],
     translate_pro: [
         // All Translate features plus:
@@ -56,6 +59,7 @@ export const FEATURE_MATRIX: Record<LicenseTier, string[]> = {
         'medical-glossary',
         'legal-glossary',
         'priority-cloud',
+        'offline-pairs-100',
     ],
 };
 
