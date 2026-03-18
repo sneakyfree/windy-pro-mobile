@@ -389,10 +389,13 @@ class FloatingOverlayService : Service() {
     // ─── Helpers ─────────────────────────────────────────────────
 
     private fun hideOverlay() {
+        stopPulseAnimation()
         overlayView?.let {
             try { windowManager.removeView(it) } catch (e: Exception) { Log.w("WindyOverlay", "removeView in hideOverlay failed", e) }
         }
         overlayView = null
+        // Stop the foreground service — no UI means no reason to keep running
+        stopSelf()
     }
 
     private fun triggerHaptic() {

@@ -106,7 +106,7 @@ class CloneTracker {
                             sound: true,
                             ...(Platform.OS === 'android' ? { channelId: 'translation' } : {}),
                         },
-                        trigger: null,
+                        trigger: null as any, // Immediate delivery
                     });
                 } catch (e: unknown) {
                     log.warn('Notification', 'Notification failed', e instanceof Error ? { message: e.message, stack: e.stack } : { error: String(e) });

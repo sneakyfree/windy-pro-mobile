@@ -106,8 +106,20 @@ class PasteAccessibilityService : AccessibilityService() {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
         // Save previous clipboard content
+        // Android 13+ (API 33): clipboard access is restricted — AccessibilityService
+        // may still read it, but wrap in SecurityException guard for safety.
         previousClipText = try {
-            clipboard.primaryClip?.getItemAt(0)?.text
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                // On API 33+, primaryClip may throw SecurityException
+                try {
+                    clipboard.primaryClip?.getItemAt(0)?.text
+                } catch (se: SecurityException) {
+                    Log.w("WindyPaste", "Clipboard read blocked on API 33+ — skipping backup", se)
+                    null
+                }
+            } else {
+                clipboard.primaryClip?.getItemAt(0)?.text
+            }
         } catch (e: Exception) { Log.w("WindyPaste", "Failed to read previous clipboard", e); null }
 
         // Set transcript to clipboard

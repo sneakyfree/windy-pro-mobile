@@ -665,7 +665,7 @@ class SyncManager {
                     body: `${pending} recording${pending > 1 ? 's' : ''} waiting — connect to Wi-Fi to sync`,
                     ...(Platform.OS === 'android' ? { channelId: 'sync' } : {}),
                 },
-                trigger: null,
+                trigger: null as unknown as Notifications.NotificationTriggerInput, // Immediate delivery
             });
         } catch (err) { log.warn('notifyPendingSync', 'notification schedule failed'); }
     }

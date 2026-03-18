@@ -148,7 +148,7 @@ class PushNotificationService {
                 data: { type: 'translation' },
                 ...(Platform.OS === 'android' ? { channelId: 'translation' } : {}),
             },
-            trigger: null, // Immediate
+            trigger: null as unknown as Notifications.NotificationTriggerInput, // Immediate delivery
         });
     }
 
@@ -165,7 +165,7 @@ class PushNotificationService {
                 data: { type: 'subscription' },
                 ...(Platform.OS === 'android' ? { channelId: 'subscription' } : {}),
             },
-            trigger: null,
+            trigger: null as unknown as Notifications.NotificationTriggerInput, // Immediate delivery
         });
     }
 
@@ -182,7 +182,7 @@ class PushNotificationService {
                 data: { type: 'update', version },
                 ...(Platform.OS === 'android' ? { channelId: 'updates' } : {}),
             },
-            trigger: null,
+            trigger: null as unknown as Notifications.NotificationTriggerInput, // Immediate delivery
         });
     }
 
