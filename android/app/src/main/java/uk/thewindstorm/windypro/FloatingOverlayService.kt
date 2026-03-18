@@ -41,6 +41,7 @@ class FloatingOverlayService : Service() {
         const val ACTION_OPEN_APP = "uk.thewindstorm.windypro.OPEN_APP"
         const val ACTION_HIDE = "uk.thewindstorm.windypro.HIDE"
         const val ACTION_STOP = "uk.thewindstorm.windypro.STOP"
+        const val ACTION_SET_STATE = "uk.thewindstorm.windypro.SET_STATE"
         const val PREFS_NAME = "windy_overlay_prefs"
 
         var isRunning = false
@@ -101,6 +102,21 @@ class FloatingOverlayService : Service() {
                 val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
                 launchIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(launchIntent)
+            }
+            ACTION_SET_STATE -> {
+                val stateStr = intent?.getStringExtra("overlay_state")
+                val newState = when (stateStr) {
+                    "recording" -> OverlayState.RECORDING
+                    "processing" -> OverlayState.PROCESSING
+                    "error" -> OverlayState.IDLE  // Reset to idle on error
+                    else -> OverlayState.IDLE
+                }
+                handler.post {
+                    state = newState
+                    updateVisuals()
+                    if (newState == OverlayState.RECORDING) startPulseAnimation()
+                    else stopPulseAnimation()
+                }
             }
         }
         return START_STICKY

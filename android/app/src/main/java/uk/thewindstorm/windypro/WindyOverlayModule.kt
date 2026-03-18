@@ -3,16 +3,25 @@
  * React Native bridge for the floating tornado overlay.
  *
  * @ReactMethod:
- *   startOverlay()    — Start the floating overlay service
- *   stopOverlay()     — Stop the floating overlay service
- *   isOverlayActive() — Check if overlay is currently running (Promise)
- *   checkPermissions()— Check SYSTEM_ALERT_WINDOW permission (Promise)
+ *   hasOverlayPermission()     — Check SYSTEM_ALERT_WINDOW (Promise<boolean>)
+ *   requestOverlayPermission() — Open overlay settings, resolve on return (Promise<boolean>)
+ *   startOverlay()             — Start the floating overlay service (Promise)
+ *   stopOverlay()              — Stop the floating overlay service (Promise)
+ *   isOverlayActive()          — Check if overlay is currently running (Promise<boolean>)
+ *   checkPermissions()         — Check all permissions map (Promise<Map>)
+ *   pasteText(text)            — Paste text via AccessibilityService (Promise)
+ *   setOverlayState(state)     — Update overlay visual state (Promise)
+ *   openAccessibilitySettings()— Open accessibility settings
  *
  * Events emitted to JS:
  *   onOverlayRecord — { action: "start" | "stop" }
  */
 package uk.thewindstorm.windypro
 
+import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -21,9 +30,10 @@ import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 
 class WindyOverlayModule(private val reactContext: ReactApplicationContext) :
-    ReactContextBaseJavaModule(reactContext) {
+    ReactContextBaseJavaModule(reactContext), ActivityEventListener {
 
     companion object {
+        private const val OVERLAY_PERMISSION_REQUEST_CODE = 5469
         private var moduleInstance: WindyOverlayModule? = null
 
         /**
@@ -44,19 +54,77 @@ class WindyOverlayModule(private val reactContext: ReactApplicationContext) :
         }
     }
 
-    override fun getName(): String = "WindyOverlayModule"
+    // Promise saved while waiting for overlay permission settings to return
+    private var overlayPermissionPromise: Promise? = null
+
+    override fun getName(): String = "WindyOverlay"
 
     override fun initialize() {
         super.initialize()
         moduleInstance = this
+        reactContext.addActivityEventListener(this)
     }
 
     override fun invalidate() {
         moduleInstance = null
+        reactContext.removeActivityEventListener(this)
         super.invalidate()
     }
 
+    // ─── ActivityEventListener ────────────────────────────────────
+
+    override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == OVERLAY_PERMISSION_REQUEST_CODE) {
+            val granted = Settings.canDrawOverlays(reactContext)
+            overlayPermissionPromise?.resolve(granted)
+            overlayPermissionPromise = null
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        // Not used
+    }
+
     // ─── React Methods ───────────────────────────────────────────
+
+    /**
+     * Check if SYSTEM_ALERT_WINDOW permission is granted.
+     */
+    @ReactMethod
+    fun hasOverlayPermission(promise: Promise) {
+        promise.resolve(Settings.canDrawOverlays(reactContext))
+    }
+
+    /**
+     * Request SYSTEM_ALERT_WINDOW permission.
+     * Opens the system overlay settings screen. Resolves with true/false
+     * when the user returns to the app.
+     */
+    @ReactMethod
+    fun requestOverlayPermission(promise: Promise) {
+        // Already granted — resolve immediately
+        if (Settings.canDrawOverlays(reactContext)) {
+            promise.resolve(true)
+            return
+        }
+
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:${reactContext.packageName}")
+        )
+
+        val activity = currentActivity
+        if (activity != null) {
+            // Use startActivityForResult so we get onActivityResult when user returns
+            overlayPermissionPromise = promise
+            activity.startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
+        } else {
+            // No activity — fire-and-forget
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            reactContext.startActivity(intent)
+            promise.resolve(false)
+        }
+    }
 
     @ReactMethod
     fun startOverlay(promise: Promise) {
@@ -70,7 +138,11 @@ class WindyOverlayModule(private val reactContext: ReactApplicationContext) :
             PasteAccessibilityService.instance?.saveFocusedField()
 
             val intent = Intent(reactContext, FloatingOverlayService::class.java)
-            reactContext.startForegroundService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                reactContext.startForegroundService(intent)
+            } else {
+                reactContext.startService(intent)
+            }
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("START_FAILED", e.message)
@@ -103,14 +175,52 @@ class WindyOverlayModule(private val reactContext: ReactApplicationContext) :
         promise.resolve(result)
     }
 
+    /**
+     * Paste text at the current cursor position via AccessibilityService.
+     * Falls back to clipboard-only if accessibility is not enabled.
+     */
     @ReactMethod
-    fun requestOverlayPermission() {
-        val intent = Intent(
-            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-            Uri.parse("package:${reactContext.packageName}")
-        )
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        reactContext.startActivity(intent)
+    fun pasteText(text: String, promise: Promise) {
+        try {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                val service = PasteAccessibilityService.instance
+                if (service != null) {
+                    service.pasteTranscript(text)
+                } else {
+                    // Fallback: copy to clipboard
+                    try {
+                        val clipboard = reactContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Windy Pro Transcript", text))
+                    } catch (e: Exception) {
+                        android.util.Log.w("WindyOverlay", "Clipboard fallback failed", e)
+                    }
+                }
+            }
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("PASTE_FAILED", e.message)
+        }
+    }
+
+    /**
+     * Update the overlay button's visual state (idle/recording/processing/error).
+     * Sends an intent to FloatingOverlayService to change its appearance.
+     */
+    @ReactMethod
+    fun setOverlayState(state: String, promise: Promise) {
+        try {
+            if (!FloatingOverlayService.isRunning) {
+                promise.resolve(false)
+                return
+            }
+            val intent = Intent(reactContext, FloatingOverlayService::class.java)
+            intent.action = FloatingOverlayService.ACTION_SET_STATE
+            intent.putExtra("overlay_state", state)
+            reactContext.startService(intent)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("SET_STATE_FAILED", e.message)
+        }
     }
 
     @ReactMethod
@@ -126,13 +236,7 @@ class WindyOverlayModule(private val reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun onTranscriptionResult(text: String) {
-        // Notify FloatingOverlayService to update visuals
-        // The service runs in the same process
-        val services = reactContext.getSystemService(android.app.ActivityManager::class.java)
-        // Just reset the overlay state
-        // FloatingOverlayService is in the same process, we can reference companion
         android.os.Handler(android.os.Looper.getMainLooper()).post {
-            // Paste via accessibility if available
             PasteAccessibilityService.instance?.pasteTranscript(text)
         }
     }

@@ -111,8 +111,8 @@
       ]
     ],
     "extra": {
-      "revenueCatIosKey": "test_sRWCoNXTMzpinPzDkvknRgtsQDh",
-      "revenueCatAndroidKey": "test_sRWCoNXTMzpinPzDkvknRgtsQDh",
+      "revenueCatIosKey": "PRODUCTION_KEY_REQUIRED_CONTACT_GRANT",
+      "revenueCatAndroidKey": "PRODUCTION_KEY_REQUIRED_CONTACT_GRANT",
       "router": {
         "origin": false
       },

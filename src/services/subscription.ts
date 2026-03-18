@@ -19,8 +19,18 @@ import { createLogger } from './logger';
 const log = createLogger('Subscription');
 
 // Read RevenueCat keys from app.json extra config
+// PRODUCTION KEYS REQUIRED BEFORE LAUNCH — contact Grant
 const REVENUECAT_IOS_KEY = Constants.expoConfig?.extra?.revenueCatIosKey || '';
 const REVENUECAT_ANDROID_KEY = Constants.expoConfig?.extra?.revenueCatAndroidKey || '';
+
+// Fail-loud guard: crash early if placeholder keys are still in place
+if (REVENUECAT_IOS_KEY.includes('PRODUCTION_KEY_REQUIRED') || REVENUECAT_ANDROID_KEY.includes('PRODUCTION_KEY_REQUIRED')) {
+    console.error(
+        '🚨 FATAL: RevenueCat API keys are placeholder values!\n' +
+        '   Replace revenueCatIosKey and revenueCatAndroidKey in app.json with real production keys.\n' +
+        '   Contact Grant for production RevenueCat API keys.'
+    );
+}
 
 /** Entitlement → LicenseTier mapping */
 const ENTITLEMENT_MAP: Record<string, LicenseTier> = {

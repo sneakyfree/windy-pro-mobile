@@ -154,13 +154,16 @@ export default function OnboardingScreen() {
                                     style={[styles.permissionCard, overlayGranted && styles.permissionGranted]}
                                     onPress={async () => {
                                         try {
-                                            const { WindyOverlayModule } = NativeModules;
-                                            if (WindyOverlayModule) {
-                                                const perms = await WindyOverlayModule.checkPermissions();
+                                            const { WindyOverlay } = NativeModules;
+                                            if (WindyOverlay) {
+                                                const perms = await WindyOverlay.checkPermissions();
                                                 if (perms?.canDrawOverlays) {
                                                     setOverlayGranted(true);
                                                 } else {
-                                                    WindyOverlayModule.requestOverlayPermission();
+                                                    await WindyOverlay.requestOverlayPermission();
+                                                    // Re-check after user returns from settings
+                                                    const updated = await WindyOverlay.checkPermissions();
+                                                    if (updated?.canDrawOverlays) setOverlayGranted(true);
                                                 }
                                             }
                                         } catch (err) { console.warn("[Onboarding] Module not available:", err); }
@@ -184,13 +187,13 @@ export default function OnboardingScreen() {
                                     style={[styles.permissionCard, accessibilityEnabled && styles.permissionGranted]}
                                     onPress={async () => {
                                         try {
-                                            const { WindyOverlayModule } = NativeModules;
-                                            if (WindyOverlayModule) {
-                                                const perms = await WindyOverlayModule.checkPermissions();
+                                            const { WindyOverlay } = NativeModules;
+                                            if (WindyOverlay) {
+                                                const perms = await WindyOverlay.checkPermissions();
                                                 if (perms?.accessibilityEnabled) {
                                                     setAccessibilityEnabled(true);
                                                 } else {
-                                                    WindyOverlayModule.openAccessibilitySettings();
+                                                    WindyOverlay.openAccessibilitySettings();
                                                     Alert.alert(
                                                         'Enable Windy Pro',
                                                         'Find "Windy Pro" in the list and enable it to paste text at your cursor.',
