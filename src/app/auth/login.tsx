@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
 import { cloudApi } from '@/services/cloudApi';
 import { INPUT_LIMITS, validateEmail } from '@/utils/validation';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
@@ -51,6 +52,7 @@ export default function LoginScreen() {
     };
 
     return (
+        <ScreenErrorBoundary screenName="Login">
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -144,6 +146,7 @@ export default function LoginScreen() {
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
+        </ScreenErrorBoundary>
     );
 }
 

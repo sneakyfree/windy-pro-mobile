@@ -12,6 +12,7 @@ import { subscriptionService } from '@/services/subscription';
 import { feedbackService } from '@/services/feedback';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 // ── Plan definitions ──
 interface PlanInfo {
@@ -264,6 +265,7 @@ export default function SubscriptionScreen() {
     };
 
     return (
+        <ScreenErrorBoundary screenName="Subscription">
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
             {/* Header */}
             <View style={styles.header}>
@@ -442,6 +444,7 @@ export default function SubscriptionScreen() {
                 </Text>
             </View>
         </ScrollView>
+        </ScreenErrorBoundary>
     );
 }
 

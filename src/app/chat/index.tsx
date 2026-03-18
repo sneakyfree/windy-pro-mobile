@@ -15,6 +15,7 @@ import { colors } from '@/theme';
 import { chatClient, type ChatRoom, type ChatContact, type SyncState } from '@/services/chatClient';
 import { chatTranslateService } from '@/services/chatTranslate';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -172,6 +173,7 @@ export default function ChatHomeScreen() {
 
     if (!isLoggedIn && !loading) {
         return (
+            <ScreenErrorBoundary screenName="Chat">
             <SafeAreaView style={styles.container} edges={['top']}>
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}
@@ -195,6 +197,7 @@ export default function ChatHomeScreen() {
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
+            </ScreenErrorBoundary>
         );
     }
 
@@ -202,6 +205,7 @@ export default function ChatHomeScreen() {
 
     if (loading) {
         return (
+            <ScreenErrorBoundary screenName="Chat">
             <SafeAreaView style={styles.container} edges={['top']}>
                 <View style={styles.loadingContainer}
                     accessibilityLabel="Connecting to chat" accessibilityRole="none"
@@ -210,12 +214,14 @@ export default function ChatHomeScreen() {
                     <Text style={styles.loadingText}>Connecting to chat...</Text>
                 </View>
             </SafeAreaView>
+            </ScreenErrorBoundary>
         );
     }
 
     // ─── Main ───────────────────────────────────────────────────
 
     return (
+        <ScreenErrorBoundary screenName="Chat">
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header */}
             <View style={styles.header}>
@@ -377,6 +383,7 @@ export default function ChatHomeScreen() {
                 )}
             />
         </SafeAreaView>
+        </ScreenErrorBoundary>
     );
 }
 

@@ -18,6 +18,7 @@ import { chatClient, validateHomeserverUrl } from '@/services/chatClient';
 import { chatOnboarding } from '@/services/chatOnboarding';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { TIER_1_LANGUAGES } from '@/services/translation';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 /** Strip HTML tags from display strings to prevent injection */
 function stripHtml(str: string): string {
@@ -355,6 +356,7 @@ export default function ChatProfileScreen() {
     // ─── Profile (Logged In) ────────────────────────────────────
 
     return (
+        <ScreenErrorBoundary screenName="Chat Profile">
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
@@ -441,6 +443,7 @@ export default function ChatProfileScreen() {
                 </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
+        </ScreenErrorBoundary>
     );
 }
 

@@ -96,6 +96,7 @@ export default function QuickTranslateScreen() {
     };
 
     return (
+        <ScreenErrorBoundary screenName="Quick Translate">
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
@@ -214,6 +215,7 @@ export default function QuickTranslateScreen() {
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
+        </ScreenErrorBoundary>
     );
 }
 

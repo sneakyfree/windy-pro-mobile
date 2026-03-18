@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
 import { cloudApi } from '@/services/cloudApi';
 import { INPUT_LIMITS, validateEmail, validatePassword } from '@/utils/validation';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 export default function RegisterScreen() {
     const [email, setEmail] = useState('');
@@ -61,6 +62,7 @@ export default function RegisterScreen() {
     };
 
     return (
+        <ScreenErrorBoundary screenName="Register">
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -176,6 +178,7 @@ export default function RegisterScreen() {
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
+        </ScreenErrorBoundary>
     );
 }
 

@@ -24,6 +24,7 @@ import {
     chatOnboarding,
     type IdentifierType,
 } from '@/services/chatOnboarding';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 // Safe import: expo-contacts may not be installed yet
 let Contacts: { requestPermissionsAsync?: () => Promise<{ status: string }> } | null = null;
@@ -536,6 +537,7 @@ export default function ChatOnboardingScreen() {
     // ─── Main Render ────────────────────────────────────────────
 
     return (
+        <ScreenErrorBoundary screenName="Chat Onboarding">
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
                 style={styles.flex}
@@ -574,6 +576,7 @@ export default function ChatOnboardingScreen() {
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
+        </ScreenErrorBoundary>
     );
 }
 

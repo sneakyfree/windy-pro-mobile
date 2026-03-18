@@ -3,9 +3,11 @@
  */
 import { ScrollView, Text, StyleSheet } from 'react-native';
 import { colors, spacing } from '@/theme';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 export default function TermsOfServiceScreen() {
     return (
+        <ScreenErrorBoundary screenName="Terms of Service">
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
             <Text style={styles.title}>Terms of Service</Text>
             <Text style={styles.updated}>Last updated: March 1, 2026</Text>
@@ -46,6 +48,7 @@ export default function TermsOfServiceScreen() {
                 Questions? Email legal@thewindstorm.uk
             </Text>
         </ScrollView>
+        </ScreenErrorBoundary>
     );
 }
 

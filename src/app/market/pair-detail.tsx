@@ -23,6 +23,7 @@ import { pairCatalogService, type TranslationPair } from '@/services/pairCatalog
 import { pairManager, type DownloadProgress } from '@/services/pairManager';
 import { useHaptic } from '@/hooks/useHaptic';
 import { Linking } from 'react-native';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 const QUALITY_MAP: Record<number, { stars: string; color: string }> = {
     5: { stars: '★★★★★', color: colors.accent },
@@ -167,6 +168,7 @@ export default function PairDetail() {
     const samples = SAMPLE_TRANSLATIONS[pair.target] ?? DEFAULT_SAMPLES;
 
     return (
+        <ScreenErrorBoundary screenName="Pair Detail">
         <SafeAreaView style={styles.safeArea} edges={['top']}>
             <ScrollView style={styles.container} contentContainerStyle={styles.content}>
                 {/* Back button */}
@@ -295,6 +297,7 @@ export default function PairDetail() {
                 )}
             </ScrollView>
         </SafeAreaView>
+        </ScreenErrorBoundary>
     );
 }
 

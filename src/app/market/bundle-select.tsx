@@ -24,6 +24,7 @@ import { pairCatalogService, type TranslationPair, type PairRegion } from '@/ser
 import { pairManager, type DownloadProgress } from '@/services/pairManager';
 import { useHaptic } from '@/hooks/useHaptic';
 import { Linking } from 'react-native';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 const REGION_LABELS: Record<PairRegion, string> = {
     europe: '🇪🇺 Europe',
@@ -202,6 +203,7 @@ export default function BundleSelect() {
     }
 
     return (
+        <ScreenErrorBoundary screenName="Bundle Select">
         <SafeAreaView style={styles.safeArea} edges={['top']}>
             {/* Header */}
             <View style={styles.header}>
@@ -290,6 +292,7 @@ export default function BundleSelect() {
                 )}
             </View>
         </SafeAreaView>
+        </ScreenErrorBoundary>
     );
 }
 

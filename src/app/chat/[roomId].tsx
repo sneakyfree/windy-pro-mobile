@@ -18,6 +18,7 @@ import { subscriptionService } from '@/services/subscription';
 import { pairManager } from '@/services/pairManager';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -237,6 +238,7 @@ export default function ConversationScreen() {
     // ─── Render ─────────────────────────────────────────────────
 
     return (
+        <ScreenErrorBoundary screenName="Conversation">
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
             {/* Header */}
             <View style={styles.header}>
@@ -463,6 +465,7 @@ export default function ConversationScreen() {
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
+        </ScreenErrorBoundary>
     );
 }
 

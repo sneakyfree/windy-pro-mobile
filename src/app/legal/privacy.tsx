@@ -3,9 +3,11 @@
  */
 import { ScrollView, Text, StyleSheet } from 'react-native';
 import { colors, spacing } from '@/theme';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 export default function PrivacyPolicyScreen() {
     return (
+        <ScreenErrorBoundary screenName="Privacy Policy">
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
             <Text style={styles.title}>Privacy Policy</Text>
             <Text style={styles.updated}>Last updated: March 1, 2026</Text>
@@ -46,6 +48,7 @@ export default function PrivacyPolicyScreen() {
                 Questions? Email privacy@thewindstorm.uk
             </Text>
         </ScrollView>
+        </ScreenErrorBoundary>
     );
 }
 

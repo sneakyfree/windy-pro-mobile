@@ -20,6 +20,7 @@ import { colors, spacing, borderRadius } from '@/theme';
 import { pairCatalogService } from '@/services/pairCatalog';
 import { pairManager } from '@/services/pairManager';
 import { useHaptic } from '@/hooks/useHaptic';
+import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 const PAIR_PRICE = 6.99;
 const MARCO_POLO_PRICE = 999;
@@ -60,6 +61,7 @@ export default function MarcoPolo() {
     };
 
     return (
+        <ScreenErrorBoundary screenName="Marco Polo">
         <SafeAreaView style={styles.safeArea} edges={['top']}>
             <ScrollView style={styles.container} contentContainerStyle={styles.content}>
                 {/* Back button */}
@@ -155,6 +157,7 @@ export default function MarcoPolo() {
                 </Text>
             </ScrollView>
         </SafeAreaView>
+        </ScreenErrorBoundary>
     );
 }
 

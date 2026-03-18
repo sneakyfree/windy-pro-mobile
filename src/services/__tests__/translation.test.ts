@@ -4,6 +4,24 @@
  * speech translation, language detection, TTS, and exports
  */
 
+// Mock native modules that pairManager.ts imports transitively
+jest.mock('@react-native-async-storage/async-storage', () => ({
+    default: {
+        getItem: jest.fn().mockResolvedValue(null),
+        setItem: jest.fn().mockResolvedValue(undefined),
+        removeItem: jest.fn().mockResolvedValue(undefined),
+        multiGet: jest.fn().mockResolvedValue([]),
+        multiSet: jest.fn().mockResolvedValue(undefined),
+        getAllKeys: jest.fn().mockResolvedValue([]),
+    },
+    __esModule: true,
+}));
+
+jest.mock('@react-native-community/netinfo', () => ({
+    addEventListener: jest.fn(() => jest.fn()),
+    fetch: jest.fn().mockResolvedValue({ isConnected: true, type: 'wifi' }),
+}));
+
 // Mock fetch globally
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
