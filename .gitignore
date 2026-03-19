@@ -10,6 +10,7 @@ web-build/
 # Native build artifacts (custom native code IS tracked)
 # android/ and ios/ are NOT ignored — they contain custom Kotlin/Swift modules
 *.jks
+windy-release.keystore
 *.p8
 *.p12
 *.key

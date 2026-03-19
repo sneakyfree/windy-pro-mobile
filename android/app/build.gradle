@@ -102,10 +102,10 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('release.keystore')
-            storePassword findProperty('WINDY_RELEASE_STORE_PASSWORD') ?: 'windypro2026'
-            keyAlias findProperty('WINDY_RELEASE_KEY_ALIAS') ?: 'windypro-release'
-            keyPassword findProperty('WINDY_RELEASE_KEY_PASSWORD') ?: 'windypro2026'
+            storeFile file('windy-release.keystore')
+            storePassword findProperty('WINDY_RELEASE_STORE_PASSWORD') ?: 'WindyPro2026!'
+            keyAlias findProperty('WINDY_RELEASE_KEY_ALIAS') ?: 'windy'
+            keyPassword findProperty('WINDY_RELEASE_KEY_PASSWORD') ?: 'WindyPro2026!'
         }
     }
     buildTypes {
