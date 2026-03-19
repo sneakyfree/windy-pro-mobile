@@ -11,7 +11,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-    View, Text, TextInput, TouchableOpacity, StyleSheet,
+    View, Text, TextInput, TouchableOpacity, Pressable, StyleSheet,
     KeyboardAvoidingView, Platform, ScrollView, Alert,
     ActivityIndicator, Animated, Keyboard,
 } from 'react-native';
@@ -25,6 +25,25 @@ import {
     type IdentifierType,
 } from '@/services/chatOnboarding';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+
+// Common country codes for phone registration
+const COUNTRY_CODES = [
+    { code: '+1', flag: '🇺🇸', name: 'US / Canada' },
+    { code: '+44', flag: '🇬🇧', name: 'United Kingdom' },
+    { code: '+33', flag: '🇫🇷', name: 'France' },
+    { code: '+49', flag: '🇩🇪', name: 'Germany' },
+    { code: '+34', flag: '🇪🇸', name: 'Spain' },
+    { code: '+81', flag: '🇯🇵', name: 'Japan' },
+    { code: '+86', flag: '🇨🇳', name: 'China' },
+    { code: '+55', flag: '🇧🇷', name: 'Brazil' },
+    { code: '+91', flag: '🇮🇳', name: 'India' },
+    { code: '+52', flag: '🇲🇽', name: 'Mexico' },
+    { code: '+82', flag: '🇰🇷', name: 'South Korea' },
+    { code: '+39', flag: '🇮🇹', name: 'Italy' },
+    { code: '+61', flag: '🇦🇺', name: 'Australia' },
+    { code: '+7', flag: '🇷🇺', name: 'Russia' },
+    { code: '+90', flag: '🇹🇷', name: 'Turkey' },
+];
 
 // Safe import: expo-contacts may not be installed yet
 let Contacts: { requestPermissionsAsync?: () => Promise<{ status: string }> } | null = null;
@@ -51,6 +70,8 @@ export default function ChatOnboardingScreen() {
     // Step 1 —  identifier
     const [identifierType, setIdentifierType] = useState<IdentifierType>('phone');
     const [identifier, setIdentifier] = useState('');
+    const [countryCode, setCountryCode] = useState(COUNTRY_CODES[0]); // +1 US default
+    const [showCountryPicker, setShowCountryPicker] = useState(false);
 
     // Step 2 — OTP
     const [sessionId, setSessionId] = useState('');
@@ -112,8 +133,13 @@ export default function ChatOnboardingScreen() {
         setLoading(true);
         setError('');
 
+        // For phone, prepend selected country code + strip non-digits from local number
+        const fullIdentifier = identifierType === 'phone'
+            ? countryCode.code + identifier.trim().replace(/\D/g, '')
+            : identifier.trim();
+
         const result = await chatOnboarding.requestVerification({
-            identifier: identifier.trim(),
+            identifier: fullIdentifier,
             type: identifierType,
         });
 
@@ -312,20 +338,84 @@ export default function ChatOnboardingScreen() {
                 </TouchableOpacity>
             </View>
 
-            <TextInput
-                style={styles.input}
-                value={identifier}
-                onChangeText={(text) => { setIdentifier(text); setError(''); }}
-                placeholder={identifierType === 'phone' ? '+1 (555) 123-4567' : 'you@example.com'}
-                placeholderTextColor={colors.textTertiary}
-                keyboardType={identifierType === 'phone' ? 'phone-pad' : 'email-address'}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!loading}
-                autoFocus
-                maxLength={identifierType === 'phone' ? INPUT_LIMITS.PHONE : INPUT_LIMITS.EMAIL}
-                accessibilityLabel={identifierType === 'phone' ? 'Phone number' : 'Email address'}
-            />
+            {identifierType === 'phone' ? (
+                <View style={styles.phoneRow}>
+                    <TouchableOpacity
+                        style={styles.countryCodeBtn}
+                        onPress={() => setShowCountryPicker(true)}
+                        accessibilityLabel={`Country code: ${countryCode.flag} ${countryCode.code}`}
+                        accessibilityRole="button"
+                        accessibilityHint="Opens country code picker"
+                    >
+                        <Text style={styles.countryCodeText}>
+                            {countryCode.flag} {countryCode.code} ▾
+                        </Text>
+                    </TouchableOpacity>
+                    <TextInput
+                        style={[styles.input, styles.phoneInput]}
+                        value={identifier}
+                        onChangeText={(text) => { setIdentifier(text); setError(''); }}
+                        placeholder="(555) 123-4567"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="phone-pad"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        editable={!loading}
+                        autoFocus
+                        maxLength={INPUT_LIMITS.PHONE}
+                        accessibilityLabel="Phone number"
+                    />
+                </View>
+            ) : (
+                <TextInput
+                    style={styles.input}
+                    value={identifier}
+                    onChangeText={(text) => { setIdentifier(text); setError(''); }}
+                    placeholder="you@example.com"
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!loading}
+                    autoFocus
+                    maxLength={INPUT_LIMITS.EMAIL}
+                    accessibilityLabel="Email address"
+                />
+            )}
+
+            {/* Country code picker modal */}
+            {showCountryPicker && (
+                <View style={styles.countryPickerOverlay}>
+                    <Pressable style={styles.countryPickerBackdrop} onPress={() => setShowCountryPicker(false)} />
+                    <View style={styles.countryPickerModal}>
+                        <Text style={styles.countryPickerTitle}>Select Country Code</Text>
+                        <ScrollView style={styles.countryPickerScroll}>
+                            {COUNTRY_CODES.map((c) => (
+                                <TouchableOpacity
+                                    key={c.code}
+                                    style={[
+                                        styles.countryOption,
+                                        countryCode.code === c.code && styles.countryOptionActive,
+                                    ]}
+                                    onPress={() => {
+                                        setCountryCode(c);
+                                        setShowCountryPicker(false);
+                                    }}
+                                    accessibilityLabel={`${c.flag} ${c.name} ${c.code}`}
+                                    accessibilityRole="button"
+                                >
+                                    <Text style={styles.countryOptionText}>
+                                        {c.flag}  {c.code}  {c.name}
+                                    </Text>
+                                    {countryCode.code === c.code && (
+                                        <Text style={styles.countryOptionCheck}>✓</Text>
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </View>
+            )}
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -841,5 +931,92 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: colors.textPrimary,
         fontWeight: '500',
+    },
+
+    // Phone row with country code
+    phoneRow: {
+        flexDirection: 'row',
+        width: '100%',
+        gap: 8,
+        marginBottom: 16,
+    },
+    phoneInput: {
+        flex: 1,
+        marginBottom: 0,
+    },
+    countryCodeBtn: {
+        backgroundColor: colors.surface,
+        borderRadius: 14,
+        paddingHorizontal: 14,
+        paddingVertical: 16,
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+        justifyContent: 'center',
+        minHeight: 54,
+    },
+    countryCodeText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: colors.textPrimary,
+    },
+
+    // Country picker modal
+    countryPickerOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 100,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    countryPickerBackdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+    },
+    countryPickerModal: {
+        backgroundColor: colors.surface,
+        borderRadius: 20,
+        width: '85%',
+        maxHeight: 400,
+        padding: 20,
+        zIndex: 101,
+    },
+    countryPickerTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: colors.textPrimary,
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    countryPickerScroll: {
+        maxHeight: 320,
+    },
+    countryOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderRadius: 10,
+        marginBottom: 2,
+        minHeight: 48,
+    },
+    countryOptionActive: {
+        backgroundColor: colors.accentTransparent,
+    },
+    countryOptionText: {
+        fontSize: 15,
+        color: colors.textPrimary,
+    },
+    countryOptionCheck: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.accent,
     },
 });

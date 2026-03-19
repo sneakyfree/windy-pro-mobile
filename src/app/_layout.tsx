@@ -233,6 +233,7 @@ export default function RootLayout() {
 
         // Route deep links: windypro://translate, windypro://clone, etc.
         const routeMap: Record<string, string> = {
+          'cloud': '/cloud',
           'clone': '/clone',
           'subscribe': '/subscription',
           'subscription': '/subscription',
@@ -372,6 +373,13 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="video/index"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="cloud/index"
               options={{
                 presentation: 'modal',
                 animation: 'slide_from_bottom',

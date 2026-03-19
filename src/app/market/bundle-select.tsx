@@ -48,6 +48,7 @@ export default function BundleSelect() {
 
     const [catalog, setCatalog] = useState<TranslationPair[]>([]);
     const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [activeRegions, setActiveRegions] = useState<Set<PairRegion>>(new Set());
     const [downloading, setDownloading] = useState(false);
     const [downloadStatus, setDownloadStatus] = useState('');
     const [loading, setLoading] = useState(true);
@@ -83,12 +84,26 @@ export default function BundleSelect() {
     const selectRegion = (region: PairRegion) => {
         haptic.light();
         const regionPairs = catalog.filter((p) => p.region === region);
-        setSelected((prev) => {
+        setActiveRegions((prev) => {
             const next = new Set(prev);
-            for (const p of regionPairs) {
-                if (next.size < maxCount) {
-                    next.add(p.id);
-                }
+            if (next.has(region)) {
+                // Deselect all pairs from this region
+                next.delete(region);
+                setSelected((prevSel) => {
+                    const nextSel = new Set(prevSel);
+                    for (const p of regionPairs) nextSel.delete(p.id);
+                    return nextSel;
+                });
+            } else {
+                // Select all pairs from this region (up to limit)
+                next.add(region);
+                setSelected((prevSel) => {
+                    const nextSel = new Set(prevSel);
+                    for (const p of regionPairs) {
+                        if (nextSel.size < maxCount) nextSel.add(p.id);
+                    }
+                    return nextSel;
+                });
             }
             return next;
         });
@@ -97,6 +112,7 @@ export default function BundleSelect() {
     const clearAll = () => {
         haptic.light();
         setSelected(new Set());
+        setActiveRegions(new Set());
     };
 
     const handleConfirm = async () => {
@@ -247,17 +263,23 @@ export default function BundleSelect() {
                 style={styles.regionScroll}
                 contentContainerStyle={styles.regionScrollContent}
             >
-                {regions.map((region) => (
-                    <Pressable
-                        key={region}
-                        style={styles.regionBtn}
-                        onPress={() => selectRegion(region)}
-                        accessibilityLabel={`Select all ${REGION_LABELS[region]} pairs`}
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.regionBtnText}>{REGION_LABELS[region]}</Text>
-                    </Pressable>
-                ))}
+                {regions.map((region) => {
+                    const isActive = activeRegions.has(region);
+                    return (
+                        <Pressable
+                            key={region}
+                            style={[styles.regionBtn, isActive && styles.regionBtnActive]}
+                            onPress={() => selectRegion(region)}
+                            accessibilityLabel={`${isActive ? 'Deselect' : 'Select'} all ${REGION_LABELS[region]} pairs`}
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: isActive }}
+                        >
+                            <Text style={[styles.regionBtnText, isActive && styles.regionBtnTextActive]}>
+                                {isActive ? '✓ ' : ''}{REGION_LABELS[region]}
+                            </Text>
+                        </Pressable>
+                    );
+                })}
             </ScrollView>
 
             {/* Pair list */}
@@ -353,10 +375,18 @@ const styles = StyleSheet.create({
         minHeight: 36,
         justifyContent: 'center',
     },
+    regionBtnActive: {
+        backgroundColor: colors.accentTransparent,
+        borderColor: colors.accent,
+    },
     regionBtnText: {
         fontSize: 13,
         color: colors.textSecondary,
         fontWeight: '500',
+    },
+    regionBtnTextActive: {
+        color: colors.accent,
+        fontWeight: '700',
     },
 
     // Pair list

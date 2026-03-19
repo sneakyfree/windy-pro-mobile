@@ -1,13 +1,21 @@
 /**
  * 🧬 L1+L6 — Translation Pair Download Manager
  * Downloads translation pair files from CDN with storage awareness,
- * integrity hashing, and platform-native encryption at rest.
+ * integrity hashing, and AES-256-GCM encryption at rest.
  *
- * Encryption strategy (L6):
- *   iOS  → NSFileProtectionComplete (files encrypted when device locked)
- *   Android → encrypted filesystem on modern devices (API 29+)
- *   Both → SHA-256 integrity hash stored in expo-secure-store, tied to licenseToken
- *           If license changes, pairs are invalidated on next load verification.
+ * Encryption strategy (L6 → Layer 1 DRM):
+ *   - All models encrypted with device-bound AES-256-GCM keys
+ *   - Key = HKDF(licenseToken + deviceFingerprint + appSecret)
+ *   - File format: WMOD header (magic + version + IV + authTag) + ciphertext
+ *   - Decryption happens in-memory ONLY — never written to disk unencrypted
+ *   - If license changes → key changes → models become unreadable
+ *   - Platform-native encryption also applied (iOS NSFileProtectionComplete)
+ *
+ * License heartbeat (Layer 2 DRM):
+ *   - Model loading gated by heartbeat status
+ *   - Tiered offline grace periods (Free=24h, Pro=7d, Translate=14d, Max=30d)
+ *   - On grace expiry: models LOCKED (not deleted)
+ *   - On revocation: all models deleted + reset to free
  *
  * Hardening (Strand L):
  *   - Input validation (pairId, cdnUrl)
@@ -16,6 +24,10 @@
  *   - Storage full: user-friendly Alert + partial cleanup
  *   - 5-minute download timeout
  *   - Duplicate simultaneous download prevention
+ *
+ * 🧬 Layer 4 placeholder: LSB weight watermarking will be added server-side
+ *    at 10K+ customers. Models will be fingerprinted per-license before CDN
+ *    delivery. See MODEL_PROTECTION_SPEC.md for implementation plan.
  */
 import * as FileSystem from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
@@ -32,6 +44,8 @@ import NetInfo from '@react-native-community/netinfo';
 import { Alert, Platform } from 'react-native';
 import { createLogger } from './logger';
 import { licenseService } from './license';
+import { modelCrypto, ModelDecryptionError } from './model-crypto';
+import { heartbeatService } from './heartbeat';
 import type { LicenseTier } from '@/types';
 
 const log = createLogger('PairManager');
@@ -126,6 +140,17 @@ export class DownloadTimeoutError extends Error {
     constructor(pairId: string) {
         super(`Download timed out for pair "${pairId}" after ${DOWNLOAD_TIMEOUT_MS / 60_000} minutes`);
         this.name = 'DownloadTimeoutError';
+    }
+}
+
+export class ModelsLockedError extends Error {
+    constructor(reason: 'grace_expired' | 'revoked') {
+        super(
+            reason === 'revoked'
+                ? 'License has been revoked. Please re-subscribe to access your translation engines.'
+                : 'Offline grace period expired. Connect to the internet to verify your license.'
+        );
+        this.name = 'ModelsLockedError';
     }
 }
 
@@ -584,17 +609,42 @@ class PairManager {
                 ? (fileInfo as { size: number }).size
                 : 0;
 
+            // ── Layer 1: Encrypt model before finalizing ─────
+            try {
+                const rawBase64 = await FileSystem.readAsStringAsync(destPath, {
+                    encoding: FileSystem.EncodingType.Base64,
+                });
+                const encryptedBase64 = await modelCrypto.encryptModel(pairId, rawBase64);
+                await FileSystem.writeAsStringAsync(destPath, encryptedBase64, {
+                    encoding: FileSystem.EncodingType.Base64,
+                });
+                log.info('downloadPair', 'Model encrypted successfully', { pairId });
+            } catch (encErr) {
+                // If encryption fails, delete the raw file (don't leave unencrypted on disk)
+                log.error('downloadPair', encErr, { pairId, stage: 'encryption' });
+                await FileSystem.deleteAsync(destPath, { idempotent: true });
+                return false;
+            }
+
             // Record in AsyncStorage
             await this.addToList(pairId);
 
             // Remove from offline queue if present
             await this.removeFromQueue(pairId);
 
-            // Store integrity hash (L6)
-            const hash = await this.computeHash(pairId, fileSize);
+            // Store integrity hash (L6) — computed on encrypted file size
+            const encInfo = await FileSystem.getInfoAsync(destPath);
+            const encSize = encInfo.exists && 'size' in encInfo
+                ? (encInfo as { size: number }).size
+                : fileSize;
+            const hash = await this.computeHash(pairId, encSize);
             await this.storeHash(pairId, hash);
 
-            log.exit('downloadPair', { pairId, sizeMB: Math.round(fileSize / 1_048_576 * 100) / 100 });
+            log.exit('downloadPair', {
+                pairId,
+                rawSizeMB: Math.round(fileSize / 1_048_576 * 100) / 100,
+                encSizeMB: Math.round(encSize / 1_048_576 * 100) / 100,
+            });
             return true;
         } catch (err) {
             this.activeDownloads.delete(pairId);
@@ -700,7 +750,7 @@ class PairManager {
     }
 
     /**
-     * Delete a pair — removes the file, the list entry, and the integrity hash.
+     * Delete a pair — removes the file, the list entry, integrity hash, and encryption key hash.
      */
     async deletePair(pairId: string): Promise<void> {
         log.entry('deletePair', { pairId });
@@ -715,6 +765,9 @@ class PairManager {
         } catch {
             log.warn('deletePair', 'Could not remove integrity hash', { pairId });
         }
+
+        // Remove encryption key hash
+        await modelCrypto.wipeKeyHash(pairId);
 
         log.exit('deletePair', { pairId });
     }
@@ -755,6 +808,161 @@ class PairManager {
         }
 
         return { usedBytes, freeBytes, pairs };
+    }
+
+    // ── Layer 1: Model Loading (decrypt in memory) ───────────
+
+    /**
+     * Load a model for inference — decrypts in memory, gated by heartbeat.
+     *
+     * Layer 1: Decrypts the WMOD-formatted file using the device-bound key.
+     * Layer 2: Checks heartbeat status before allowing access.
+     *
+     * @returns Base64-encoded plaintext model data (for passing to inference engine)
+     * @throws ModelsLockedError if grace period expired or license revoked
+     * @throws ModelDecryptionError if decryption fails (wrong key, tampered file)
+     */
+    async loadModel(pairId: string): Promise<string> {
+        log.entry('loadModel', { pairId });
+
+        // ── Layer 2: Heartbeat gate ──────────────────────────
+        const hbStatus = heartbeatService.getStatus();
+        if (hbStatus.status === 'revoked') {
+            log.warn('loadModel', 'License revoked — deleting all models', { pairId });
+            await this.deleteAllPairs();
+            throw new ModelsLockedError('revoked');
+        }
+        if (hbStatus.status === 'locked') {
+            log.warn('loadModel', 'Grace period expired — models locked', { pairId });
+            throw new ModelsLockedError('grace_expired');
+        }
+        if (hbStatus.status === 'grace') {
+            log.info('loadModel', 'In grace period', {
+                pairId,
+                remaining: hbStatus.graceRemainingLabel,
+            });
+        }
+
+        // ── Layer 1: Decrypt model ──────────────────────────
+        const filePath = `${PAIRS_DIR}${pairId}.bin`;
+        const info = await FileSystem.getInfoAsync(filePath);
+        if (!info.exists) {
+            throw new Error(`Model file not found: ${pairId}`);
+        }
+
+        const encryptedBase64 = await FileSystem.readAsStringAsync(filePath, {
+            encoding: FileSystem.EncodingType.Base64,
+        });
+
+        // Check if file is encrypted (has WMOD header)
+        const isEncrypted = await modelCrypto.isEncrypted(filePath);
+        if (!isEncrypted) {
+            // Legacy unencrypted file — return as-is but log warning
+            log.warn('loadModel', 'Loading unencrypted legacy model — run migration', { pairId });
+            return encryptedBase64;
+        }
+
+        try {
+            const plaintextBase64 = await modelCrypto.decryptModel(pairId, encryptedBase64);
+            log.exit('loadModel', { pairId });
+            return plaintextBase64;
+        } catch (err) {
+            if (err instanceof ModelDecryptionError) {
+                // Decryption failed — file tampered or license changed
+                log.error('loadModel', err, { pairId });
+                // Delete the corrupted/invalid file
+                await this.deletePair(pairId);
+                throw err;
+            }
+            throw err;
+        }
+    }
+
+    // ── Migration: encrypt existing unencrypted models ──────
+
+    /**
+     * Migrate all existing unencrypted .bin files to WMOD encrypted format.
+     * Call once on app update. Safe to call multiple times — skips already-encrypted files.
+     *
+     * @returns { migrated: number, skipped: number, failed: number }
+     */
+    async migrateUnencryptedModels(): Promise<{ migrated: number; skipped: number; failed: number }> {
+        log.entry('migrateUnencryptedModels');
+        const pairs = await this.loadList();
+        let migrated = 0;
+        let skipped = 0;
+        let failed = 0;
+
+        for (const pairId of pairs) {
+            const filePath = `${PAIRS_DIR}${pairId}.bin`;
+            try {
+                const info = await FileSystem.getInfoAsync(filePath);
+                if (!info.exists) {
+                    skipped++;
+                    continue;
+                }
+
+                const isEnc = await modelCrypto.isEncrypted(filePath);
+                if (isEnc) {
+                    skipped++;
+                    continue;
+                }
+
+                // Read raw, encrypt, overwrite
+                const rawBase64 = await FileSystem.readAsStringAsync(filePath, {
+                    encoding: FileSystem.EncodingType.Base64,
+                });
+                const encryptedBase64 = await modelCrypto.encryptModel(pairId, rawBase64);
+                await FileSystem.writeAsStringAsync(filePath, encryptedBase64, {
+                    encoding: FileSystem.EncodingType.Base64,
+                });
+
+                // Update integrity hash for new encrypted size
+                const encInfo = await FileSystem.getInfoAsync(filePath);
+                const encSize = encInfo.exists && 'size' in encInfo
+                    ? (encInfo as { size: number }).size
+                    : 0;
+                const hash = await this.computeHash(pairId, encSize);
+                await this.storeHash(pairId, hash);
+
+                migrated++;
+                log.info('migrateUnencryptedModels', 'Migrated pair', { pairId });
+            } catch (err) {
+                failed++;
+                log.error('migrateUnencryptedModels', err, { pairId });
+            }
+        }
+
+        log.exit('migrateUnencryptedModels', { migrated, skipped, failed });
+        return { migrated, skipped, failed };
+    }
+
+    // ── License revocation: delete all ───────────────────────
+
+    /**
+     * Delete ALL downloaded pairs (called on license revocation).
+     * Wipes files, list, integrity hashes, and encryption key hashes.
+     */
+    async deleteAllPairs(): Promise<void> {
+        log.entry('deleteAllPairs');
+
+        const pairs = await this.loadList();
+        for (const pairId of pairs) {
+            const filePath = `${PAIRS_DIR}${pairId}.bin`;
+            await FileSystem.deleteAsync(filePath, { idempotent: true });
+            try {
+                await SecureStore.deleteItemAsync(`${HASH_PREFIX}${pairId}`);
+            } catch { /* ignore */ }
+            await modelCrypto.wipeKeyHash(pairId);
+        }
+
+        // Clear the downloaded list
+        await this.saveList([]);
+
+        // Clear offline queue
+        await AsyncStorage.removeItem(OFFLINE_QUEUE_KEY);
+
+        log.exit('deleteAllPairs', { deletedCount: pairs.length });
     }
 }
 
