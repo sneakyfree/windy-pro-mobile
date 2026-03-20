@@ -73,6 +73,8 @@ export const RECORDING_LIMITS: Record<LicenseTier, number> = {
 
 class LicenseService {
     private tier: LicenseTier = 'free';
+    private billingType: 'subscription' | 'lifetime' | null = null;
+    private cloudSttEnabled: boolean = false;
     private licenseKey: string | null = null;
     private isValidated = false;
     private cachedValidation: LicenseValidation | null = null;
@@ -118,6 +120,8 @@ class LicenseService {
             const validation: LicenseValidation = {
                 key: data.key || key,
                 tier: data.tier || 'free',
+                billingType: data.billingType || null,
+                cloudSttEnabled: data.cloudSttEnabled ?? false,
                 validUntil: data.activatedAt || null,
                 devicesUsed: data.devicesUsed ?? 1,
                 devicesMax: data.devicesMax ?? 5,
@@ -125,6 +129,8 @@ class LicenseService {
             };
 
             this.tier = validation.tier;
+            this.billingType = validation.billingType;
+            this.cloudSttEnabled = validation.cloudSttEnabled;
             this.licenseKey = key;
             this.isValidated = true;
 
@@ -140,6 +146,8 @@ class LicenseService {
             }
             // No cache + offline → degrade to free
             this.tier = 'free';
+            this.billingType = null;
+            this.cloudSttEnabled = false;
             throw error;
         }
     }
@@ -186,6 +194,20 @@ class LicenseService {
      */
     getTier(): LicenseTier {
         return this.tier;
+    }
+
+    /**
+     * Get billing type: 'subscription' (monthly/annual) or 'lifetime' (one-time)
+     */
+    getBillingType(): 'subscription' | 'lifetime' | null {
+        return this.billingType;
+    }
+
+    /**
+     * Whether cloud STT is enabled (subscription only — lifetime is local-only)
+     */
+    isCloudSttEnabled(): boolean {
+        return this.cloudSttEnabled;
     }
 
     /**

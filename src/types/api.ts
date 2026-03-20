@@ -115,6 +115,10 @@ export interface LicenseValidation {
     key: string;
     /** Tier unlocked by this license */
     tier: LicenseTier;
+    /** Billing type: 'subscription' (monthly/annual) or 'lifetime' (one-time) */
+    billingType: 'subscription' | 'lifetime' | null;
+    /** Whether cloud STT is enabled (subscription only — lifetime gets local engines only) */
+    cloudSttEnabled: boolean;
     /** ISO 8601 expiration date, or `null` for lifetime licenses */
     validUntil: string | null;
     /** Number of devices currently using this license */
