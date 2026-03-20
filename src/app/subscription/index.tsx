@@ -165,6 +165,13 @@ function lifetimeEquivalent(tier: string): string {
     return months ? `= ${months} months of monthly` : '';
 }
 
+/** Cloud STT note based on billing period */
+function cloudSttNote(tier: string, period: BillingPeriod): string | null {
+    if (tier === 'free') return null;
+    if (period === 'lifetime') return '🏠 Local engines only — Own Your Stack';
+    return '☁️ Cloud STT included — powered by Windy Cloud';
+}
+
 export default function SubscriptionScreen() {
     const router = useRouter();
     const { licenseTier } = useSettingsStore();
@@ -401,6 +408,22 @@ export default function SubscriptionScreen() {
                                 </View>
                             )}
                         </View>
+
+                        {/* Cloud STT indicator */}
+                        {cloudSttNote(plan.tier, billingPeriod) && (
+                            <View style={[styles.ownForeverBadge, {
+                                backgroundColor: billingPeriod === 'lifetime'
+                                    ? 'rgba(139, 92, 246, 0.1)'
+                                    : 'rgba(59, 130, 246, 0.1)',
+                                marginBottom: spacing.sm,
+                            }]}>
+                                <Text style={[styles.ownForeverText, {
+                                    color: billingPeriod === 'lifetime' ? '#c084fc' : '#60a5fa',
+                                }]}>
+                                    {cloudSttNote(plan.tier, billingPeriod)}
+                                </Text>
+                            </View>
+                        )}
 
                         {/* Feature list */}
                         <View style={styles.featureList}>
