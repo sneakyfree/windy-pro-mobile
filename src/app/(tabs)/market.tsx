@@ -35,6 +35,8 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { PairCard } from '@/components/PairCard';
 import { StorageBar } from '@/components/StorageBar';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { BUNDLE_CONFIG } from '@/config/bundle-config';
+import { analyticsService } from '@/services/analytics';
 
 // ─── Constants ───────────────────────────────────────────────
 const MARCO_POLO_DISMISS_KEY = 'windy-marco-polo-dismissed';
@@ -318,27 +320,15 @@ function MarketScreenInner() {
                     contentContainerStyle={styles.bundleScrollContent}
                 >
                     <BundleCard
-                        emoji="🧳"
-                        name="Traveler"
-                        count={25}
-                        price={49}
-                        color="#2dd4bf"
+                        bundleId="traveler"
                         onPress={() => router.push({ pathname: '/market/bundle-select', params: { count: '25' } })}
                     />
                     <BundleCard
-                        emoji="🗣️"
-                        name="Polyglot"
-                        count={200}
-                        price={149}
-                        color="#a78bfa"
+                        bundleId="polyglot"
                         onPress={() => router.push({ pathname: '/market/bundle-select', params: { count: '200' } })}
                     />
                     <BundleCard
-                        emoji="🧭"
-                        name="Marco Polo"
-                        count={-1}
-                        price={999}
-                        color="#d4a017"
+                        bundleId="marco_polo"
                         onPress={() => router.push('/market/marco-polo')}
                     />
                 </ScrollView>
@@ -482,29 +472,35 @@ export default function MarketScreen() {
 // ─── Bundle Card Sub-component ───────────────────────────────
 
 interface BundleCardProps {
-    emoji: string;
-    name: string;
-    count: number;
-    price: number;
-    color: string;
+    bundleId: string;
     onPress: () => void;
 }
 
-function BundleCard({ emoji, name, count, price, color, onPress }: BundleCardProps) {
+function BundleCard({ bundleId, onPress }: BundleCardProps) {
+    const config = BUNDLE_CONFIG[bundleId];
+    if (!config) return null;
+
+    const { emoji, name, pairCount, priceUsd, color } = config;
+
+    const handlePress = () => {
+        analyticsService.trackScreenView(`bundle_card_${bundleId}`);
+        onPress();
+    };
+
     return (
         <Pressable
             style={[styles.bundleCard, { borderColor: color }]}
-            onPress={onPress}
+            onPress={handlePress}
             accessible={true}
-            accessibilityLabel={`${name} bundle, ${count === -1 ? 'all' : count} pairs, $${price}`}
+            accessibilityLabel={`${name} bundle, ${pairCount === -1 ? 'all' : pairCount} pairs, $${priceUsd}`}
             accessibilityRole="button"
         >
             <Text style={styles.bundleEmoji}>{emoji}</Text>
             <Text style={[styles.bundleName, { color }]}>{name}</Text>
             <Text style={styles.bundleCount}>
-                {count === -1 ? 'All pairs' : `${count} pairs`}
+                {pairCount === -1 ? 'All pairs' : `${pairCount} pairs`}
             </Text>
-            <Text style={styles.bundlePrice}>${price}</Text>
+            <Text style={styles.bundlePrice}>${priceUsd}</Text>
         </Pressable>
     );
 }

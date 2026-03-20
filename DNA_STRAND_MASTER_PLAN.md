@@ -1,7 +1,8 @@
 # 🧬 WINDY PRO MOBILE — DNA STRAND MASTER PLAN
 
-**Version:** 1.0.0
+**Version:** 2.0.0
 **Created:** 2026-03-01
+**Last Updated:** 2026-03-18
 **Authors:** Antigravity + Grant Whitmer
 **Philosophy:** Every cell has the blueprint to build the whole organism. This plan is so atomic, even the dumbest ribosome can execute it.
 
@@ -338,6 +339,9 @@ windy-pro-mobile/
 │  M2 (Audio Capture) ──► M12 (Video Capture)                     │
 │                                                                  │
 │  ALL STRANDS ──► M13 (App Store Submission)                     │
+│                                                                  │
+│  M6 (Translate) ──► L1+L2 (Marketplace + DRM)                  │
+│  L1+L2 (Marketplace) ──► M10* (IAP via RevenueCat)              │
 │                                                                  │
 │  Legend: 🔲 Not Started | 🟡 In Progress | ✅ Done              │
 └─────────────────────────────────────────────────────────────────┘
@@ -1860,20 +1864,39 @@ CODONS:
 │       │   └── App detects license key from deep link redirect
 │       └── Fallback: RevenueCat in-app purchase (if Apple requires)
 │
-└── M10.1.2 Stripe Integration 🔲
-    ├── Stripe Account: WindyPro (existing, configured)
-    ├── Products (from STRIPE-CONFIG.md):
-    │   ├── Windy Pro: price_xxx ($49)
-    │   ├── Windy Translate: price_xxx ($79)
-    │   └── Translate Pro: price_xxx ($149)
-    ├── Webhook: POST /api/stripe/webhook
-    │   ├── checkout.session.completed → generate license key
-    │   ├── payment_intent.succeeded → log payment
-    │   └── charge.refunded → revoke license key
-    ├── Coupons (from STRIPE-CONFIG.md):
-    │   ├── WINDY30: 30% off
-    │   └── BETATESTER: 50% off
-    └── Deep link: windypro://license?key={key}
+└── M10.1.2 RevenueCat + Stripe Integration ✅
+    │
+    │  ⚠️  APP STORE COMPLIANCE (updated 2026-03-18):
+    │  All in-app purchases go through RevenueCat (Apple/Google IAP).
+    │  Website sales (windytraveler.com) are handled outside the app via Stripe.
+    │  The app NEVER links to or references website purchases.
+    │  The app only knows the user's tier from the license server.
+    │
+    ├── RevenueCat (in-app — iOS/Android):
+    │   ├── Package: react-native-purchases
+    │   ├── Products:
+    │   │   ├── windy_bundle_traveler: $49 (25 pairs)
+    │   │   ├── windy_bundle_polyglot: $149 (200 pairs)
+    │   │   └── windy_bundle_marco_polo: $999 (all pairs, lifetime)
+    │   ├── Apple/Google take 30% on IAP
+    │   └── Webhooks → server sets tier in license DB
+    │
+    ├── Stripe (website only — NOT referenced in app):
+    │   ├── Products mirror RevenueCat lineup (same tiers)
+    │   ├── Webhook: POST /api/stripe/webhook
+    │   │   ├── checkout.session.completed → generate license
+    │   │   ├── payment_intent.succeeded → log payment
+    │   │   └── charge.refunded → revoke license (Layer 3 DRM)
+    │   └── Coupons:
+    │       ├── WINDY30: 30% off
+    │       └── BETATESTER: 50% off
+    │
+    └── Entitlement Flow:
+        1. User buys via IAP (RevenueCat) or website (Stripe)
+        2. Server processes webhook → sets tier in license DB
+        3. App calls GET /api/v1/license/verify → gets tier
+        4. App unlocks features based on tier
+        5. App has NO knowledge of which payment channel was used
 ```
 
 ---
@@ -2030,7 +2053,9 @@ CODONS:
 │   ├── Review notes explaining:
 │   │   ├── Keyboard extension requires "Allow Full Access"
 │   │   ├── Microphone used for speech-to-text only
-│   │   └── Payment via web (not IAP) — may need negotiation
+│   │   └── All digital goods purchased via IAP (RevenueCat)
+│   │       ├── No website purchase links in the app binary
+│   │       └── Complies with App Store Guidelines 3.1.1
 │   └── TestFlight beta first (internal → external)
 │
 ├── M13.1.2 iOS Permission Descriptions 🔲
@@ -2093,6 +2118,131 @@ CODONS:
 
 ---
 
+### STRAND L: MARKETPLACE & MODEL PROTECTION
+
+> **Added:** v2.0.0 (2026-03-18) | **Status:** ✅ Core implementation complete
+
+#### L1: Translation Pair Catalog & Download Manager ✅
+```
+FILES: src/services/pairManager.ts, src/services/pairCatalog.ts
+DEPENDS ON: M6.1 (Translation Engine)
+
+CODONS:
+├── L1.1 Pair Catalog Service ✅
+│   FILE: src/services/pairCatalog.ts
+│   ├── Loads pair-catalog.json (static, bundled with app)
+│   ├── Each pair: { id, source, target, sizeBytes, region, popularity }
+│   ├── Regions: europe, americas, asia, meaf, other
+│   └── getCatalog(), getByRegion(), getById()
+│
+├── L1.2 PairManager Service ✅
+│   FILE: src/services/pairManager.ts
+│   ├── downloadPair(pairId, cdnUrl) — with encryption, retry, storage checks
+│   ├── loadModel(pairId) — heartbeat gate + in-memory decryption
+│   ├── deletePair(pairId) — file + hashes + key cleanup
+│   ├── deleteAllPairs() — license revocation
+│   ├── migrateUnencryptedModels() — legacy file migration
+│   └── Offline queue: queueForLater() / processOfflineQueue()
+│
+└── L1.3 Pair Limits Per Tier ✅
+    ├── free: 0 | pro: 0 | translate: 5 | translate_pro: unlimited
+```
+
+#### L2: Model Protection — 4-Layer DRM ✅
+```
+FILES: src/services/model-crypto.ts, src/services/heartbeat.ts
+See also: MODEL_PROTECTION_SPEC.md
+
+CODONS:
+├── L2.1 Layer 1: Encrypted Model Storage (P0) ✅
+│   ├── AES-256-GCM encryption, device-bound key via HKDF-SHA256
+│   ├── Key = HKDF(licenseToken + deviceFingerprint + APP_SECRET)
+│   ├── WMOD file format: [magic][version][IV][authTag][ciphertext]
+│   ├── Decryption in-memory ONLY — never written to disk
+│   └── Copied files are garbage on other devices
+│
+├── L2.2 Layer 2: License Heartbeat (P0) ✅
+│   ├── Periodic check: GET /api/v1/license/verify
+│   ├── Intervals: free=24h, pro=48h, translate=48h, translate_pro=72h
+│   ├── Grace periods: free=24h, pro=7d, translate=14d, translate_pro=30d
+│   ├── Status: valid → grace → locked → revoked
+│   └── On revocation: deleteAllPairs() + reset to free
+│
+├── L2.3 Layer 3: Refund Handling (P1 — Server-Side) 🟡
+│   ├── RevenueCat/Stripe/Apple webhooks → flag license as revoked
+│   ├── Client heartbeat detects revocation → deleteAllPairs()
+│   └── Payment failures: 3 retries over 7 days before revoking
+│
+└── L2.4 Layer 4: Model Watermarking (P3 — Docs Only) 🔲
+    └── LSB weight fingerprinting at CDN delivery, deferred to 10K+ users
+```
+
+#### L3: Marketplace UI ✅
+```
+FILES: market.tsx, bundle-select.tsx, marco-polo.tsx, bundle-config.ts,
+       PairCard.tsx, StorageBar.tsx
+
+CODONS:
+├── L3.1 Market Tab (4th tab) ✅
+│   ├── Marco Polo dismissible hero banner with savings math
+│   ├── BundleCard components reading from BUNDLE_CONFIG
+│   ├── Downloaded Engines section + Discover grid
+│   └── Storage bar (used/free space)
+│
+├── L3.2 Bundle Selection Screen ✅
+│   ├── Region quick-select + checkbox pair picker
+│   └── Purchase via RevenueCat IAP
+│
+├── L3.3 Marco Polo Detail Screen ✅
+│   ├── Savings math, feature list, storage check
+│   └── Purchase CTA → RevenueCat IAP
+│
+└── L3.4 Bundle Config (App Store Compliant) ✅
+    FILE: src/config/bundle-config.ts
+    ├── Pure display data ONLY — no URLs, no channel routing
+    ├── Bundles: traveler $49 | polyglot $149 | marco_polo $999
+    └── ⚠️ NO website URLs — Apple Guidelines 3.1.1 compliance
+```
+
+---
+
+### STRAND M14: BRAND ARCHITECTURE & PLATFORM STRATEGY
+
+> **Added:** v2.0.0 (2026-03-18) | **Status:** 📋 Documentation
+
+#### M14.1: Brand Hierarchy
+```
+Windy (parent identity)
+├── Windy Traveler ← MARKETPLACE PLATFORM (expandable)
+│   ├── Primary brand for the mobile app
+│   ├── Domain: windytraveler.com (primary)
+│   └── Sub-brand: Windy Translate (engine marketplace)
+│       └── windytranslate.com → 301 redirect
+│
+├── Windy Word ← VOICE-TO-TEXT (desktop, windyword.com)
+├── Windy Chat ← MESSAGING (future)
+├── Windy Cloud ← INFRASTRUCTURE (backend)
+└── Windy Clone ← DIGITAL LIKENESS (future, windyclone.com)
+
+Naming Rules:
+├── "Windy" is always first
+├── Second word = WHO the customer IS (not what it does)
+└── Users never see: "model", "STT", "ASR", "LLM", "ML"
+```
+
+#### M14.2: Domain Strategy
+```
+├── windytraveler.com — PRIMARY (marketing, Stripe checkout)
+├── windytranslate.com — 301 redirect → windytraveler.com/translate
+├── windyword.com — voice-to-text product (future)
+└── windyclone.com — digital likeness product (future)
+
+⚠️ NO domain URLs appear in the app binary.
+```
+
+
+---
+
 ## 🔒 INVARIANTS (Must ALWAYS Be True)
 
 ```
@@ -2119,6 +2269,13 @@ CODONS:
 15. UI: Dark theme only (matches website brand identity)
 16. UI: All interactive elements have haptic feedback
 17. UI: All recording start/stop have audio blip feedback
+18. DRM: Models NEVER exist unencrypted on disk after download (L2.1)
+19. DRM: Decrypted model data NEVER written to disk — memory only (L2.1)
+20. DRM: Heartbeat grace period must expire before models lock (L2.2)
+21. DRM: On revocation → delete ALL models + key hashes (L2.2)
+22. COMPLIANCE: App binary NEVER contains website purchase URLs (M14)
+23. COMPLIANCE: All digital goods purchased via IAP (RevenueCat) (M10)
+24. COMPLIANCE: App has NO knowledge of payment channel source (M10)
 ```
 
 ---
@@ -2135,6 +2292,9 @@ CODONS:
 ├── License validation: all tiers, offline fallback, expiry
 ├── Clone tracker: hour calculation, milestone detection
 └── Storage: CRUD operations, pagination, search
+├── Model crypto: encrypt/decrypt round-trip, key derivation (L2.1) ✅
+├── Heartbeat: grace periods, status transitions, revocation (L2.2) ✅
+└── Bundle config: display data validation (L3.4)
 ```
 
 ### Integration Tests
@@ -2144,8 +2304,10 @@ CODONS:
 ├── Record → transcribe → insert via keyboard (iOS)
 ├── Record → save → sync → verify on cloud
 ├── Translate → conversation mode → export
-├── Engine download → verify checksum → load → transcribe
-└── License purchase flow → validation → feature unlock
+├── Engine download → encrypt → load → transcribe (L1+L2) ✅
+├── Engine download → encrypt → load → transcribe (L1+L2) ✅
+├── License purchase flow → validation → feature unlock
+└── Heartbeat revocation → deleteAllPairs → models gone (L2.2)
 ```
 
 ### End-to-End Tests
@@ -2155,7 +2317,8 @@ CODONS:
 ├── Airplane mode → record → transcribe locally → save
 ├── Cloud engine → Wi-Fi drops mid-recording → graceful fallback
 ├── 30-minute recording → quality score → sync to cloud
-└── Cross-device: purchase on phone A → validate on phone B
+├── Cross-device: purchase on phone A → validate on phone B
+└── Grace period expiry → models locked → reconnect → unlock (L2.2)
 ```
 
 ---
@@ -2182,7 +2345,9 @@ CODONS:
 ├── Background sync frequency
 ├── Memory usage by screen
 ├── Battery impact during recording
-└── Storage usage growth rate
+├── Storage usage growth rate
+├── Heartbeat success/failure rate (L2.2)
+└── Model download + encryption latency (L1+L2.1)
 ```
 
 ---
@@ -2231,9 +2396,10 @@ CODONS:
 | 1 | iOS keyboard 30MB memory limit may prevent on-device whisper | Medium | Fallback to cloud or tiny model |
 | 2 | iOS doesn't allow floating overlay | High | Mitigated by keyboard + Dynamic Island + widgets |
 | 3 | whisper.rn streaming support varies by version | Medium | Pin to stable version, batch fallback |
-| 4 | App Store may require IAP instead of web checkout | High | RevenueCat fallback ready |
+| 4 | ~~App Store may require IAP instead of web checkout~~ | ~~High~~ | ✅ RESOLVED: RevenueCat IAP is primary. Web sales independent. |
 | 5 | Background sync limited on iOS (15-min minimum) | Low | Acceptable for non-real-time uploads |
-| 6 | NLLB translation models are large (1-6 GB) | Medium | Cloud default, offline as opt-in download |
+| 6 | NLLB translation models are large (1-6 GB) | Medium | Cloud default, offline opt-in. Encrypted at rest (L2.1). |
+| 7 | Model piracy risk at scale | Medium | 4-layer DRM (L2). Layer 4 watermarking deferred to 10K+. |
 
 ---
 
@@ -2241,6 +2407,7 @@ CODONS:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.0.0 | 2026-03-18 | Added Strand L (Marketplace + 4-Layer DRM). Added Strand M14 (Brand Architecture). Updated M10 for IAP compliance. Updated M13. Added invariants 18-24. |
 | 1.0.0 | 2026-03-01 | Initial DNA Strand Master Plan — 13 strands, full architecture |
 
 ---

@@ -55,9 +55,14 @@ export default function MarcoPolo() {
         if (purchasing) return;
         setPurchasing(true);
         haptic.medium();
-        Linking.openURL('https://windypro.thewindstorm.uk/marco-polo').catch(() => {
-            Alert.alert('Error', 'Could not open the purchase page.');
-        }).finally(() => setPurchasing(false));
+        // TODO: Replace with RevenueCat IAP flow
+        // Purchases.purchaseProduct('windy_bundle_marco_polo')
+        Alert.alert(
+            'Coming Soon',
+            'Marco Polo bundle will be available for purchase shortly.',
+            [{ text: 'OK' }]
+        );
+        setPurchasing(false);
     };
 
     return (
