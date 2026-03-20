@@ -28,6 +28,15 @@ jest.mock('expo-file-system', () => ({
     EncodingType: { Base64: 'base64' },
 }));
 
+// Mock license service — cloud STT enabled by default for tests
+jest.mock('../license', () => ({
+    licenseService: {
+        isCloudSttEnabled: jest.fn().mockReturnValue(true),
+        getTier: jest.fn().mockReturnValue('pro'),
+        getBillingType: jest.fn().mockReturnValue('subscription'),
+    },
+}));
+
 // Mock WebSocket — triggers onerror after a 10ms delay (controlled by fake timers)
 class MockWebSocket {
     onopen: (() => void) | null = null;
