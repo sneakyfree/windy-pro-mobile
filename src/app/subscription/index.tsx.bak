@@ -1,7 +1,6 @@
 /**
  * 🧬 M10 — Subscription / Paywall Screen
  * Premium pricing cards, feature comparison table, free trial CTA, restore purchases
- * Billing toggle: Monthly | Annual (default) | Lifetime with savings badges
  */
 import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Alert, Animated, Linking } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
@@ -15,42 +14,28 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
-// ── Billing period types ──
-type BillingPeriod = 'monthly' | 'annual' | 'lifetime';
-
 // ── Plan definitions ──
-interface PlanPricing {
-    price: string;
-    period: string;
-    /** Stripe product key suffix for checkout */
-    stripeSuffix: string;
-}
-
 interface PlanInfo {
     id: string;
     tier: string;
     name: string;
+    price: string;
+    period: string;
     badge?: string;
     badgeColor?: string;
     color: string;
     features: string[];
     cta: string;
     recommended?: boolean;
-    pricing: Record<BillingPeriod, PlanPricing>;
 }
-
-// ── Savings badge config ──
-const BILLING_TABS: { key: BillingPeriod; label: string; savingsLabel?: string }[] = [
-    { key: 'monthly', label: 'Monthly' },
-    { key: 'annual', label: 'Annual', savingsLabel: 'Save 17%' },
-    { key: 'lifetime', label: 'Lifetime', savingsLabel: 'Best Value' },
-];
 
 const PLANS: PlanInfo[] = [
     {
         id: 'free',
         tier: 'free',
         name: 'Free',
+        price: '$0',
+        period: 'forever',
         color: colors.textTertiary,
         features: [
             '5-minute recordings',
@@ -61,16 +46,13 @@ const PLANS: PlanInfo[] = [
             '1 offline translation engine',
         ],
         cta: 'Current Plan',
-        pricing: {
-            monthly: { price: '$0', period: 'forever', stripeSuffix: '' },
-            annual: { price: '$0', period: 'forever', stripeSuffix: '' },
-            lifetime: { price: '$0', period: 'forever', stripeSuffix: '' },
-        },
     },
     {
         id: 'pro',
         tier: 'pro',
         name: 'Windy Pro',
+        price: '$49/yr',
+        period: 'per year',
         badge: 'POPULAR',
         badgeColor: colors.accent,
         color: colors.accent,
@@ -88,16 +70,13 @@ const PLANS: PlanInfo[] = [
             '5 offline translation engines',
         ],
         cta: 'Start Free Trial',
-        pricing: {
-            monthly: { price: '$4.99', period: '/mo', stripeSuffix: '_monthly' },
-            annual: { price: '$49', period: '/yr', stripeSuffix: '_annual' },
-            lifetime: { price: '$99', period: 'one-time', stripeSuffix: '_lifetime' },
-        },
     },
     {
         id: 'translate',
         tier: 'translate',
         name: 'Windy Ultra',
+        price: '$79/yr',
+        period: 'per year',
         badge: 'NEW',
         badgeColor: colors.accentSecondary,
         color: colors.accentSecondary,
@@ -109,16 +88,13 @@ const PLANS: PlanInfo[] = [
             '25 offline translation engines',
         ],
         cta: 'Upgrade',
-        pricing: {
-            monthly: { price: '$8.99', period: '/mo', stripeSuffix: '_monthly' },
-            annual: { price: '$79', period: '/yr', stripeSuffix: '_annual' },
-            lifetime: { price: '$199', period: 'one-time', stripeSuffix: '_lifetime' },
-        },
     },
     {
         id: 'translate_pro',
         tier: 'translate_pro',
         name: 'Windy Max',
+        price: '$149/yr',
+        period: 'per year',
         badge: 'ULTIMATE',
         badgeColor: '#c084fc',
         color: '#c084fc',
@@ -133,11 +109,6 @@ const PLANS: PlanInfo[] = [
             '100 offline translation engines',
         ],
         cta: 'Upgrade',
-        pricing: {
-            monthly: { price: '$14.99', period: '/mo', stripeSuffix: '_monthly' },
-            annual: { price: '$149', period: '/yr', stripeSuffix: '_annual' },
-            lifetime: { price: '$299', period: 'one-time', stripeSuffix: '_lifetime' },
-        },
     },
 ];
 
@@ -158,17 +129,9 @@ const COMPARISON_FEATURES = [
     { name: 'Quality Scoring', free: '—', pro: '✓', translate: '✓', translate_pro: '✓' },
 ];
 
-/** Monthly equivalent for savings display on lifetime cards */
-function lifetimeEquivalent(tier: string): string {
-    const monthsMap: Record<string, number> = { pro: 20, translate: 22, translate_pro: 20 };
-    const months = monthsMap[tier];
-    return months ? `= ${months} months of monthly` : '';
-}
-
 export default function SubscriptionScreen() {
     const router = useRouter();
     const { licenseTier } = useSettingsStore();
-    const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('annual');
     const [purchasing, setPurchasing] = useState<string | null>(null);
     const [showComparison, setShowComparison] = useState(false);
     const [restoring, setRestoring] = useState(false);
@@ -193,7 +156,6 @@ export default function SubscriptionScreen() {
         if (plan.tier === licenseTier) return;
         if (plan.tier === 'free') return;
 
-        const currentPricing = plan.pricing[billingPeriod];
         setPurchasing(plan.id);
         haptic.medium();
 
@@ -231,7 +193,6 @@ export default function SubscriptionScreen() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             tier: plan.tier,
-                            billing: billingPeriod,
                             successUrl: 'windypro://subscription?status=success',
                             cancelUrl: 'windypro://subscription?status=cancel',
                         }),
@@ -325,46 +286,10 @@ export default function SubscriptionScreen() {
                 </Text>
             </Animated.View>
 
-            {/* ── Billing Period Toggle ── */}
-            <View style={styles.billingToggle} accessibilityRole="tablist">
-                {BILLING_TABS.map((tab) => {
-                    const isActive = billingPeriod === tab.key;
-                    return (
-                        <Pressable
-                            key={tab.key}
-                            style={[styles.billingTab, isActive && styles.billingTabActive]}
-                            onPress={() => {
-                                setBillingPeriod(tab.key);
-                                haptic.light();
-                            }}
-                            accessibilityRole="tab"
-                            accessibilityState={{ selected: isActive }}
-                            accessibilityLabel={`${tab.label} billing${tab.savingsLabel ? `, ${tab.savingsLabel}` : ''}`}
-                        >
-                            <Text style={[styles.billingTabText, isActive && styles.billingTabTextActive]}>
-                                {tab.label}
-                            </Text>
-                            {tab.savingsLabel && (
-                                <View style={[styles.savingsBadge, isActive && styles.savingsBadgeActive]}>
-                                    <Text style={[styles.savingsBadgeText, isActive && styles.savingsBadgeTextActive]}>
-                                        {tab.savingsLabel}
-                                    </Text>
-                                </View>
-                            )}
-                        </Pressable>
-                    );
-                })}
-            </View>
-
             {/* Pricing Cards */}
             {PLANS.map((plan) => {
                 const isCurrentTier = plan.tier === licenseTier;
                 const isRecommended = plan.recommended;
-                const currentPricing = plan.pricing[billingPeriod];
-                const equivalentNote = billingPeriod === 'lifetime' && plan.tier !== 'free'
-                    ? lifetimeEquivalent(plan.tier)
-                    : '';
-
                 return (
                     <View
                         key={plan.id}
@@ -374,7 +299,7 @@ export default function SubscriptionScreen() {
                             isCurrentTier && styles.cardCurrent,
                         ]}
                         accessible={true}
-                        accessibilityLabel={`${plan.name} plan, ${currentPricing.price} ${currentPricing.period}. ${plan.features.join(', ')}.${isCurrentTier ? ' Current plan.' : ''}`}
+                        accessibilityLabel={`${plan.name} plan, ${plan.price} ${plan.period}. ${plan.features.join(', ')}.${isCurrentTier ? ' Current plan.' : ''}`}
                         accessibilityRole="summary"
                     >
                         {/* Badge */}
@@ -387,19 +312,9 @@ export default function SubscriptionScreen() {
                         <View style={styles.cardHeader}>
                             <Text style={[styles.cardName, { color: plan.color }]}>{plan.name}</Text>
                             <View style={styles.priceRow}>
-                                <Text style={styles.cardPrice}>{currentPricing.price}</Text>
-                                <Text style={styles.cardPeriod}>{currentPricing.period}</Text>
+                                <Text style={styles.cardPrice}>{plan.price}</Text>
+                                <Text style={styles.cardPeriod}>{plan.period}</Text>
                             </View>
-                            {/* Lifetime equivalence note */}
-                            {equivalentNote ? (
-                                <Text style={styles.equivalentNote}>{equivalentNote}</Text>
-                            ) : null}
-                            {/* "Own forever" badge on lifetime */}
-                            {billingPeriod === 'lifetime' && plan.tier !== 'free' && (
-                                <View style={styles.ownForeverBadge}>
-                                    <Text style={styles.ownForeverText}>✨ Own Forever — No Recurring Fees</Text>
-                                </View>
-                            )}
                         </View>
 
                         {/* Feature list */}
@@ -421,7 +336,7 @@ export default function SubscriptionScreen() {
                             ]}
                             onPress={() => handlePurchase(plan)}
                             disabled={isCurrentTier || purchasing === plan.id}
-                            accessibilityLabel={isCurrentTier ? `${plan.name} is your current plan` : `Purchase ${plan.name} for ${currentPricing.price}`}
+                            accessibilityLabel={isCurrentTier ? `${plan.name} is your current plan` : `Purchase ${plan.name} for ${plan.price}`}
                             accessibilityRole="button"
                             accessibilityState={{ disabled: isCurrentTier || purchasing === plan.id }}
                         >
@@ -458,8 +373,8 @@ export default function SubscriptionScreen() {
                         <Text style={[styles.compCell, styles.compFeatureCell, styles.compHeaderText]}>Feature</Text>
                         <Text style={[styles.compCell, styles.compHeaderText]}>Free</Text>
                         <Text style={[styles.compCell, styles.compHeaderText, { color: colors.accent }]}>Pro</Text>
-                        <Text style={[styles.compCell, styles.compHeaderText, { color: colors.accentSecondary }]}>Ultra</Text>
-                        <Text style={[styles.compCell, styles.compHeaderText, { color: '#c084fc' }]}>Max</Text>
+                        <Text style={[styles.compCell, styles.compHeaderText, { color: colors.accentSecondary }]}>Trans</Text>
+                        <Text style={[styles.compCell, styles.compHeaderText, { color: '#c084fc' }]}>T.Pro</Text>
                     </View>
                     {COMPARISON_FEATURES.map((feat, i) => (
                         <View key={`comp-${i}`} style={[styles.compRow, i % 2 === 0 && styles.compRowAlt]}>
@@ -525,11 +440,7 @@ export default function SubscriptionScreen() {
             {/* Footer */}
             <View style={styles.footer}>
                 <Text style={styles.footerText}>
-                    {billingPeriod === 'lifetime'
-                        ? 'Pay once, own forever. No subscriptions. No recurring charges.'
-                        : billingPeriod === 'annual'
-                            ? 'Billed annually. Cancel anytime. Or choose Lifetime to own forever.'
-                            : 'Billed monthly. Cancel anytime. Switch to Annual to save 17%, or Lifetime to own forever.'}
+                    Prices are one-time payments. No subscriptions. No recurring charges.
                 </Text>
             </View>
         </ScrollView>
@@ -551,63 +462,10 @@ const styles = StyleSheet.create({
     backText: { fontSize: 16, color: colors.accent },
 
     // Hero
-    hero: { alignItems: 'center', marginBottom: spacing.lg },
+    hero: { alignItems: 'center', marginBottom: spacing.xl },
     heroEmoji: { fontSize: 56, marginBottom: spacing.sm },
     heroTitle: { fontSize: 28, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
     heroSubtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center' },
-
-    // ── Billing Period Toggle ──
-    billingToggle: {
-        flexDirection: 'row',
-        backgroundColor: colors.surface,
-        borderRadius: borderRadius.lg,
-        padding: 4,
-        marginBottom: spacing.lg,
-        borderWidth: 1,
-        borderColor: colors.borderLight,
-    },
-    billingTab: {
-        flex: 1,
-        alignItems: 'center',
-        paddingVertical: spacing.sm + 2,
-        borderRadius: borderRadius.md,
-    },
-    billingTabActive: {
-        backgroundColor: colors.accent,
-        shadowColor: colors.accent,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    billingTabText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.textSecondary,
-    },
-    billingTabTextActive: {
-        color: colors.background,
-        fontWeight: '700',
-    },
-    savingsBadge: {
-        marginTop: 3,
-        paddingHorizontal: 6,
-        paddingVertical: 1,
-        borderRadius: 6,
-        backgroundColor: 'rgba(163, 230, 53, 0.15)',
-    },
-    savingsBadgeActive: {
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    },
-    savingsBadgeText: {
-        fontSize: 9,
-        fontWeight: '800',
-        color: '#a3e635',
-        letterSpacing: 0.5,
-    },
-    savingsBadgeTextActive: {
-        color: colors.background,
-    },
 
     // Pricing Cards
     card: {
@@ -646,26 +504,6 @@ const styles = StyleSheet.create({
     priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
     cardPrice: { fontSize: 36, fontWeight: '800', color: colors.textPrimary },
     cardPeriod: { fontSize: 14, color: colors.textTertiary },
-
-    equivalentNote: {
-        fontSize: 12,
-        color: colors.textTertiary,
-        marginTop: 4,
-        fontStyle: 'italic',
-    },
-    ownForeverBadge: {
-        marginTop: 6,
-        backgroundColor: 'rgba(163, 230, 53, 0.1)',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: borderRadius.sm,
-        alignSelf: 'flex-start',
-    },
-    ownForeverText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#a3e635',
-    },
 
     featureList: { marginBottom: spacing.md, gap: spacing.xs + 2 },
     featureRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
