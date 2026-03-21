@@ -181,7 +181,7 @@ export default function SubscriptionScreen() {
     const [purchasing, setPurchasing] = useState<string | null>(null);
     const [showComparison, setShowComparison] = useState(false);
     const [restoring, setRestoring] = useState(false);
-    const [processingMode, setProcessingMode] = useState<'privacy' | 'bestquality'>(cloudFallbackEnabled ? 'bestquality' : 'privacy');
+    const [processingMode, setProcessingMode] = useState<'local' | 'hybrid' | 'auto'>(cloudFallbackEnabled ? 'auto' : 'local');
     const heroAnim = useRef(new Animated.Value(0)).current;
     const haptic = useHaptic();
     const { reduceMotion } = useReducedMotion();
@@ -373,55 +373,81 @@ export default function SubscriptionScreen() {
                 })}
             </View>
 
-            {/* Processing Mode Selector — "What matters most to you?" */}
+            {/* Processing Mode Selector — "Where should WindyTune process your voice?" */}
             {billingPeriod !== 'lifetime' && (
                 <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 10, textAlign: 'center' }}>
-                        What matters most to you?
+                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 4, textAlign: 'center' }}>
+                        Where should WindyTune process your voice?
                     </Text>
+                    <Text style={{ color: '#9ca3af', fontSize: 11, textAlign: 'center', marginBottom: 10 }}>
+                        All three options are fully private — we never store your audio or sell your data.
+                    </Text>
+
+                    {/* Device Only */}
                     <Pressable
                         style={{
-                            padding: 14, borderRadius: 12, marginBottom: 8,
-                            backgroundColor: processingMode === 'privacy' ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.03)',
+                            padding: 13, borderRadius: 12, marginBottom: 6,
+                            backgroundColor: processingMode === 'local' ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.03)',
                             borderWidth: 2,
-                            borderColor: processingMode === 'privacy' ? '#22C55E' : 'rgba(255,255,255,0.08)',
+                            borderColor: processingMode === 'local' ? '#22C55E' : 'rgba(255,255,255,0.08)',
                         }}
-                        onPress={() => {
-                            setProcessingMode('privacy');
-                            setCloudFallbackEnabled(false);
-                            haptic.light();
-                        }}
+                        onPress={() => { setProcessingMode('local'); setCloudFallbackEnabled(false); haptic.light(); }}
                     >
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ fontSize: 18 }}>🔒</Text>
-                            <Text style={{ color: '#22C55E', fontSize: 13, fontWeight: '700', flex: 1 }}>"I value privacy above all else"</Text>
+                            <Text style={{ fontSize: 17 }}>🏠</Text>
+                            <Text style={{ color: '#22C55E', fontSize: 13, fontWeight: '700', flex: 1 }}>This device only</Text>
                         </View>
-                        <Text style={{ color: '#9ca3af', fontSize: 10, marginTop: 4, lineHeight: 15 }}>
-                            Everything stays on your device. WindyTune only uses local models. If your device struggles, we'll suggest options — never switch without asking.
+                        <Text style={{ color: '#9ca3af', fontSize: 10, marginTop: 3, lineHeight: 14 }}>
+                            Everything runs right here. Works offline, anywhere. Your voice never leaves this device.
                         </Text>
                     </Pressable>
+
+                    {/* Device + Cloud */}
                     <Pressable
                         style={{
-                            padding: 14, borderRadius: 12,
-                            backgroundColor: processingMode === 'bestquality' ? 'rgba(96,165,250,0.1)' : 'rgba(255,255,255,0.03)',
+                            padding: 13, borderRadius: 12, marginBottom: 6,
+                            backgroundColor: processingMode === 'hybrid' ? 'rgba(167,139,250,0.1)' : 'rgba(255,255,255,0.03)',
                             borderWidth: 2,
-                            borderColor: processingMode === 'bestquality' ? '#60A5FA' : 'rgba(255,255,255,0.08)',
+                            borderColor: processingMode === 'hybrid' ? '#A78BFA' : 'rgba(255,255,255,0.08)',
                         }}
-                        onPress={() => {
-                            setProcessingMode('bestquality');
-                            setCloudFallbackEnabled(true);
-                            haptic.light();
-                        }}
+                        onPress={() => { setProcessingMode('hybrid'); setCloudFallbackEnabled(false); haptic.light(); }}
                     >
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ fontSize: 18 }}>✨</Text>
-                            <Text style={{ color: '#60A5FA', fontSize: 13, fontWeight: '700', flex: 1 }}>"I just want it to work perfectly"</Text>
+                            <Text style={{ fontSize: 17 }}>☁️</Text>
+                            <Text style={{ color: '#A78BFA', fontSize: 13, fontWeight: '700', flex: 1 }}>This device + WindyCloud</Text>
                         </View>
-                        <Text style={{ color: '#9ca3af', fontSize: 10, marginTop: 4, lineHeight: 15 }}>
-                            WindyTune handles everything — cloud for speed when connected, local when offline. Always encrypted. You never have to think about it.
+                        <Text style={{ color: '#9ca3af', fontSize: 10, marginTop: 3, lineHeight: 14 }}>
+                            Choose cloud when you want extra speed, fall back to local anytime. You control which one runs.
                         </Text>
                     </Pressable>
-                    <Text style={{ color: '#6b7280', fontSize: 9, textAlign: 'center', marginTop: 8 }}>Change anytime in Settings → Voice Engine</Text>
+
+                    {/* Auto */}
+                    <Pressable
+                        style={{
+                            padding: 13, borderRadius: 12,
+                            backgroundColor: processingMode === 'auto' ? 'rgba(96,165,250,0.1)' : 'rgba(255,255,255,0.03)',
+                            borderWidth: 2,
+                            borderColor: processingMode === 'auto' ? '#60A5FA' : 'rgba(255,255,255,0.08)',
+                        }}
+                        onPress={() => { setProcessingMode('auto'); setCloudFallbackEnabled(true); haptic.light(); }}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 17 }}>🌪️</Text>
+                            <Text style={{ color: '#60A5FA', fontSize: 13, fontWeight: '700', flex: 1 }}>Auto — always the best quality</Text>
+                        </View>
+                        <Text style={{ color: '#9ca3af', fontSize: 10, marginTop: 3, lineHeight: 14 }}>
+                            WindyTune picks the fastest, most accurate option automatically. Cloud on strong signal, local when offline.
+                        </Text>
+                    </Pressable>
+
+                    {/* Educational note */}
+                    <View style={{ marginTop: 8, padding: 10, backgroundColor: 'rgba(96,165,250,0.05)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(96,165,250,0.1)' }}>
+                        <Text style={{ color: '#60a5fa', fontSize: 9, lineHeight: 14 }}>
+                            💡 On strong Wi-Fi or cell signal, cloud is usually faster and more accurate. On slow connections or offline, local is better. Auto mode handles this for you — but all three options keep your data private and encrypted.
+                        </Text>
+                    </View>
+
+                    <Text style={{ color: '#6b7280', fontSize: 9, textAlign: 'center', marginTop: 6 }}>Change anytime in Settings → Voice Engine</Text>
                 </View>
             )}
 
