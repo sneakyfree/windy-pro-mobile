@@ -78,7 +78,7 @@ const PLANS: PlanInfo[] = [
         recommended: true,
         features: [
             '30-minute recordings',
-            'All local engines + Cloud STT*',
+            'All local engines + Cloud Processing*',
             'All 99 languages',
             'Cloud sync across devices',
             'Speaker identification',
@@ -107,7 +107,7 @@ const PLANS: PlanInfo[] = [
             'Everything in Pro',
             'Live translation (5 pairs)',
             'Conversation mode',
-            'Cloud translation API + Cloud STT*',
+            'Cloud translation API + Cloud Processing*',
             '25 offline translation engines',
             '10 GB WindyCloud storage',
         ],
@@ -133,7 +133,7 @@ const PLANS: PlanInfo[] = [
             'Text-to-speech output',
             'Medical glossary',
             'Legal glossary',
-            'Priority Cloud STT* — fastest processing',
+            'Priority Cloud Processing* — fastest processing',
             '100 offline translation engines',
             '25 GB WindyCloud storage',
         ],
@@ -153,7 +153,7 @@ const COMPARISON_FEATURES = [
     { name: 'Languages', free: '99 (auto-detect)', pro: '99', translate: '99', translate_pro: '99' },
     { name: 'Offline Engines', free: '1', pro: '5', translate: '25', translate_pro: '100' },
     { name: 'Cloud Sync', free: '—', pro: '✓', translate: '✓', translate_pro: '✓' },
-    { name: 'Cloud STT*', free: '—', pro: '✓', translate: '✓', translate_pro: 'Priority' },
+    { name: 'Cloud Processing*', free: '—', pro: '✓', translate: '✓', translate_pro: 'Priority' },
     { name: 'Translation', free: '—', pro: '—', translate: '5 pairs', translate_pro: '99 pairs' },
     { name: 'Conversation Mode', free: '—', pro: '—', translate: '✓', translate_pro: '✓' },
     { name: 'Offline Translation', free: '—', pro: '—', translate: '—', translate_pro: '✓' },
@@ -172,7 +172,7 @@ function lifetimeEquivalent(tier: string): string {
     return months ? `= ${months} months of monthly` : '';
 }
 
-/** Cloud STT note based on billing period */
+/** Cloud Processing note based on billing period */
 function cloudSttNote(tier: string, period: BillingPeriod): string | null {
     if (tier === 'free') return null;
     if (period === 'lifetime') return '🏠 Lifetime = device-only processing. Always private.';
@@ -502,7 +502,7 @@ export default function SubscriptionScreen() {
                             )}
                         </View>
 
-                        {/* Cloud STT indicator */}
+                        {/* Cloud Processing indicator */}
                         {cloudSttNote(plan.tier, billingPeriod) && (
                             <View style={[styles.ownForeverBadge, {
                                 backgroundColor: billingPeriod === 'lifetime'
@@ -638,10 +638,10 @@ export default function SubscriptionScreen() {
                 </Text>
             </View>
 
-            {/* Cloud STT footnote */}
+            {/* Cloud Processing footnote */}
             <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
                 <Text style={{ color: '#6b7280', fontSize: 10, lineHeight: 14, textAlign: 'center' }}>
-                    *Cloud STT = GPU-powered voice-to-text via WindyCloud servers. Available with Monthly and Annual subscriptions. Lifetime purchases include all local/on-device engines forever but do not include cloud transcription — your device handles everything offline. Both paths deliver the same accuracy; cloud is faster and saves battery.
+                    *Cloud Processing = GPU-powered voice-to-text via WindyCloud servers. Available with Monthly and Annual subscriptions. Lifetime purchases include all local/on-device engines forever but do not include cloud transcription — your device handles everything offline. Both paths deliver the same accuracy; cloud is faster and saves battery.
                 </Text>
             </View>
 

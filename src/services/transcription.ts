@@ -64,10 +64,10 @@ class TranscriptionService {
             if (engineConfig.isOnDevice) {
                 return await this.localTranscribe(uri, engineId);
             } else {
-                // Gate cloud STT: only available for active subscribers (not lifetime)
+                // Gate cloud processing: only available for active subscribers (not lifetime)
                 const { licenseService } = require('./license');
                 if (!licenseService.isCloudSttEnabled()) {
-                    throw new Error('Cloud STT requires an active subscription (Monthly or Annual). Lifetime plans include local engines only.');
+                    throw new Error('Cloud processing requires an active subscription (Monthly or Annual). Lifetime plans include local engines only.');
                 }
                 return await this.cloudTranscribe(uri, engineId);
             }

@@ -5,7 +5,7 @@
  * Features:
  *   - Before send: attach original language as metadata
  *   - On receive: detect language, translate if different from user's
- *   - Uses existing translationService (same as STT translation)
+ *   - Uses existing translationService (same as voice-to-text translation)
  *   - LRU cache (100 entries) to avoid re-translating same messages
  *   - All translation happens ON DEVICE — never sent to any server
  */

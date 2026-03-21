@@ -204,7 +204,7 @@ class LicenseService {
     }
 
     /**
-     * Whether cloud STT is enabled (subscription only — lifetime is local-only)
+     * Whether cloud processing is enabled (subscription only — lifetime is local-only)
      */
     isCloudSttEnabled(): boolean {
         return this.cloudSttEnabled;
