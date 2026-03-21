@@ -54,7 +54,7 @@ const PLANS: PlanInfo[] = [
         color: colors.textTertiary,
         features: [
             '5-minute recordings',
-            'Tiny & Base engines',
+            'Tiny & Base engines (on-device)',
             'English only',
             'Local history',
             'Text export',
@@ -77,12 +77,12 @@ const PLANS: PlanInfo[] = [
         recommended: true,
         features: [
             '30-minute recordings',
-            'All engines (cloud + local)',
-            'All languages',
-            'Cloud sync',
+            'All local engines + Cloud STT*',
+            'All 99 languages',
+            'Cloud sync across devices',
             'Speaker identification',
             'LLM text cleanup',
-            'Batch mode',
+            'Batch mode — drop files, walk away',
             'All export formats',
             'Quality scoring',
             '5 offline translation engines',
@@ -105,7 +105,7 @@ const PLANS: PlanInfo[] = [
             'Everything in Pro',
             'Live translation (5 pairs)',
             'Conversation mode',
-            'Cloud translation API',
+            'Cloud translation API + Cloud STT*',
             '25 offline translation engines',
         ],
         cta: 'Upgrade',
@@ -130,7 +130,7 @@ const PLANS: PlanInfo[] = [
             'Text-to-speech output',
             'Medical glossary',
             'Legal glossary',
-            'Priority cloud processing',
+            'Priority Cloud STT* — fastest processing',
             '100 offline translation engines',
         ],
         cta: 'Upgrade',
@@ -149,6 +149,7 @@ const COMPARISON_FEATURES = [
     { name: 'Languages', free: 'English', pro: 'All', translate: 'All', translate_pro: 'All' },
     { name: 'Offline Engines', free: '1', pro: '5', translate: '25', translate_pro: '100' },
     { name: 'Cloud Sync', free: '—', pro: '✓', translate: '✓', translate_pro: '✓' },
+    { name: 'Cloud STT*', free: '—', pro: '✓', translate: '✓', translate_pro: 'Priority' },
     { name: 'Translation', free: '—', pro: '—', translate: '5 pairs', translate_pro: '99 pairs' },
     { name: 'Conversation Mode', free: '—', pro: '—', translate: '✓', translate_pro: '✓' },
     { name: 'Offline Translation', free: '—', pro: '—', translate: '—', translate_pro: '✓' },
@@ -331,6 +332,13 @@ export default function SubscriptionScreen() {
                 <Text style={styles.heroSubtitle}>
                     Choose the plan that fits your workflow
                 </Text>
+                <View style={{ backgroundColor: 'rgba(59,130,246,0.08)', borderRadius: 12, padding: 14, marginTop: 12, borderWidth: 1, borderColor: 'rgba(59,130,246,0.15)' }}>
+                    <Text style={{ color: '#60a5fa', fontSize: 13, fontWeight: '700', marginBottom: 4 }}>☁️ Cloud Voice-to-Text</Text>
+                    <Text style={{ color: '#9ca3af', fontSize: 11, lineHeight: 16 }}>
+                        Subscribers get GPU-powered cloud transcription — 3-5× faster, always the latest models, zero battery drain.{'\n'}
+                        <Text style={{ color: '#c084fc', fontWeight: '600' }}>Lifetime = local engines only. Your device, your data, forever.</Text>
+                    </Text>
+                </View>
             </Animated.View>
 
             {/* ── Billing Period Toggle ── */}
@@ -546,14 +554,21 @@ export default function SubscriptionScreen() {
                 </Text>
             </View>
 
+            {/* Cloud STT footnote */}
+            <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+                <Text style={{ color: '#6b7280', fontSize: 10, lineHeight: 14, textAlign: 'center' }}>
+                    *Cloud STT = GPU-powered voice-to-text via WindyCloud servers. Available with Monthly and Annual subscriptions. Lifetime purchases include all local/on-device engines forever but do not include cloud transcription — your device handles everything offline. Both paths deliver the same accuracy; cloud is faster and saves battery.
+                </Text>
+            </View>
+
             {/* Footer */}
             <View style={styles.footer}>
                 <Text style={styles.footerText}>
                     {billingPeriod === 'lifetime'
-                        ? 'Pay once, own forever. No subscriptions. No recurring charges.'
+                        ? 'Pay once, own forever. No subscriptions. No recurring charges. Transcription runs 100% on your device.'
                         : billingPeriod === 'annual'
-                            ? 'Billed annually. Cancel anytime. Or choose Lifetime to own forever.'
-                            : 'Billed monthly. Cancel anytime. Switch to Annual to save 17%, or Lifetime to own forever.'}
+                            ? 'Billed annually. Cancel anytime. Includes cloud-powered voice-to-text. Or choose Lifetime to own it all locally.'
+                            : 'Billed monthly. Cancel anytime. Includes cloud-powered voice-to-text. Switch to Annual to save 17%, or Lifetime to own locally forever.'}
                 </Text>
             </View>
         </ScrollView>
