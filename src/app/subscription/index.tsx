@@ -55,9 +55,10 @@ const PLANS: PlanInfo[] = [
         features: [
             '5-minute recordings',
             'Tiny & Base engines (on-device)',
-            'English only',
+            'Auto-detect — any of 99 languages',
             'Local history',
             'Text export',
+            '500 MB WindyCloud storage',
             '1 offline translation engine',
         ],
         cta: 'Current Plan',
@@ -86,6 +87,7 @@ const PLANS: PlanInfo[] = [
             'All export formats',
             'Quality scoring',
             '5 offline translation engines',
+            '5 GB WindyCloud storage',
         ],
         cta: 'Start Free Trial',
         pricing: {
@@ -107,6 +109,7 @@ const PLANS: PlanInfo[] = [
             'Conversation mode',
             'Cloud translation API + Cloud STT*',
             '25 offline translation engines',
+            '10 GB WindyCloud storage',
         ],
         cta: 'Upgrade',
         pricing: {
@@ -132,6 +135,7 @@ const PLANS: PlanInfo[] = [
             'Legal glossary',
             'Priority Cloud STT* — fastest processing',
             '100 offline translation engines',
+            '25 GB WindyCloud storage',
         ],
         cta: 'Upgrade',
         pricing: {
@@ -145,8 +149,8 @@ const PLANS: PlanInfo[] = [
 // ── Feature comparison table data ──
 const COMPARISON_FEATURES = [
     { name: 'Recording Limit', free: '5 min', pro: '30 min', translate: '30 min', translate_pro: '60 min' },
-    { name: 'Engines', free: 'Tiny, Base', pro: 'All', translate: 'All', translate_pro: 'All' },
-    { name: 'Languages', free: 'English', pro: 'All', translate: 'All', translate_pro: 'All' },
+    { name: 'Engines', free: 'Tiny, Base', pro: 'All 15', translate: 'All 15', translate_pro: 'All 15' },
+    { name: 'Languages', free: '99 (auto-detect)', pro: '99', translate: '99', translate_pro: '99' },
     { name: 'Offline Engines', free: '1', pro: '5', translate: '25', translate_pro: '100' },
     { name: 'Cloud Sync', free: '—', pro: '✓', translate: '✓', translate_pro: '✓' },
     { name: 'Cloud STT*', free: '—', pro: '✓', translate: '✓', translate_pro: 'Priority' },
@@ -158,6 +162,7 @@ const COMPARISON_FEATURES = [
     { name: 'Speaker ID', free: '—', pro: '✓', translate: '✓', translate_pro: '✓' },
     { name: 'LLM Cleanup', free: '—', pro: '✓', translate: '✓', translate_pro: '✓' },
     { name: 'Quality Scoring', free: '—', pro: '✓', translate: '✓', translate_pro: '✓' },
+    { name: 'WindyCloud Storage', free: '500 MB', pro: '5 GB', translate: '10 GB', translate_pro: '25 GB' },
 ];
 
 /** Monthly equivalent for savings display on lifetime cards */
