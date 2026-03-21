@@ -373,49 +373,55 @@ export default function SubscriptionScreen() {
                 })}
             </View>
 
-            {/* Processing Mode Selector */}
+            {/* Processing Mode Selector — "What matters most to you?" */}
             {billingPeriod !== 'lifetime' && (
                 <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>
-                        How should WindyTune handle your audio?
+                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 10, textAlign: 'center' }}>
+                        What matters most to you?
                     </Text>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <Pressable
-                            style={{
-                                flex: 1, padding: 12, borderRadius: 12,
-                                backgroundColor: processingMode === 'privacy' ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.03)',
-                                borderWidth: 2,
-                                borderColor: processingMode === 'privacy' ? '#22C55E' : 'rgba(255,255,255,0.1)',
-                            }}
-                            onPress={() => {
-                                setProcessingMode('privacy');
-                                setCloudFallbackEnabled(false);
-                                haptic.light();
-                            }}
-                        >
-                            <Text style={{ fontSize: 16, textAlign: 'center' }}>🏠</Text>
-                            <Text style={{ color: '#22C55E', fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Privacy Mode</Text>
-                            <Text style={{ color: '#9ca3af', fontSize: 9, textAlign: 'center', marginTop: 2, lineHeight: 13 }}>Always local. Your voice never leaves this device.</Text>
-                        </Pressable>
-                        <Pressable
-                            style={{
-                                flex: 1, padding: 12, borderRadius: 12,
-                                backgroundColor: processingMode === 'bestquality' ? 'rgba(96,165,250,0.1)' : 'rgba(255,255,255,0.03)',
-                                borderWidth: 2,
-                                borderColor: processingMode === 'bestquality' ? '#60A5FA' : 'rgba(255,255,255,0.1)',
-                            }}
-                            onPress={() => {
-                                setProcessingMode('bestquality');
-                                setCloudFallbackEnabled(true);
-                                haptic.light();
-                            }}
-                        >
-                            <Text style={{ fontSize: 16, textAlign: 'center' }}>⚡</Text>
-                            <Text style={{ color: '#60A5FA', fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Best Quality</Text>
-                            <Text style={{ color: '#9ca3af', fontSize: 9, textAlign: 'center', marginTop: 2, lineHeight: 13 }}>Auto-picks cloud or local for the best experience.</Text>
-                        </Pressable>
-                    </View>
-                    <Text style={{ color: '#6b7280', fontSize: 9, textAlign: 'center', marginTop: 6 }}>Change anytime in Settings → Voice Engine</Text>
+                    <Pressable
+                        style={{
+                            padding: 14, borderRadius: 12, marginBottom: 8,
+                            backgroundColor: processingMode === 'privacy' ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.03)',
+                            borderWidth: 2,
+                            borderColor: processingMode === 'privacy' ? '#22C55E' : 'rgba(255,255,255,0.08)',
+                        }}
+                        onPress={() => {
+                            setProcessingMode('privacy');
+                            setCloudFallbackEnabled(false);
+                            haptic.light();
+                        }}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 18 }}>🔒</Text>
+                            <Text style={{ color: '#22C55E', fontSize: 13, fontWeight: '700', flex: 1 }}>"I value privacy above all else"</Text>
+                        </View>
+                        <Text style={{ color: '#9ca3af', fontSize: 10, marginTop: 4, lineHeight: 15 }}>
+                            Everything stays on your device. WindyTune only uses local models. If your device struggles, we'll suggest options — never switch without asking.
+                        </Text>
+                    </Pressable>
+                    <Pressable
+                        style={{
+                            padding: 14, borderRadius: 12,
+                            backgroundColor: processingMode === 'bestquality' ? 'rgba(96,165,250,0.1)' : 'rgba(255,255,255,0.03)',
+                            borderWidth: 2,
+                            borderColor: processingMode === 'bestquality' ? '#60A5FA' : 'rgba(255,255,255,0.08)',
+                        }}
+                        onPress={() => {
+                            setProcessingMode('bestquality');
+                            setCloudFallbackEnabled(true);
+                            haptic.light();
+                        }}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 18 }}>✨</Text>
+                            <Text style={{ color: '#60A5FA', fontSize: 13, fontWeight: '700', flex: 1 }}>"I just want it to work perfectly"</Text>
+                        </View>
+                        <Text style={{ color: '#9ca3af', fontSize: 10, marginTop: 4, lineHeight: 15 }}>
+                            WindyTune handles everything — cloud for speed when connected, local when offline. Always encrypted. You never have to think about it.
+                        </Text>
+                    </Pressable>
+                    <Text style={{ color: '#6b7280', fontSize: 9, textAlign: 'center', marginTop: 8 }}>Change anytime in Settings → Voice Engine</Text>
                 </View>
             )}
 
