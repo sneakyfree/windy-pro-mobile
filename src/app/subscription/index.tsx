@@ -123,7 +123,8 @@ const PLANS: PlanInfo[] = [
         badgeColor: '#c084fc',
         color: '#c084fc',
         features: [
-            'Everything in Translate',
+            'Everything in Ultra',
+            '60-minute recordings',
             'Offline translation',
             '99 language pairs',
             'Text-to-speech output',
@@ -143,7 +144,7 @@ const PLANS: PlanInfo[] = [
 
 // ── Feature comparison table data ──
 const COMPARISON_FEATURES = [
-    { name: 'Recording Limit', free: '5 min', pro: '30 min', translate: '30 min', translate_pro: '30 min' },
+    { name: 'Recording Limit', free: '5 min', pro: '30 min', translate: '30 min', translate_pro: '60 min' },
     { name: 'Engines', free: 'Tiny, Base', pro: 'All', translate: 'All', translate_pro: 'All' },
     { name: 'Languages', free: 'English', pro: 'All', translate: 'All', translate_pro: 'All' },
     { name: 'Offline Engines', free: '1', pro: '5', translate: '25', translate_pro: '100' },

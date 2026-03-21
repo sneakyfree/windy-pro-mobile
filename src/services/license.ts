@@ -68,7 +68,7 @@ export const RECORDING_LIMITS: Record<LicenseTier, number> = {
     free: 300,          // 5 minutes
     pro: 1800,          // 30 minutes
     translate: 1800,    // 30 minutes
-    translate_pro: 1800, // 30 minutes
+    translate_pro: 3600, // 60 minutes
 };
 
 class LicenseService {
