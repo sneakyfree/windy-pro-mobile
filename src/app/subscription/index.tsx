@@ -176,11 +176,12 @@ function cloudSttNote(tier: string, period: BillingPeriod): string | null {
 
 export default function SubscriptionScreen() {
     const router = useRouter();
-    const { licenseTier } = useSettingsStore();
+    const { licenseTier, cloudFallbackEnabled, setCloudFallbackEnabled } = useSettingsStore();
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('annual');
     const [purchasing, setPurchasing] = useState<string | null>(null);
     const [showComparison, setShowComparison] = useState(false);
     const [restoring, setRestoring] = useState(false);
+    const [processingMode, setProcessingMode] = useState<'privacy' | 'bestquality'>(cloudFallbackEnabled ? 'bestquality' : 'privacy');
     const heroAnim = useRef(new Animated.Value(0)).current;
     const haptic = useHaptic();
     const { reduceMotion } = useReducedMotion();
@@ -371,6 +372,52 @@ export default function SubscriptionScreen() {
                     );
                 })}
             </View>
+
+            {/* Processing Mode Selector */}
+            {billingPeriod !== 'lifetime' && (
+                <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>
+                        How should WindyTune handle your audio?
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <Pressable
+                            style={{
+                                flex: 1, padding: 12, borderRadius: 12,
+                                backgroundColor: processingMode === 'privacy' ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.03)',
+                                borderWidth: 2,
+                                borderColor: processingMode === 'privacy' ? '#22C55E' : 'rgba(255,255,255,0.1)',
+                            }}
+                            onPress={() => {
+                                setProcessingMode('privacy');
+                                setCloudFallbackEnabled(false);
+                                haptic.light();
+                            }}
+                        >
+                            <Text style={{ fontSize: 16, textAlign: 'center' }}>🏠</Text>
+                            <Text style={{ color: '#22C55E', fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Privacy Mode</Text>
+                            <Text style={{ color: '#9ca3af', fontSize: 9, textAlign: 'center', marginTop: 2, lineHeight: 13 }}>Always local. Your voice never leaves this device.</Text>
+                        </Pressable>
+                        <Pressable
+                            style={{
+                                flex: 1, padding: 12, borderRadius: 12,
+                                backgroundColor: processingMode === 'bestquality' ? 'rgba(96,165,250,0.1)' : 'rgba(255,255,255,0.03)',
+                                borderWidth: 2,
+                                borderColor: processingMode === 'bestquality' ? '#60A5FA' : 'rgba(255,255,255,0.1)',
+                            }}
+                            onPress={() => {
+                                setProcessingMode('bestquality');
+                                setCloudFallbackEnabled(true);
+                                haptic.light();
+                            }}
+                        >
+                            <Text style={{ fontSize: 16, textAlign: 'center' }}>⚡</Text>
+                            <Text style={{ color: '#60A5FA', fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>Best Quality</Text>
+                            <Text style={{ color: '#9ca3af', fontSize: 9, textAlign: 'center', marginTop: 2, lineHeight: 13 }}>Auto-picks cloud or local for the best experience.</Text>
+                        </Pressable>
+                    </View>
+                    <Text style={{ color: '#6b7280', fontSize: 9, textAlign: 'center', marginTop: 6 }}>Change anytime in Settings → Voice Engine</Text>
+                </View>
+            )}
 
             {/* Pricing Cards */}
             {PLANS.map((plan) => {
