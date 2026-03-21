@@ -81,7 +81,7 @@ export const useSettingsStore = create<SettingsStore>()(
 
             selectedEngine: null,
             windyTuneAutoSelect: true,
-            cloudFallbackEnabled: true,
+            cloudFallbackEnabled: false,
             setSelectedEngine: (id) => set({ selectedEngine: id }),
             setWindyTuneAutoSelect: (on) => set({ windyTuneAutoSelect: on }),
             setCloudFallbackEnabled: (on) => set({ cloudFallbackEnabled: on }),

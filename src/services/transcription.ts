@@ -97,8 +97,15 @@ class TranscriptionService {
             await whisperManager.release();
             return segments;
         } catch (err: unknown) {
-            log.warn('Local_failed_falling_back_to_c', 'Local failed, falling back to cloud', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
-            return this.cloudTranscribe(uri, 'cloud-standard');
+            // Only fall back to cloud if user has explicitly enabled cloud fallback
+            // AND has an active subscription (not lifetime)
+            const { cloudFallbackEnabled } = require('../stores/useSettingsStore').useSettingsStore.getState();
+            if (cloudFallbackEnabled && licenseService.isCloudSttEnabled()) {
+                log.warn('Local_failed_falling_back_to_c', 'Local failed, falling back to cloud (user-enabled)', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
+                return this.cloudTranscribe(uri, 'cloud-standard');
+            }
+            log.warn('Local_failed_no_cloud_fallback', 'Local transcription failed. Cloud fallback is off — staying local.', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
+            throw err;
         }
     }
 

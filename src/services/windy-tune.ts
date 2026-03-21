@@ -139,7 +139,8 @@ export const ENGINE_REGISTRY: Record<EngineId, Omit<EngineConfig, 'isDownloaded'
  */
 export function getWindyTuneRecommendation(
     profile: DeviceProfile,
-    downloadedEngines: Set<EngineId> = new Set()
+    downloadedEngines: Set<EngineId> = new Set(),
+    cloudFallbackEnabled: boolean = false
 ): WindyTuneResult {
     const ram = profile.totalRam;
     let recommendedEngine: EngineId;
@@ -163,15 +164,21 @@ export function getWindyTuneRecommendation(
     } else if (ram >= 1500) {
         recommendedEngine = 'base';
         reason = 'Lightweight model that runs smoothly on your device';
-    } else {
+    } else if (cloudFallbackEnabled) {
         recommendedEngine = 'cloud-standard';
         reason = 'Cloud processing gives you the best experience on this device';
+    } else {
+        // Even low-RAM devices stay local when cloud fallback is off
+        recommendedEngine = 'tiny';
+        reason = 'Local-only mode — using the lightest model for your device. Enable "Cloud fallback" in Settings for better quality.';
     }
 
-    // If recommended on-device engine isn't downloaded, suggest cloud fallback
+    // If recommended on-device engine isn't downloaded and cloud fallback is enabled, suggest cloud
     const engineInfo = ENGINE_REGISTRY[recommendedEngine];
-    if (engineInfo.isOnDevice && !downloadedEngines.has(recommendedEngine)) {
+    if (engineInfo.isOnDevice && !downloadedEngines.has(recommendedEngine) && cloudFallbackEnabled) {
         reason += ' (download required — using cloud in the meantime)';
+    } else if (engineInfo.isOnDevice && !downloadedEngines.has(recommendedEngine)) {
+        reason += ' (download required to use this engine)';
     }
 
     // Build sorted engine list
