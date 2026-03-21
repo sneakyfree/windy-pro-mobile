@@ -258,7 +258,7 @@ export default function SettingsScreen() {
               <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
             <SettingsToggle label="Auto-select best engine" value={settings.windyTuneAutoSelect} onToggle={settings.setWindyTuneAutoSelect} />
-            <SettingsToggle label="Cloud fallback" subtitle="OFF = always local, your data never leaves this device. ON = may use cloud when local struggles (requires subscription)." value={settings.cloudFallbackEnabled} onToggle={settings.setCloudFallbackEnabled} />
+            <SettingsToggle label="Auto mode (cloud + local)" subtitle="OFF = device-only processing. ON = WindyTune picks cloud or local for best quality. All options are fully private." value={settings.cloudFallbackEnabled} onToggle={settings.setCloudFallbackEnabled} />
           </SettingsSection>
 
           {/* Recording */}

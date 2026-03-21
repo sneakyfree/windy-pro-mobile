@@ -170,8 +170,8 @@ function lifetimeEquivalent(tier: string): string {
 /** Cloud STT note based on billing period */
 function cloudSttNote(tier: string, period: BillingPeriod): string | null {
     if (tier === 'free') return null;
-    if (period === 'lifetime') return '🏠 Lifetime = Local engines only — Own Your Stack';
-    return '☁️ Cloud STT included — powered by WindyCloud';
+    if (period === 'lifetime') return '🏠 Lifetime = device-only processing. Always private.';
+    return '🌪️ 3 modes: Device Only · Device + WindyCloud · Auto. All fully private.';
 }
 
 export default function SubscriptionScreen() {

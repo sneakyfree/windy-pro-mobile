@@ -107,7 +107,7 @@ function showNudgeAlert(state: NudgeState): void {
         '🌪️ WindyTune Notice',
         'Your device seems to be working hard on transcriptions. A few things that might help:\n\n'
         + '🔄 Try a lighter model — smaller models run faster\n'
-        + '☁️ Try Best Quality mode — uses cloud when connected for speed\n'
+        + '☁️ Switch to "Auto" mode — lets WindyTune pick cloud or local for the best result\n'
         + '❄️ Give your device a moment to cool down\n\n'
         + 'You can adjust these in Settings → Voice Engine.',
         [
