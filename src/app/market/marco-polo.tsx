@@ -23,10 +23,10 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 const PAIR_PRICE = 6.99;
-const MARCO_POLO_PRICE = 999;
+const MARCO_POLO_PRICE = 399;
 const ESTIMATED_PAIR_SIZE_MB = 550;
 /** Minimum pair count for savings math — matches marketing (includes future pairs) */
-const MIN_MARKETED_PAIRS = 2500;
+const MIN_MARKETED_PAIRS = 3500;
 
 export default function MarcoPolo() {
     const router = useRouter();
@@ -150,11 +150,11 @@ export default function MarcoPolo() {
                     style={[styles.purchaseBtn, purchasing && { opacity: 0.6 }]}
                     onPress={handlePurchase}
                     disabled={purchasing}
-                    accessibilityLabel="Purchase Marco Polo bundle for $999"
+                    accessibilityLabel="Purchase Marco Polo bundle for $399"
                     accessibilityRole="button"
                     accessibilityState={{ disabled: purchasing }}
                 >
-                    <Text style={styles.purchaseBtnText}>🧭 Get Marco Polo — $999</Text>
+                    <Text style={styles.purchaseBtnText}>🧭 Get Marco Polo — $399</Text>
                 </Pressable>
 
                 <Text style={styles.guarantee}>

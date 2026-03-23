@@ -590,7 +590,7 @@ export default function SubscriptionScreen() {
             )}
 
             {/* Marco Polo Card */}
-            <View style={styles.marcoPoloCard} accessible={true} accessibilityLabel="Marco Polo bundle. $999 one-time. Every translation pair, forever. Includes all current and future language pairs." accessibilityRole="summary">
+            <View style={styles.marcoPoloCard} accessible={true} accessibilityLabel="Marco Polo bundle. $399 one-time. Every translation pair, forever. Includes all current and future language pairs." accessibilityRole="summary">
                 <View style={styles.marcoPoloBadge}>
                     <Text style={styles.badgeText}>ULTIMATE</Text>
                 </View>
@@ -598,7 +598,7 @@ export default function SubscriptionScreen() {
                 <Text style={styles.marcoPoloTitle}>Marco Polo</Text>
                 <Text style={styles.marcoPoloSubtitle}>Every translation pair, forever</Text>
                 <View style={styles.priceRow}>
-                    <Text style={styles.marcoPoloPrice}>$999</Text>
+                    <Text style={styles.marcoPoloPrice}>$399</Text>
                     <Text style={styles.cardPeriod}>one-time</Text>
                 </View>
                 <View style={styles.marcoPoloFeatures}>
@@ -609,7 +609,7 @@ export default function SubscriptionScreen() {
                 <Pressable
                     style={styles.marcoPoloCta}
                     onPress={() => Linking.openURL('https://windypro.thewindstorm.uk/marco-polo')}
-                    accessibilityLabel="Purchase Marco Polo bundle for $999"
+                    accessibilityLabel="Purchase Marco Polo bundle for $399"
                     accessibilityRole="button"
                 >
                     <Text style={styles.marcoPoloCtaText}>Get Marco Polo</Text>

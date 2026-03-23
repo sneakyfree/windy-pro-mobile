@@ -291,7 +291,7 @@ function MarketScreenInner() {
                             <Text style={styles.heroEmoji}>🧭</Text>
                             <Text style={styles.heroTitle}>Marco Polo's Magic Box</Text>
                             <Text style={styles.heroStats}>
-                                2,500 engines · $999 · Forever
+                                3,500+ engines · $399 · Forever
                             </Text>
                             <Text style={styles.heroSavings}>
                                 $17,475 value — Save $16,476
@@ -320,15 +320,31 @@ function MarketScreenInner() {
                     contentContainerStyle={styles.bundleScrollContent}
                 >
                     <BundleCard
-                        bundleId="traveler"
-                        onPress={() => router.push({ pathname: '/market/bundle-select', params: { count: '25' } })}
+                        bundleId="pack_grand_tour"
+                        onPress={() => router.push({ pathname: '/market/bundle-select', params: { count: '1087' } })}
                     />
                     <BundleCard
-                        bundleId="polyglot"
+                        bundleId="pack_safari"
                         onPress={() => router.push({ pathname: '/market/bundle-select', params: { count: '200' } })}
                     />
                     <BundleCard
-                        bundleId="marco_polo"
+                        bundleId="pack_silk_road"
+                        onPress={() => router.push({ pathname: '/market/bundle-select', params: { count: '75' } })}
+                    />
+                    <BundleCard
+                        bundleId="pack_dragon"
+                        onPress={() => router.push({ pathname: '/market/bundle-select', params: { count: '45' } })}
+                    />
+                    <BundleCard
+                        bundleId="pack_archipelago"
+                        onPress={() => router.push({ pathname: '/market/bundle-select', params: { count: '170' } })}
+                    />
+                    <BundleCard
+                        bundleId="pack_explorer"
+                        onPress={() => router.push({ pathname: '/market/bundle-select', params: { count: '75a' } })}
+                    />
+                    <BundleCard
+                        bundleId="pack_marco_polo"
                         onPress={() => router.push('/market/marco-polo')}
                     />
                 </ScrollView>

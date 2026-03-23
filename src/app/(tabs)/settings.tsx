@@ -781,7 +781,7 @@ const SettingsToggle = memo(function SettingsToggle({ label, subtitle, value, on
 SettingsToggle.displayName = 'SettingsToggle';
 
 function formatTier(tier: string): string {
-  return { pro: 'Pro', translate: 'Translate', translate_pro: 'Translate Pro' }[tier] || tier;
+  return { pro: 'Pro', translate: 'Windy Ultra', translate_pro: 'Windy Max' }[tier] || tier;
 }
 
 const styles = StyleSheet.create({

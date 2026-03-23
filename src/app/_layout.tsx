@@ -417,7 +417,7 @@ export default function RootLayout() {
 function formatTier(tier: string): string {
   const map: Record<string, string> = {
     free: 'Free', pro: 'Pro',
-    translate: 'Translate', translate_pro: 'Translate Pro',
+    translate: 'Windy Ultra', translate_pro: 'Windy Max',
   };
   return map[tier] || tier;
 }

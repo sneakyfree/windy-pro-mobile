@@ -3,7 +3,7 @@
  * Pair picker with checkboxes, region quick-select, confirm → download.
  *
  * Route params:
- *   count: "25" (Traveler) or "200" (Polyglot)
+ *   count: regional pack pair count (e.g. "45", "75", "170", "200", "1087")
  */
 import {
     View,
@@ -35,8 +35,12 @@ const REGION_LABELS: Record<PairRegion, string> = {
 };
 
 const BUNDLE_META: Record<string, { name: string; emoji: string; price: number; rcId: string }> = {
-    '25': { name: 'Traveler', emoji: '🧳', price: 49, rcId: 'windy_bundle_traveler' },
-    '200': { name: 'Polyglot', emoji: '🗣️', price: 149, rcId: 'windy_bundle_polyglot' },
+    '1087': { name: 'The Grand Tour', emoji: '🇪🇺', price: 129, rcId: 'windy_pack_grand_tour' },
+    '200':  { name: 'The Safari', emoji: '🌍', price: 79, rcId: 'windy_pack_safari' },
+    '75':   { name: 'The Silk Road', emoji: '🌏', price: 59, rcId: 'windy_pack_silk_road' },
+    '45':   { name: 'The Dragon', emoji: '🐉', price: 49, rcId: 'windy_pack_dragon' },
+    '170':  { name: 'The Archipelago', emoji: '🌺', price: 69, rcId: 'windy_pack_archipelago' },
+    '75a':  { name: 'The Explorer', emoji: '🌎', price: 49, rcId: 'windy_pack_explorer' },
 };
 
 export default function BundleSelect() {
@@ -154,7 +158,7 @@ export default function BundleSelect() {
         }
 
         // Record bundle purchase
-        const bundleId = maxCount === 25 ? 'bundle-traveler' : 'bundle-polyglot';
+        const bundleId = bundleInfo?.rcId || `pack-${maxCount}`;
         await pairCatalogService.recordBundlePurchase(bundleId);
 
         setDownloading(false);

@@ -39,8 +39,8 @@ const REQUEST_TIMEOUT_MS = 30_000;
 export const STORAGE_TIERS: Record<LicenseTier, { label: string; limitBytes: number }> = {
     free:          { label: 'Free',           limitBytes: 500 * 1024 * 1024 },       // 500 MB
     pro:           { label: 'Pro',            limitBytes: 5 * 1024 * 1024 * 1024 },   // 5 GB
-    translate:     { label: 'Translate',      limitBytes: 10 * 1024 * 1024 * 1024 },  // 10 GB
-    translate_pro: { label: 'Translate Pro',  limitBytes: 25 * 1024 * 1024 * 1024 },  // 25 GB
+    translate:     { label: 'Windy Ultra',     limitBytes: 10 * 1024 * 1024 * 1024 },  // 10 GB
+    translate_pro: { label: 'Windy Max',      limitBytes: 25 * 1024 * 1024 * 1024 },  // 25 GB
 };
 
 // ─── Types ──────────────────────────────────────────────────────
