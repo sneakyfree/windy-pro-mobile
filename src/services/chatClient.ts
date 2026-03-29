@@ -28,7 +28,8 @@ const MATRIX_SERVER_KEY = 'windy_matrix_server';
 const MATRIX_DEVICE_KEY = 'windy_matrix_device';
 
 // ─── Default Homeserver ─────────────────────────────────────────
-const DEFAULT_HOMESERVER = 'https://matrix.org';
+import { CHAT_HOMESERVER } from '@/config/api';
+const DEFAULT_HOMESERVER = CHAT_HOMESERVER;
 
 // ─── Constants ──────────────────────────────────────────────────
 const MAX_MESSAGE_LENGTH = 10_000;
