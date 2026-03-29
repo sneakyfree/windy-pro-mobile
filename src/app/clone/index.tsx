@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { colors, spacing, borderRadius } from '@/theme';
 import { cloneTracker, CloneProgress } from '@/services/clone-tracker';
@@ -252,7 +253,8 @@ export default function CloneDashboardScreen() {
         const poll = setInterval(async () => {
             polls++;
             try {
-                const token = (() => { try { return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || ''; } catch { return ''; } })();
+                let token = '';
+                try { token = await SecureStore.getItemAsync('windy_cloud_jwt') || ''; } catch { /* SecureStore unavailable */ }
                 const res = await fetch(`${CLONE_API}/status/${jobId}`, {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });

@@ -3,11 +3,20 @@
  * All user preferences, persisted across app restarts
  *
  * RP-1.2: Zustand persist middleware wired to AsyncStorage
+ *
+ * SEC-AUDIT: Sensitive fields (licenseKey, windyIdentityId) are stored
+ * in expo-secure-store, NOT in Zustand's AsyncStorage persistence.
+ * Only the non-secret licenseTier enum is persisted here.
  */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import type { EngineId, LicenseTier } from '@/types';
+
+// ─── SecureStore Keys ────────────────────────────────────────
+const LICENSE_KEY_SECURE = 'windy_license_key';
+const IDENTITY_ID_SECURE = 'windy_identity_id';
 
 interface SettingsStore {
     // Onboarding
@@ -54,12 +63,12 @@ interface SettingsStore {
     cloneTrackingEnabled: boolean;
     setCloneTrackingEnabled: (on: boolean) => void;
 
-    // License
+    // License — tier is non-secret (persisted in AsyncStorage)
+    // licenseKey is secret (persisted in SecureStore via helpers below)
     licenseTier: LicenseTier;
-    licenseKey: string | null;
-    setLicense: (tier: LicenseTier, key: string | null) => void;
+    setLicenseTier: (tier: LicenseTier) => void;
 
-    // Identity (cross-product correlation)
+    // Identity (cross-product correlation) — in-memory only, loaded from SecureStore
     windyIdentityId: string | null;
     setWindyIdentityId: (id: string | null) => void;
 
@@ -119,8 +128,7 @@ export const useSettingsStore = create<SettingsStore>()(
             setCloneTrackingEnabled: (on) => set({ cloneTrackingEnabled: on }),
 
             licenseTier: 'free',
-            licenseKey: null,
-            setLicense: (tier, key) => set({ licenseTier: tier, licenseKey: key }),
+            setLicenseTier: (tier) => set({ licenseTier: tier }),
 
             windyIdentityId: null,
             setWindyIdentityId: (id) => set({ windyIdentityId: id }),
@@ -138,6 +146,67 @@ export const useSettingsStore = create<SettingsStore>()(
         {
             name: 'windy-settings',
             storage: createJSONStorage(() => AsyncStorage),
+            // SEC-AUDIT: Exclude sensitive fields from AsyncStorage persistence
+            partialize: (state) => {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { windyIdentityId, ...rest } = state;
+                return rest;
+            },
         }
     )
 );
+
+// ─── SecureStore License Key Helpers ────────────────────────────
+// These are standalone async functions (not in Zustand) because
+// SecureStore is async and Zustand setters should be synchronous.
+
+/**
+ * Set both license tier (in Zustand) and key (in SecureStore).
+ * Call this instead of the old setLicense(tier, key).
+ */
+export async function setLicense(tier: LicenseTier, key: string | null): Promise<void> {
+    useSettingsStore.getState().setLicenseTier(tier);
+    if (key) {
+        await SecureStore.setItemAsync(LICENSE_KEY_SECURE, key).catch(() => {});
+    } else {
+        await SecureStore.deleteItemAsync(LICENSE_KEY_SECURE).catch(() => {});
+    }
+}
+
+/**
+ * Read the license key from SecureStore.
+ * Returns null if no key is stored.
+ */
+export async function getLicenseKey(): Promise<string | null> {
+    try {
+        return await SecureStore.getItemAsync(LICENSE_KEY_SECURE);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Set the windy identity ID in both Zustand (in-memory) and SecureStore.
+ */
+export async function setWindyIdentityIdSecure(id: string | null): Promise<void> {
+    useSettingsStore.getState().setWindyIdentityId(id);
+    if (id) {
+        await SecureStore.setItemAsync(IDENTITY_ID_SECURE, id).catch(() => {});
+    } else {
+        await SecureStore.deleteItemAsync(IDENTITY_ID_SECURE).catch(() => {});
+    }
+}
+
+/**
+ * Load identity ID from SecureStore into Zustand on app startup.
+ */
+export async function loadIdentityFromSecureStore(): Promise<void> {
+    try {
+        const id = await SecureStore.getItemAsync(IDENTITY_ID_SECURE);
+        if (id) {
+            useSettingsStore.getState().setWindyIdentityId(id);
+        }
+    } catch {
+        // Ignore — identity will be null
+    }
+}

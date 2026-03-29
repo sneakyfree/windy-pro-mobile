@@ -18,7 +18,7 @@ import { colors } from '@/theme';
 import { createLogger } from '@/services/logger';
 import { sanitizeText, INPUT_LIMITS } from '@/utils/validation';
 import { TIER_1_LANGUAGES } from '@/services/translation';
-import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useSettingsStore, setLicense } from '@/stores/useSettingsStore';
 import { localStorageService } from '@/services/storage-local';
 import { licenseService } from '@/services/license';
 import { pushNotificationService } from '@/services/push-notifications';
@@ -70,7 +70,6 @@ function sanitizeDeepLinkText(raw: unknown): string | null {
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
   const [splashDismissed, setSplashDismissed] = useState(false);
-  const { setLicense } = useSettingsStore();
 
   // RP-1.5: Load Inter font family
   const [fontsLoaded, fontError] = useFonts({
@@ -206,7 +205,7 @@ export default function RootLayout() {
             return;
           }
           const validation = await licenseService.validateLicense(rawKey);
-          setLicense(validation.tier, rawKey);
+          await setLicense(validation.tier, rawKey);
           Alert.alert(
             '🎉 License Activated',
             `Welcome to Windy Pro ${formatTier(validation.tier)}!`
@@ -292,7 +291,7 @@ export default function RootLayout() {
     });
 
     return () => sub.remove();
-  }, [setLicense]);
+  }, []);
 
   // Hide splash when both fonts and app are ready (or font error occurred)
   const canRender = appReady && (fontsLoaded || fontError);

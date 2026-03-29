@@ -7,7 +7,7 @@ import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Alert, Animate
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { colors, spacing, borderRadius } from '@/theme';
-import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useSettingsStore, setLicense } from '@/stores/useSettingsStore';
 import { licenseService, FEATURE_MATRIX, RECORDING_LIMITS } from '@/services/license';
 import { subscriptionService } from '@/services/subscription';
 import { feedbackService } from '@/services/feedback';
@@ -226,7 +226,7 @@ export default function SubscriptionScreen() {
                 if (result.cancelled) {
                     // User cancelled — do nothing
                 } else if (result.success && result.tier && result.tier !== 'free') {
-                    useSettingsStore.getState().setLicense(result.tier, `rc-${Date.now()}`);
+                    await setLicense(result.tier, `rc-${Date.now()}`);
                     haptic.success();
                     Alert.alert(
                         '🎉 Welcome!',
@@ -277,7 +277,7 @@ export default function SubscriptionScreen() {
             // Try RevenueCat restore first
             const tier = await subscriptionService.restorePurchases();
             if (tier !== 'free') {
-                useSettingsStore.getState().setLicense(tier, `rc-restored-${Date.now()}`);
+                await setLicense(tier, `rc-restored-${Date.now()}`);
                 haptic.success();
                 Alert.alert(
                     '✅ Restored!',
@@ -297,7 +297,7 @@ export default function SubscriptionScreen() {
                                 if (!key?.trim()) return;
                                 try {
                                     const validation = await licenseService.activateKey(key.trim());
-                                    useSettingsStore.getState().setLicense(validation.tier, key.trim());
+                                    await setLicense(validation.tier, key.trim());
                                     haptic.success();
                                     Alert.alert('✅ Restored!', `Welcome back to ${validation.tier.replace('_', ' ')} tier!`);
                                 } catch (err) { console.warn("[Subscription] Error:", err);

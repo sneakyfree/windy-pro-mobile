@@ -12,6 +12,7 @@ export const ENDPOINTS = {
     // Auth (live API)
     AUTH_REGISTER: '/api/auth/register',
     AUTH_LOGIN_LIVE: '/api/auth/login',
+    AUTH_REFRESH_LIVE: '/api/auth/refresh',
 
     // Storage (live API — R2 cloud storage)
     STORAGE_HEALTH: '/api/storage/health',
@@ -21,7 +22,9 @@ export const ENDPOINTS = {
     STORAGE_FILE: '/api/storage/files',
 
     // Auth (legacy v1 — kept for backward compat)
+    /** @deprecated Use AUTH_LOGIN_LIVE instead */
     AUTH_LOGIN: '/api/v1/auth/login',
+    /** @deprecated Use AUTH_REFRESH_LIVE instead */
     AUTH_REFRESH: '/api/v1/auth/refresh',
 
     // Recordings (legacy v1)

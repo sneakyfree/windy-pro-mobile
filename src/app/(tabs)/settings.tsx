@@ -15,7 +15,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import Constants from 'expo-constants';
 import { colors, spacing, borderRadius } from '@/theme';
-import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useSettingsStore, setLicense, getLicenseKey } from '@/stores/useSettingsStore';
 import { localStorageService } from '@/services/storage-local';
 import { cloneTracker } from '@/services/clone-tracker';
 import { licenseService } from '@/services/license';
@@ -55,6 +55,7 @@ export default function SettingsScreen() {
   const [clearingCache, setClearingCache] = useState(false);
   const [packs, setPacks] = useState<LanguagePack[]>([]);
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
+  const [licenseKeyDisplay, setLicenseKeyDisplay] = useState<string | null>(null);
   const [targetLangPickerVisible, setTargetLangPickerVisible] = useState(false);
   const [serverUrl, setServerUrl] = useState(getTranscriptionServerUrl());
 
@@ -96,6 +97,12 @@ export default function SettingsScreen() {
       const voiceId = await AsyncStorage.getItem(CLONE_VOICE_KEY);
       setClonedVoiceId(voiceId);
     } catch (err) { settingsLog.warn('loadData', 'Clone voice load failed'); }
+
+    // Load license key from SecureStore for display
+    try {
+      const key = await getLicenseKey();
+      setLicenseKeyDisplay(key);
+    } catch (err) { settingsLog.warn('loadData', 'License key load failed'); }
   };
 
   const formatBytes = (bytes: number): string => {
@@ -200,7 +207,7 @@ export default function SettingsScreen() {
                   onPress: async () => {
                     try {
                       // Reset settings
-                      settings.setLicense('free', null);
+                      await setLicense('free', null);
                       settings.setOnboardingComplete(false);
                       settings.setCloneTrackingEnabled(false);
                       // Clear local storage
@@ -672,8 +679,8 @@ export default function SettingsScreen() {
               value={settings.licenseTier === 'free' ? 'Free' : formatTier(settings.licenseTier)}
               valueColor={settings.licenseTier === 'free' ? colors.textTertiary : colors.accent}
             />
-            {settings.licenseKey && (
-              <SettingsRow label="License Key" value={`${settings.licenseKey.slice(0, 8)}...`} />
+            {licenseKeyDisplay && (
+              <SettingsRow label="License Key" value={`${licenseKeyDisplay.slice(0, 8)}...`} />
             )}
             {settings.licenseTier !== 'free' && (
               <Pressable style={styles.navRow} onPress={() => router.push('/subscription')}
@@ -692,9 +699,10 @@ export default function SettingsScreen() {
                     text: 'Log Out',
                     style: 'destructive',
                     onPress: () => {
-                      settings.setLicense('free', null);
-                      feedbackService.success();
-                      Alert.alert('Logged Out', 'You have been logged out.');
+                      setLicense('free', null).then(() => {
+                        feedbackService.success();
+                        Alert.alert('Logged Out', 'You have been logged out.');
+                      });
                     },
                   },
                 ]);

@@ -18,6 +18,7 @@ import {
     getUserMessage,
 } from '@/utils/api-error';
 import { createLogger } from './logger';
+import * as SecureStore from 'expo-secure-store';
 import { pairManager } from './pairManager';
 
 const log = createLogger('Translation');
@@ -166,7 +167,8 @@ class TranslationService {
 
         // Cloud translation
         try {
-            const token = (() => { try { return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || ''; } catch { return ''; } })();
+            let token = '';
+            try { token = await SecureStore.getItemAsync('windy_cloud_jwt') || ''; } catch { /* SecureStore unavailable */ }
             const response = await fetchWithTimeout(TRANSLATE_API, {
                 method: 'POST',
                 headers: {
@@ -278,7 +280,8 @@ class TranslationService {
      */
     async detectLanguage(text: string): Promise<{ language: string; confidence: number }> {
         try {
-            const token = (() => { try { return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || ''; } catch { return ''; } })();
+            let token = '';
+            try { token = await SecureStore.getItemAsync('windy_cloud_jwt') || ''; } catch { /* SecureStore unavailable */ }
             const response = await fetch(DETECT_API, {
                 method: 'POST',
                 headers: {

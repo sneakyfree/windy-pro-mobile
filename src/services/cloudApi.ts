@@ -29,6 +29,7 @@ const log = createLogger('CloudApi');
 
 // ─── Secure Store Keys ──────────────────────────────────────────
 const TOKEN_KEY = 'windy_cloud_jwt';
+const REFRESH_TOKEN_KEY = 'windy_cloud_refresh_token';
 const USER_ID_KEY = 'windy_cloud_user_id';
 const USER_EMAIL_KEY = 'windy_cloud_email';
 const IDENTITY_ID_KEY = 'windy_identity_id';
@@ -106,11 +107,13 @@ type AuthExpiredCallback = () => void;
 
 class CloudApiClient {
     private jwt: string | null = null;
+    private refreshTokenValue: string | null = null;
     private userId: string | null = null;
     private email: string | null = null;
     private windyIdentityId: string | null = null;
     private uploadQueue: QueuedUpload[] = [];
     private onAuthExpired: AuthExpiredCallback | null = null;
+    private isRefreshing: Promise<boolean> | null = null;
 
     // ─── Auth ───────────────────────────────────────────────────
 
@@ -134,7 +137,7 @@ class CloudApiClient {
             }
 
             const data = await res.json();
-            await this.persistAuth(data.token, data.userId, email);
+            await this.persistAuth(data.token, data.userId, email, data.refreshToken);
             return { success: true, token: data.token, userId: data.userId };
         } catch (err: unknown) {
             return { success: false, error: err instanceof Error ? err.message : 'Network error' };
@@ -161,7 +164,7 @@ class CloudApiClient {
             }
 
             const data = await res.json();
-            await this.persistAuth(data.token, data.userId, email);
+            await this.persistAuth(data.token, data.userId, email, data.refreshToken);
             return { success: true, token: data.token, userId: data.userId };
         } catch (err: unknown) {
             return { success: false, error: err instanceof Error ? err.message : 'Network error' };
@@ -174,12 +177,14 @@ class CloudApiClient {
     async restoreSession(): Promise<boolean> {
         try {
             const token = await SecureStore.getItemAsync(TOKEN_KEY);
+            const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
             const userId = await SecureStore.getItemAsync(USER_ID_KEY);
             const email = await SecureStore.getItemAsync(USER_EMAIL_KEY);
             const identityId = await SecureStore.getItemAsync(IDENTITY_ID_KEY);
 
             if (token) {
                 this.jwt = token;
+                this.refreshTokenValue = refreshToken;
                 this.userId = userId;
                 this.email = email;
                 this.windyIdentityId = identityId;
@@ -203,10 +208,12 @@ class CloudApiClient {
      */
     async logout(): Promise<void> {
         this.jwt = null;
+        this.refreshTokenValue = null;
         this.userId = null;
         this.email = null;
         this.windyIdentityId = null;
         await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+        await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(USER_ID_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(USER_EMAIL_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(IDENTITY_ID_KEY).catch(() => {});
@@ -286,6 +293,33 @@ class CloudApiClient {
             });
 
             if (result.status === 401) {
+                // Attempt token refresh before giving up
+                const refreshed = await this.refreshAuth();
+                if (refreshed && this.jwt) {
+                    // Retry the upload with the new token
+                    const retryResult = await FileSystem.uploadAsync(uploadUrl, fileUri, {
+                        httpMethod: 'POST',
+                        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+                        fieldName: 'file',
+                        mimeType: contentType,
+                        headers: {
+                            'Authorization': `Bearer ${this.jwt}`,
+                        },
+                        parameters,
+                    });
+                    if (retryResult.status >= 200 && retryResult.status < 300) {
+                        let fileId: string | undefined;
+                        try {
+                            const body = JSON.parse(retryResult.body);
+                            fileId = body.fileId || body.id;
+                        } catch {}
+                        return { success: true, fileId };
+                    }
+                    if (retryResult.status === 401) {
+                        this.handleAuthExpired();
+                        return { success: false, error: 'Session expired — please log in again' };
+                    }
+                }
                 this.handleAuthExpired();
                 return { success: false, error: 'Session expired — please log in again' };
             }
@@ -534,10 +568,13 @@ class CloudApiClient {
         }
     }
 
-    private async persistAuth(token: string, userId: string, email: string): Promise<void> {
+    private async persistAuth(token: string, userId: string, email: string, refreshToken?: string): Promise<void> {
         this.jwt = token;
         this.userId = userId;
         this.email = email;
+        if (refreshToken !== undefined) {
+            this.refreshTokenValue = refreshToken || null;
+        }
 
         // Extract windy_identity_id from JWT payload for cross-product correlation
         const payload = this.decodeJwtPayload(token);
@@ -547,6 +584,9 @@ class CloudApiClient {
         await SecureStore.setItemAsync(TOKEN_KEY, token).catch(() => {});
         if (userId) await SecureStore.setItemAsync(USER_ID_KEY, userId).catch(() => {});
         await SecureStore.setItemAsync(USER_EMAIL_KEY, email).catch(() => {});
+        if (this.refreshTokenValue) {
+            await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, this.refreshTokenValue).catch(() => {});
+        }
         if (this.windyIdentityId) {
             await SecureStore.setItemAsync(IDENTITY_ID_KEY, this.windyIdentityId).catch(() => {});
         }
@@ -562,12 +602,78 @@ class CloudApiClient {
 
     private handleAuthExpired(): void {
         this.jwt = null;
+        this.refreshTokenValue = null;
         SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+        SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => {});
         this.onAuthExpired?.();
     }
 
     /**
+     * Attempt to refresh the JWT using the stored refresh token.
+     * Uses a mutex so concurrent 401s only trigger one refresh.
+     * Returns true if refresh succeeded and new JWT is stored.
+     */
+    private async refreshAuth(): Promise<boolean> {
+        // If already refreshing, wait for that result
+        if (this.isRefreshing) {
+            return this.isRefreshing;
+        }
+
+        this.isRefreshing = this._doRefresh();
+        try {
+            return await this.isRefreshing;
+        } finally {
+            this.isRefreshing = null;
+        }
+    }
+
+    private async _doRefresh(): Promise<boolean> {
+        if (!this.refreshTokenValue) {
+            log.warn('refreshAuth', 'No refresh token available');
+            return false;
+        }
+
+        try {
+            const res = await this.fetchWithTimeout(
+                apiUrl(ENDPOINTS.AUTH_REFRESH_LIVE),
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refreshToken: this.refreshTokenValue }),
+                }
+            );
+
+            if (!res.ok) {
+                log.warn('refreshAuth', `Refresh failed with status ${res.status}`);
+                return false;
+            }
+
+            const data = await res.json();
+            const newToken = data.token || data.accessToken;
+            const newRefresh = data.refreshToken;
+
+            if (!newToken) {
+                log.warn('refreshAuth', 'No token in refresh response');
+                return false;
+            }
+
+            // Persist the new tokens
+            this.jwt = newToken;
+            if (newRefresh) this.refreshTokenValue = newRefresh;
+            await SecureStore.setItemAsync(TOKEN_KEY, newToken).catch(() => {});
+            if (newRefresh) await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefresh).catch(() => {});
+
+            log.info('refreshAuth', 'Token refreshed successfully');
+            return true;
+        } catch (err: unknown) {
+            log.warn('refreshAuth', 'Refresh error', err instanceof Error ? { message: err.message } : { error: String(err) });
+            return false;
+        }
+    }
+
+    /**
      * Fetch with auth header + 401 handling.
+     * On 401: attempts token refresh, retries once, then fires authExpired.
      * Returns null if not authenticated.
      */
     private async authedFetch(
@@ -588,6 +694,24 @@ class CloudApiClient {
         });
 
         if (res.status === 401) {
+            // Attempt token refresh before giving up
+            const refreshed = await this.refreshAuth();
+            if (refreshed && this.jwt) {
+                // Retry the original request with the new token
+                const retryRes = await this.fetchWithTimeout(url, {
+                    ...init,
+                    headers: {
+                        ...init?.headers,
+                        'Authorization': `Bearer ${this.jwt}`,
+                    },
+                });
+                if (retryRes.status === 401) {
+                    // Refresh succeeded but still 401 — token is truly invalid
+                    this.handleAuthExpired();
+                }
+                return retryRes;
+            }
+            // Refresh failed — session is over
             this.handleAuthExpired();
         }
 
