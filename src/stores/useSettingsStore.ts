@@ -59,6 +59,10 @@ interface SettingsStore {
     licenseKey: string | null;
     setLicense: (tier: LicenseTier, key: string | null) => void;
 
+    // Identity (cross-product correlation)
+    windyIdentityId: string | null;
+    setWindyIdentityId: (id: string | null) => void;
+
     // Theme
     theme: 'dark' | 'light' | 'system';
     setTheme: (theme: 'dark' | 'light' | 'system') => void;
@@ -117,6 +121,9 @@ export const useSettingsStore = create<SettingsStore>()(
             licenseTier: 'free',
             licenseKey: null,
             setLicense: (tier, key) => set({ licenseTier: tier, licenseKey: key }),
+
+            windyIdentityId: null,
+            setWindyIdentityId: (id) => set({ windyIdentityId: id }),
 
             theme: 'dark',
             setTheme: (theme) => set({ theme }),

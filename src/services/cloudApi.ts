@@ -31,6 +31,7 @@ const log = createLogger('CloudApi');
 const TOKEN_KEY = 'windy_cloud_jwt';
 const USER_ID_KEY = 'windy_cloud_user_id';
 const USER_EMAIL_KEY = 'windy_cloud_email';
+const IDENTITY_ID_KEY = 'windy_identity_id';
 
 // ─── Timeout ────────────────────────────────────────────────────
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -107,6 +108,7 @@ class CloudApiClient {
     private jwt: string | null = null;
     private userId: string | null = null;
     private email: string | null = null;
+    private windyIdentityId: string | null = null;
     private uploadQueue: QueuedUpload[] = [];
     private onAuthExpired: AuthExpiredCallback | null = null;
 
@@ -174,11 +176,20 @@ class CloudApiClient {
             const token = await SecureStore.getItemAsync(TOKEN_KEY);
             const userId = await SecureStore.getItemAsync(USER_ID_KEY);
             const email = await SecureStore.getItemAsync(USER_EMAIL_KEY);
+            const identityId = await SecureStore.getItemAsync(IDENTITY_ID_KEY);
 
             if (token) {
                 this.jwt = token;
                 this.userId = userId;
                 this.email = email;
+                this.windyIdentityId = identityId;
+                // Sync identity ID to Zustand store for app-wide access
+                try {
+                    const { useSettingsStore } = require('@/stores/useSettingsStore');
+                    useSettingsStore.getState().setWindyIdentityId(identityId);
+                } catch {
+                    // Store may not be ready during early init
+                }
                 return true;
             }
             return false;
@@ -194,9 +205,16 @@ class CloudApiClient {
         this.jwt = null;
         this.userId = null;
         this.email = null;
+        this.windyIdentityId = null;
         await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(USER_ID_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(USER_EMAIL_KEY).catch(() => {});
+        await SecureStore.deleteItemAsync(IDENTITY_ID_KEY).catch(() => {});
+        // Clear identity from Zustand store
+        try {
+            const { useSettingsStore } = require('@/stores/useSettingsStore');
+            useSettingsStore.getState().setWindyIdentityId(null);
+        } catch {}
     }
 
     isAuthenticated(): boolean {
@@ -213,6 +231,10 @@ class CloudApiClient {
 
     getToken(): string | null {
         return this.jwt;
+    }
+
+    getWindyIdentityId(): string | null {
+        return this.windyIdentityId;
     }
 
     /**
@@ -497,14 +519,45 @@ class CloudApiClient {
 
     // ─── Internal Helpers ───────────────────────────────────────
 
+    /**
+     * Decode a JWT payload without verification (the server already verified it).
+     * Returns null if the token is malformed.
+     */
+    private decodeJwtPayload(token: string): Record<string, unknown> | null {
+        try {
+            const parts = token.split('.');
+            if (parts.length !== 3) return null;
+            const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+            return JSON.parse(payload);
+        } catch {
+            return null;
+        }
+    }
+
     private async persistAuth(token: string, userId: string, email: string): Promise<void> {
         this.jwt = token;
         this.userId = userId;
         this.email = email;
 
+        // Extract windy_identity_id from JWT payload for cross-product correlation
+        const payload = this.decodeJwtPayload(token);
+        this.windyIdentityId = typeof payload?.windy_identity_id === 'string'
+            ? payload.windy_identity_id : null;
+
         await SecureStore.setItemAsync(TOKEN_KEY, token).catch(() => {});
         if (userId) await SecureStore.setItemAsync(USER_ID_KEY, userId).catch(() => {});
         await SecureStore.setItemAsync(USER_EMAIL_KEY, email).catch(() => {});
+        if (this.windyIdentityId) {
+            await SecureStore.setItemAsync(IDENTITY_ID_KEY, this.windyIdentityId).catch(() => {});
+        }
+
+        // Sync identity ID to Zustand store for app-wide access
+        try {
+            const { useSettingsStore } = require('@/stores/useSettingsStore');
+            useSettingsStore.getState().setWindyIdentityId(this.windyIdentityId);
+        } catch {
+            // Store may not be ready during early init
+        }
     }
 
     private handleAuthExpired(): void {
