@@ -15,7 +15,7 @@ import {
     KeyboardAvoidingView, Platform, ScrollView, Alert,
     ActivityIndicator, Animated, Keyboard,
 } from 'react-native';
-import { INPUT_LIMITS, validatePhone, validateEmail } from '@/utils/validation';
+import { INPUT_LIMITS, validatePhone, validateEmail, validateDisplayName, validateOtp } from '@/utils/validation';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -126,9 +126,19 @@ export default function ChatOnboardingScreen() {
     // ─── Step 1: Request Verification ───────────────────────────
 
     const handleRequestVerification = async () => {
-        if (!identifier.trim()) {
-            setError(identifierType === 'phone' ? 'Enter your phone number' : 'Enter your email');
-            return;
+        if (identifierType === 'phone') {
+            const fullPhone = countryCode.code + identifier.trim().replace(/\D/g, '');
+            const phoneResult = validatePhone(fullPhone);
+            if (!phoneResult.valid) {
+                setError(phoneResult.error || 'Enter a valid phone number');
+                return;
+            }
+        } else {
+            const emailResult = validateEmail(identifier);
+            if (!emailResult.valid) {
+                setError(emailResult.error || 'Enter a valid email address');
+                return;
+            }
         }
         setLoading(true);
         setError('');
@@ -150,7 +160,7 @@ export default function ChatOnboardingScreen() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             animateToStep(2);
         } else {
-            setError(result.error || 'Failed to send code');
+            setError(result.error || 'Could not send verification code. Please check your connection and try again.');
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         }
     };
@@ -199,6 +209,11 @@ export default function ChatOnboardingScreen() {
     };
 
     const submitOtp = async (code: string) => {
+        const otpResult = validateOtp(code);
+        if (!otpResult.valid) {
+            setError(otpResult.error || 'Enter all 6 digits');
+            return;
+        }
         setLoading(true);
         setError('');
 
@@ -211,7 +226,7 @@ export default function ChatOnboardingScreen() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             animateToStep(3);
         } else {
-            setError(result.error || 'Verification failed');
+            setError(result.error || 'Verification failed. Please check the code and try again.');
             setOtpDigits(['', '', '', '', '', '']);
             otpRefs.current[0]?.focus();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -221,8 +236,9 @@ export default function ChatOnboardingScreen() {
     // ─── Step 3: Set Profile ────────────────────────────────────
 
     const handleSetProfile = async () => {
-        if (!displayName.trim()) {
-            setError('Enter your name');
+        const nameResult = validateDisplayName(displayName);
+        if (!nameResult.valid) {
+            setError(nameResult.error || 'Enter your name');
             return;
         }
         if (!credentials) {
@@ -289,7 +305,10 @@ export default function ChatOnboardingScreen() {
     // ─── Step Indicator ─────────────────────────────────────────
 
     const renderStepIndicator = () => (
-        <View style={styles.stepIndicator}>
+        <View style={styles.stepIndicator}
+            accessibilityLabel={`Step ${step} of 5`}
+            accessibilityRole="progressbar"
+        >
             {[1, 2, 3, 4, 5].map((s) => (
                 <View
                     key={s}
@@ -386,7 +405,10 @@ export default function ChatOnboardingScreen() {
             {/* Country code picker modal */}
             {showCountryPicker && (
                 <View style={styles.countryPickerOverlay}>
-                    <Pressable style={styles.countryPickerBackdrop} onPress={() => setShowCountryPicker(false)} />
+                    <Pressable style={styles.countryPickerBackdrop} onPress={() => setShowCountryPicker(false)}
+                        accessibilityLabel="Close country code picker"
+                        accessibilityRole="button"
+                    />
                     <View style={styles.countryPickerModal}>
                         <Text style={styles.countryPickerTitle}>Select Country Code</Text>
                         <ScrollView style={styles.countryPickerScroll}>
@@ -417,7 +439,7 @@ export default function ChatOnboardingScreen() {
                 </View>
             )}
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? <Text style={styles.errorText} accessibilityRole="alert">{error}</Text> : null}
 
             <TouchableOpacity
                 style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -470,7 +492,7 @@ export default function ChatOnboardingScreen() {
                 ))}
             </View>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? <Text style={styles.errorText} accessibilityRole="alert">{error}</Text> : null}
 
             {loading && (
                 <View style={styles.verifyingRow}>
@@ -521,7 +543,7 @@ export default function ChatOnboardingScreen() {
                 accessibilityLabel="Display name"
             />
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? <Text style={styles.errorText} accessibilityRole="alert">{error}</Text> : null}
 
             <TouchableOpacity
                 style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -645,11 +667,11 @@ export default function ChatOnboardingScreen() {
                     {step <= 3 && (
                         <TouchableOpacity
                             onPress={handleBack}
-                            style={{ paddingVertical: 8, paddingHorizontal: 4, minHeight: 44, justifyContent: 'center' }}
-                            accessibilityLabel={step === 1 ? 'Cancel' : 'Go back'}
+                            style={styles.backButton}
+                            accessibilityLabel={step === 1 ? 'Cancel onboarding' : 'Go back to previous step'}
                             accessibilityRole="button"
                         >
-                            <Text style={{ fontSize: 15, color: colors.accent, fontWeight: '600' }}>
+                            <Text style={styles.backButtonText}>
                                 {step === 1 ? '← Cancel' : '← Back'}
                             </Text>
                         </TouchableOpacity>
@@ -702,6 +724,19 @@ const styles = StyleSheet.create({
     },
     stepDotCompleted: {
         backgroundColor: colors.accentTransparent,
+    },
+
+    // Back button
+    backButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+        minHeight: 44,
+        justifyContent: 'center' as const,
+    },
+    backButtonText: {
+        fontSize: 15,
+        color: colors.accent,
+        fontWeight: '600' as const,
     },
 
     // Step content
