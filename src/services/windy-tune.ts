@@ -209,7 +209,8 @@ export function getWindyTuneRecommendation(
  */
 
 /** Engine model CDN base URL */
-const ENGINE_CDN_BASE = 'https://windypro.thewindstorm.uk/models';
+import { WINDY_CDN_BASE } from '@/config/api';
+const ENGINE_CDN_BASE = WINDY_CDN_BASE;
 
 /** AsyncStorage key for downloaded engines */
 const STORAGE_KEY = 'windy_downloaded_engines';

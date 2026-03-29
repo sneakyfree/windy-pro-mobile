@@ -8,11 +8,11 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { createLogger } from './logger';
-import { API_BASE_URL } from '@/config/api';
+import { API_BASE_URL, PUSH_TOKEN_ENDPOINT, apiUrl } from '@/config/api';
 
 const log = createLogger('PushNotifications');
 
-const REGISTER_TOKEN_URL = `${API_BASE_URL}/api/register-push-token`;
+const REGISTER_TOKEN_URL = apiUrl(PUSH_TOKEN_ENDPOINT);
 
 // Configure notification behavior
 Notifications.setNotificationHandler({

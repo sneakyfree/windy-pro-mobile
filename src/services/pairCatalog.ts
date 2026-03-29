@@ -24,7 +24,8 @@ const CATALOG_CACHE_TS_KEY = 'windy_pair_catalog_cache_ts';
 const OWNED_PAIRS_KEY = 'windy_owned_pairs';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-const CDN_CATALOG_URL = 'https://windypro.thewindstorm.uk/api/v1/pairs/catalog.json';
+import { PAIR_CATALOG_URL } from '@/config/api';
+const CDN_CATALOG_URL = PAIR_CATALOG_URL;
 
 // ─── Types ───────────────────────────────────────────────────
 

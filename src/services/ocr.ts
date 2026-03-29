@@ -5,13 +5,11 @@
  */
 
 import { translationService } from './translation';
-import { ENDPOINTS, apiUrl } from '@/config/api';
+import { ENDPOINTS, apiUrl, GOOGLE_VISION_API } from '@/config/api';
 import { parseApiError, isAuthError, isRateLimited } from '@/utils/api-error';
 import { createLogger } from './logger';
 
 const log = createLogger('OCR');
-
-const OCR_API = 'https://vision.googleapis.com/v1/images:annotate';
 
 export interface OcrResult {
     text: string;
@@ -135,7 +133,7 @@ class OcrService {
      */
     private async cloudOcr(base64Image: string): Promise<OcrResult> {
         const response = await fetch(
-            `${OCR_API}?key=${this.apiKey || 'DEMO_KEY'}`,
+            `${GOOGLE_VISION_API}?key=${this.apiKey || 'DEMO_KEY'}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

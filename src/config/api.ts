@@ -61,6 +61,23 @@ export const ENDPOINTS = {
 /** Windy Chat Matrix homeserver — users never see this URL */
 export const CHAT_HOMESERVER = 'https://chat.windypro.com';
 
+// ─── CDN / External Service URLs ──────────────────────────────
+
+/** HuggingFace CDN for whisper.cpp GGML models */
+export const WHISPER_MODEL_CDN = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
+
+/** Windy CDN for engine binaries, offline packs, and pair catalog */
+export const WINDY_CDN_BASE = `${API_BASE_URL}/models`;
+
+/** Windy CDN URL for translation pair catalog JSON */
+export const PAIR_CATALOG_URL = `${API_BASE_URL}/api/v1/pairs/catalog.json`;
+
+/** Google Cloud Vision API */
+export const GOOGLE_VISION_API = 'https://vision.googleapis.com/v1/images:annotate';
+
+/** Push token registration path */
+export const PUSH_TOKEN_ENDPOINT = '/api/register-push-token';
+
 // ─── Helper to build full URL ──────────────────────────────────
 
 /**

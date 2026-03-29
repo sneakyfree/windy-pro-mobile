@@ -4,8 +4,7 @@
  */
 import * as FileSystem from 'expo-file-system';
 import type { EngineId } from '@/types';
-
-const MODEL_CDN = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
+import { WHISPER_MODEL_CDN } from '@/config/api';
 
 /**
  * Map engine ID to model filename on HuggingFace
@@ -43,7 +42,7 @@ class EngineDownloadManager {
         await FileSystem.makeDirectoryAsync(this.engineDir, { intermediates: true });
 
         const destPath = this.engineDir + filename;
-        const url = `${MODEL_CDN}/${filename}`;
+        const url = `${WHISPER_MODEL_CDN}/${filename}`;
 
         // Check if already downloaded
         const info = await FileSystem.getInfoAsync(destPath);
