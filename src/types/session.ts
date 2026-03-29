@@ -109,6 +109,10 @@ export interface SessionFilter {
     synced: boolean | null;
     /** Full-text search query against transcript content */
     searchQuery: string | null;
+    /** Max number of rows to return (for pagination) */
+    limit?: number;
+    /** Number of rows to skip (for pagination) */
+    offset?: number;
 }
 
 /**

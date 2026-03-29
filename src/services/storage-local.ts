@@ -212,7 +212,12 @@ class LocalStorageService {
         if (conditions.length > 0) {
             sql += ' WHERE ' + conditions.join(' AND ');
         }
-        sql += ' ORDER BY created_at DESC LIMIT 100';
+        sql += ' ORDER BY created_at DESC';
+        const limit = filter?.limit ?? 100;
+        sql += ` LIMIT ${limit}`;
+        if (filter?.offset) {
+            sql += ` OFFSET ${filter.offset}`;
+        }
 
         const rows: any[] = await db.getAllAsync(sql, params);
 

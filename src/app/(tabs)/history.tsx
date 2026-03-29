@@ -3,7 +3,7 @@
  * Storage usage indicator, sort controls, bulk delete, export to Files
  * Backend sync, favorites, swipe-to-delete, language filter, CSV export
  */
-import { View, Text, StyleSheet, FlatList, Pressable, Platform, TextInput, Alert, Animated, PanResponder } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Platform, TextInput, Alert, Animated, PanResponder, ActivityIndicator } from 'react-native';
 import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,6 +31,9 @@ export default function HistoryScreen() {
   const router = useRouter();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -38,6 +41,8 @@ export default function HistoryScreen() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [storage, setStorage] = useState<StorageUsage | null>(null);
   const storageBarAnim = useRef(new Animated.Value(0)).current;
+
+  const PAGE_SIZE = 20;
 
   // Favorites
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -68,6 +73,7 @@ export default function HistoryScreen() {
 
   const loadSessions = async (query?: string) => {
     setLoading(true);
+    setHasMore(true);
     try {
       // Try backend first
       try {
@@ -75,7 +81,9 @@ export default function HistoryScreen() {
         if (res.ok) {
           const backendData = await res.json();
           if (Array.isArray(backendData.sessions)) {
-            setSessions(backendData.sessions);
+            const firstPage = backendData.sessions.slice(0, PAGE_SIZE);
+            setSessions(firstPage);
+            setHasMore(backendData.sessions.length > PAGE_SIZE);
             // Extract favorites
             const favIds = new Set<string>(backendData.favorites || []);
             setFavorites(favIds);
@@ -89,14 +97,34 @@ export default function HistoryScreen() {
 
       // Fallback to local storage
       const data = await localStorageService.getSessions(
-        query ? { searchQuery: query, dateRange: null, source: null, minQuality: null, synced: null } : undefined
+        query
+          ? { searchQuery: query, dateRange: null, source: null, minQuality: null, synced: null, limit: PAGE_SIZE, offset: 0 }
+          : { searchQuery: null, dateRange: null, source: null, minQuality: null, synced: null, limit: PAGE_SIZE, offset: 0 }
       );
       setSessions(data);
+      setHasMore(data.length >= PAGE_SIZE);
     } catch (err) {
       console.error('[History] Load failed:', err);
       Alert.alert('Load Error', 'Could not load your recording history. Pull down to retry.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreSessions = async () => {
+    if (loadingMore || !hasMore || loading) return;
+    setLoadingMore(true);
+    try {
+      const filter = searchQuery.length > 2
+        ? { searchQuery, dateRange: null, source: null, minQuality: null, synced: null, limit: PAGE_SIZE, offset: sessions.length }
+        : { searchQuery: null, dateRange: null, source: null, minQuality: null, synced: null, limit: PAGE_SIZE, offset: sessions.length };
+      const data = await localStorageService.getSessions(filter);
+      if (data.length < PAGE_SIZE) setHasMore(false);
+      setSessions(prev => [...prev, ...data]);
+    } catch (err) {
+      console.error('[History] Load more failed:', err);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -195,8 +223,11 @@ export default function HistoryScreen() {
     }, 300);
   }, []);
 
-  // 🚀 Perf: stable callback for FlatList onRefresh
-  const handleRefresh = useCallback(() => { loadSessions(); loadStorage(); }, []);
+  // 🚀 Perf: stable callback for FlatList onRefresh (pull-to-refresh)
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    Promise.all([loadSessions(), loadStorage()]).finally(() => setRefreshing(false));
+  }, []);
 
   const handleDelete = (id: string) => {
     Alert.alert('Delete Session', 'This cannot be undone.', [
@@ -513,8 +544,11 @@ export default function HistoryScreen() {
             keyExtractor={keyExtractor}
             contentContainerStyle={styles.listContent}
             ItemSeparatorComponent={ListSeparator}
-            refreshing={loading}
+            refreshing={refreshing}
             onRefresh={handleRefresh}
+            onEndReached={loadMoreSessions}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={loadingMore ? <ListFooterSpinner /> : null}
             keyboardDismissMode="on-drag"
             // 🚀 Perf: virtualization props
             maxToRenderPerBatch={10}
@@ -532,6 +566,12 @@ export default function HistoryScreen() {
 const keyExtractor = (item: SessionSummary) => item.id;
 const ListSeparator = memo(() => <View style={styles.separator} />);
 ListSeparator.displayName = 'ListSeparator';
+const ListFooterSpinner = memo(() => (
+  <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+    <ActivityIndicator size="small" color={colors.accent} />
+  </View>
+));
+ListFooterSpinner.displayName = 'ListFooterSpinner';
 
 // ─── Swipeable Row Component ────────────────────────────────────
 
