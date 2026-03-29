@@ -12,6 +12,7 @@ import type {
 import { ENGINE_REGISTRY } from './windy-tune';
 import { API_BASE_URL, ENDPOINTS, apiUrl, wsUrl } from '@/config/api';
 import { parseUploadError, isAuthError, isRateLimited } from '@/utils/api-error';
+import * as SecureStore from 'expo-secure-store';
 import { createLogger } from './logger';
 
 const log = createLogger('Transcription');
@@ -100,7 +101,8 @@ class TranscriptionService {
             // Only fall back to cloud if user has explicitly enabled cloud fallback
             // AND has an active subscription (not lifetime)
             const { cloudFallbackEnabled } = require('../stores/useSettingsStore').useSettingsStore.getState();
-            if (cloudFallbackEnabled && licenseService.isCloudSttEnabled()) {
+            const { licenseService: licSvc } = require('./license');
+            if (cloudFallbackEnabled && licSvc.isCloudSttEnabled()) {
                 log.warn('Local_failed_falling_back_to_c', 'Local failed, falling back to cloud (user-enabled)', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
                 return this.cloudTranscribe(uri, 'cloud-standard');
             }
@@ -146,12 +148,11 @@ class TranscriptionService {
     ): Promise<TranscriptSegment[]> {
         const endpoint = apiUrl(ENDPOINTS.TRANSCRIBE, SERVER_URL);
 
-        // Get auth token
-        const token = (() => {
-            try {
-                return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || '';
-            } catch (err) { log.warn('httpTranscribe', 'token retrieval failed'); return ''; }
-        })();
+        // Get auth token from SecureStore
+        let token = '';
+        try {
+            token = await SecureStore.getItemAsync('windy_cloud_jwt') || '';
+        } catch { /* SecureStore unavailable */ }
 
         const response = await FileSystem.uploadAsync(endpoint, uri, {
             httpMethod: 'POST',
@@ -226,7 +227,7 @@ class TranscriptionService {
     ): Promise<TranscriptSegment[]> {
         const wsEndpoint = wsUrl(ENDPOINTS.WS_TRANSCRIBE, SERVER_URL);
 
-        return new Promise<TranscriptSegment[]>(async (resolve, reject) => {
+        return new Promise<TranscriptSegment[]>((resolve, reject) => {
             const segments: TranscriptSegment[] = [];
             let resolved = false;
 
@@ -246,7 +247,7 @@ class TranscriptionService {
                         // Send auth
                         this.ws?.send(JSON.stringify({
                             type: 'auth',
-                            token: (() => { try { return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || 'anonymous'; } catch (err) { return 'anonymous'; } })(),
+                            token: await (async () => { try { return await SecureStore.getItemAsync('windy_cloud_jwt') || 'anonymous'; } catch { return 'anonymous'; } })(),
                         }));
 
                         // Send config
