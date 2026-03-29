@@ -75,6 +75,9 @@ export const PAIR_CATALOG_URL = `${API_BASE_URL}/api/v1/pairs/catalog.json`;
 /** Google Cloud Vision API */
 export const GOOGLE_VISION_API = 'https://vision.googleapis.com/v1/images:annotate';
 
+/** Windy CDN URL for translation pair model binaries */
+export const PAIR_CDN_BASE = `${API_BASE_URL}/pairs`;
+
 /** Push token registration path */
 export const PUSH_TOKEN_ENDPOINT = '/api/register-push-token';
 

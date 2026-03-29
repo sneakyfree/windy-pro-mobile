@@ -19,6 +19,7 @@ import { pairManager } from '@/services/pairManager';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { PAIR_CDN_BASE } from '@/config/api';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ export default function ConversationScreen() {
     const [typingUsers, setTypingUsers] = useState<string[]>([]);
     const [roomName, setRoomName] = useState('Chat');
     const [syncState, setSyncState] = useState<SyncState>(chatClient.getSyncState());
+    const [loadError, setLoadError] = useState<string | null>(null);
     const flatListRef = useRef<FlatList>(null);
     const savedInputRef = useRef('');
     const sendingRef = useRef(false); // RC-1: Synchronous guard against double-tap
@@ -109,8 +111,8 @@ export default function ConversationScreen() {
                 }));
 
                 setMessages([...translated, ...pending]);
-            } catch (err) {
-                console.warn('[ChatRoom] loadMessages error:', err);
+            } catch {
+                if (isMounted.current) setLoadError('Could not load messages. Pull down to retry.');
             } finally {
                 if (isMounted.current) setLoading(false);
             }
@@ -179,7 +181,7 @@ export default function ConversationScreen() {
             } else {
                 // Real failure — restore input text and show error
                 if (isMounted.current) setInputText(savedInputRef.current);
-                if (isMounted.current) setSendError(result.error || 'Failed to send message');
+                if (isMounted.current) setSendError('Message could not be sent. Tap Retry to try again.');
             }
         }
     };
@@ -225,6 +227,7 @@ export default function ConversationScreen() {
 
     if (loading) {
         return (
+            <ScreenErrorBoundary screenName="Conversation">
             <SafeAreaView style={styles.container}>
                 <View style={styles.loadingContainer}
                     accessibilityLabel="Loading conversation" accessibilityRole="none"
@@ -232,6 +235,7 @@ export default function ConversationScreen() {
                     <ActivityIndicator size="large" color={colors.accent} />
                 </View>
             </SafeAreaView>
+            </ScreenErrorBoundary>
         );
     }
 
@@ -248,7 +252,9 @@ export default function ConversationScreen() {
                     <Text style={styles.backText}>←</Text>
                 </TouchableOpacity>
                 <View style={styles.headerInfo}>
-                    <Text style={styles.headerName} numberOfLines={1}>{roomName}</Text>
+                    <Text style={styles.headerName} numberOfLines={1}
+                        accessibilityRole="header"
+                    >{roomName}</Text>
                     {typingUsers.length > 0 && (
                         <Text style={styles.typingText}
                             accessibilityLabel={`${typingUsers.length === 1 ? 'Someone is' : `${typingUsers.length} people are`} typing`}
@@ -267,6 +273,16 @@ export default function ConversationScreen() {
                     <Text style={styles.offlineBannerText}>
                         {syncState === 'reconnecting' ? '⏳ Reconnecting...' : '📡 Offline — messages will send when connected'}
                     </Text>
+                </View>
+            )}
+
+            {/* Load Error Banner */}
+            {loadError && (
+                <View style={styles.sendErrorBar}
+                    accessibilityLabel={loadError}
+                    accessibilityRole="alert"
+                >
+                    <Text style={styles.sendErrorText}>{loadError}</Text>
                 </View>
             )}
 
@@ -354,7 +370,7 @@ export default function ConversationScreen() {
                                                                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                                                 await pairManager.downloadPair(
                                                                     item.pairNeeded!,
-                                                                    `https://windypro.thewindstorm.uk/pairs/${item.pairNeeded}.bin`,
+                                                                    `${PAIR_CDN_BASE}/${item.pairNeeded}.bin`,
                                                                 );
                                                                 // Re-translate the message in place
                                                                 const retranslated = await chatTranslateService.translateMessage(item);
@@ -423,7 +439,9 @@ export default function ConversationScreen() {
 
                 {/* Send Error */}
                 {sendError && (
-                    <View style={styles.sendErrorBar}>
+                    <View style={styles.sendErrorBar}
+                        accessibilityRole="alert"
+                    >
                         <Text style={styles.sendErrorText}>⚠️ {sendError}</Text>
                         <TouchableOpacity onPress={handleRetrySend} style={styles.retryBtn}
                             accessibilityLabel="Retry sending message" accessibilityRole="button"
