@@ -1,8 +1,14 @@
 /**
  * 🧬 RP-8.6 — Video Capture Service
  * M12: Camera capture for video recording + future OCR
+ *
+ * Follows the same patterns as audio-capture.ts:
+ *   - Start/stop/cancel lifecycle
+ *   - Session ID tracking
+ *   - Temp -> permanent file move on stop
+ *   - Permission handling
  */
-import { Camera, CameraType, CameraView } from 'expo-camera';
+import { Camera, CameraView } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 import { createLogger } from './logger';
 
@@ -10,8 +16,10 @@ const log = createLogger('VideoCapture');
 
 class VideoCaptureService {
     private cameraRef: CameraView | null = null;
-    private isRecording = false;
+    private isCurrentlyRecording = false;
     private sessionId: string | null = null;
+    /** Promise that resolves when recordAsync completes (on stop) */
+    private recordingPromise: Promise<{ uri: string }> | null = null;
 
     /**
      * Set the camera ref (from React component)
@@ -44,17 +52,22 @@ class VideoCaptureService {
         if (!this.cameraRef) {
             throw new Error('Camera ref not set');
         }
-        if (this.isRecording) {
+        if (this.isCurrentlyRecording) {
             throw new Error('Already recording video');
         }
 
         this.sessionId = sessionId;
-        this.isRecording = true;
+        this.isCurrentlyRecording = true;
 
         try {
-            // Note: recordAsync is called but result is collected on stop
+            // recordAsync returns a promise that resolves when recording stops
+            this.recordingPromise = this.cameraRef.recordAsync({
+                maxDuration: 3600, // 1 hour max
+            }) as Promise<{ uri: string }>;
         } catch (err) {
-            this.isRecording = false;
+            this.isCurrentlyRecording = false;
+            this.recordingPromise = null;
+            log.error('startVideoCapture', err);
             throw err;
         }
     }
@@ -63,39 +76,46 @@ class VideoCaptureService {
      * Stop video recording and return the file
      */
     async stopVideoCapture(): Promise<{ uri: string; size: number }> {
-        if (!this.cameraRef || !this.isRecording) {
+        if (!this.cameraRef || !this.isCurrentlyRecording) {
             throw new Error('Not recording video');
         }
 
-        this.isRecording = false;
+        this.isCurrentlyRecording = false;
 
         try {
-            // Get the video file
-            // Note: expo-camera recordAsync returns the URI when stopped
-            const tempUri = (FileSystem.cacheDirectory || '') +
-                `windy-video-${this.sessionId}.mp4`;
+            // stopRecording causes the recordAsync promise to resolve with the URI
+            this.cameraRef.stopRecording();
 
-            // Move to permanent storage
+            if (!this.recordingPromise) {
+                throw new Error('No active recording promise');
+            }
+
+            const result = await this.recordingPromise;
+            this.recordingPromise = null;
+            const tempUri = result.uri;
+
+            // Move to permanent storage organized by month
             const monthDir = new Date().toISOString().slice(0, 7);
             const destDir = (FileSystem.documentDirectory || '') +
                 `windy/video/${monthDir}/`;
             await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
 
             const destPath = destDir + `${this.sessionId}.mp4`;
-
-            // Check if temp file exists before moving
-            const tempInfo = await FileSystem.getInfoAsync(tempUri);
-            if (tempInfo.exists) {
-                await FileSystem.moveAsync({ from: tempUri, to: destPath });
-            }
+            await FileSystem.moveAsync({ from: tempUri, to: destPath });
 
             const info = await FileSystem.getInfoAsync(destPath);
-            const size = info.exists && 'size' in info ? (info as any).size : 0;
+            const size = info.exists && 'size' in info ? (info as { size: number }).size : 0;
 
+            log.info('stopVideoCapture', 'Video saved', {
+                sessionId: this.sessionId,
+                size,
+                path: destPath,
+            });
 
             return { uri: destPath, size };
         } catch (err) {
-            console.error('[Video] Stop failed:', err);
+            this.recordingPromise = null;
+            log.error('stopVideoCapture', err);
             throw err;
         }
     }
@@ -104,8 +124,23 @@ class VideoCaptureService {
      * Cancel video recording (discard)
      */
     async cancelVideoCapture(): Promise<void> {
-        this.isRecording = false;
-        // Cleanup temp files
+        if (this.isCurrentlyRecording && this.cameraRef) {
+            this.cameraRef.stopRecording();
+        }
+        this.isCurrentlyRecording = false;
+
+        // Wait for the recording promise to settle, then delete the file
+        if (this.recordingPromise) {
+            try {
+                const result = await this.recordingPromise;
+                await FileSystem.deleteAsync(result.uri, { idempotent: true });
+            } catch {
+                // Ignore errors during cancel cleanup
+            }
+            this.recordingPromise = null;
+        }
+
+        // Also clean up any temp files for this session
         if (this.sessionId) {
             const tempUri = (FileSystem.cacheDirectory || '') +
                 `windy-video-${this.sessionId}.mp4`;
@@ -115,7 +150,7 @@ class VideoCaptureService {
     }
 
     getIsRecording(): boolean {
-        return this.isRecording;
+        return this.isCurrentlyRecording;
     }
 }
 
