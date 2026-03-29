@@ -142,6 +142,11 @@ export default function ChatHomeScreen() {
             setSearching(false);
             return;
         }
+        if (isOffline) {
+            setSearchResults([]);
+            setSearching(false);
+            return;
+        }
         setSearching(true);
         searchDebounce.current = setTimeout(async () => {
             try {
@@ -151,7 +156,10 @@ export default function ChatHomeScreen() {
                     setSearching(false);
                 }
             } catch {
-                if (isMounted.current) setSearching(false);
+                if (isMounted.current) {
+                    setSearching(false);
+                    setSearchResults([]);
+                }
             }
         }, 300);
     };
@@ -164,8 +172,9 @@ export default function ChatHomeScreen() {
             setSearchResults([]);
             router.push(`/chat/${result.roomId}`);
         } else {
-            setCreateError(result.error || 'Failed to start conversation');
-            Alert.alert('Error', result.error || 'Failed to start conversation');
+            const friendlyMsg = 'Could not start conversation. Please check your connection and try again.';
+            setCreateError(friendlyMsg);
+            Alert.alert('Conversation Error', friendlyMsg);
         }
     };
 
@@ -264,10 +273,24 @@ export default function ChatHomeScreen() {
                 />
             </View>
 
+            {/* Create Error Banner */}
+            {createError && (
+                <View style={styles.offlineBanner}
+                    accessibilityLabel={createError}
+                    accessibilityRole="alert"
+                >
+                    <Text style={styles.offlineBannerText}>{createError}</Text>
+                </View>
+            )}
+
             {/* Search Results */}
             {searchQuery.trim().length >= 2 && (
                 <View style={styles.searchResults}>
-                    {searching ? (
+                    {isOffline ? (
+                        <Text style={styles.noResults}
+                            accessibilityRole="text"
+                        >Search unavailable while offline</Text>
+                    ) : searching ? (
                         <ActivityIndicator color={colors.accent} style={{ padding: 12 }} />
                     ) : searchResults.length === 0 ? (
                         <Text style={styles.noResults}
