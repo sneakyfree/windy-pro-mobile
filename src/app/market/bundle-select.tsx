@@ -20,6 +20,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius } from '@/theme';
+import { BUNDLE_PURCHASE_URL } from '@/config/api';
 import { pairCatalogService, type TranslationPair, type PairRegion } from '@/services/pairCatalog';
 import { pairManager, type DownloadProgress } from '@/services/pairManager';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -132,7 +133,7 @@ export default function BundleSelect() {
 
         // Open purchase URL (follows existing pattern)
         try {
-            await Linking.openURL(`https://windypro.thewindstorm.uk/bundles/${bundleInfo.rcId}`);
+            await Linking.openURL(BUNDLE_PURCHASE_URL(bundleInfo.rcId));
         } catch {
             Alert.alert('Error', 'Could not open the purchase page.');
             setConfirmDisabled(false);

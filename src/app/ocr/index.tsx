@@ -7,6 +7,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { colors, spacing, borderRadius } from '@/theme';
+import { PAIR_DOWNLOAD_URL } from '@/config/api';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { ocrService, OcrTranslation } from '@/services/ocr';
 import { TIER_1_LANGUAGES } from '@/services/translation';
@@ -231,7 +232,7 @@ export default function OcrTranslateScreen() {
                                             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                             await pairManager.downloadPair(
                                                 pairNeeded.pairId,
-                                                `https://windypro.thewindstorm.uk/pairs/${pairNeeded.pairId}.bin`,
+                                                PAIR_DOWNLOAD_URL(pairNeeded.pairId),
                                             );
                                             setPairNeeded(null);
                                         }

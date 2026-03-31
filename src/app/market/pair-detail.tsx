@@ -19,6 +19,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius } from '@/theme';
+import { PAIR_PURCHASE_URL } from '@/config/api';
 import { pairCatalogService, type TranslationPair } from '@/services/pairCatalog';
 import { pairManager, type DownloadProgress } from '@/services/pairManager';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -97,7 +98,7 @@ export default function PairDetail() {
         if (!pair || buyDisabled) return;
         setBuyDisabled(true);
         haptic.medium();
-        Linking.openURL(`https://windypro.thewindstorm.uk/pairs/${pair.revenueCatProductId}`).catch(() => {
+        Linking.openURL(PAIR_PURCHASE_URL(pair.revenueCatProductId)).catch(() => {
             Alert.alert('Error', 'Could not open the purchase page.');
         }).finally(() => setBuyDisabled(false));
     };

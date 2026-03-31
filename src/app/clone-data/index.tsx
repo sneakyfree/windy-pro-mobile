@@ -22,9 +22,11 @@ export default function CloneDataDashboard() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [uploading, setUploading] = useState<Set<string>>(new Set());
+    const [error, setError] = useState<string | null>(null);
 
     const loadData = useCallback(async () => {
         try {
+            setError(null);
             const filterOpts: Record<string, boolean | string> = {};
             if (filter === 'video') filterOpts.hasVideo = true;
             if (filter === 'audio-only') filterOpts.hasVideo = false;
@@ -38,7 +40,11 @@ export default function CloneDataDashboard() {
             ]);
             setBundles(b);
             setStats(s);
-        } catch (err) { console.warn("[CloneData] Error:", err); }
+        } catch (err) {
+            console.warn("[CloneData] Error:", err);
+            setError('Failed to load clone data');
+            Alert.alert('Load Failed', 'Could not load clone data. Pull down to retry.');
+        }
         setLoading(false);
         setRefreshing(false);
     }, [filter]);

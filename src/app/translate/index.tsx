@@ -15,6 +15,7 @@ import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, borderRadius } from '@/theme';
+import { PAIR_DOWNLOAD_URL } from '@/config/api';
 import {
     translationService, TIER_1_LANGUAGES,
     type ConversationTurn, type ConversationMode,
@@ -178,7 +179,7 @@ export default function TranslateScreen() {
                                 const result = await subscriptionService.purchasePackage(pkg);
                                 if (result.success) {
                                     haptic.success();
-                                    await pairManager.downloadPair(pairId, `https://windypro.thewindstorm.uk/pairs/${pairId}.bin`);
+                                    await pairManager.downloadPair(pairId, PAIR_DOWNLOAD_URL(pairId));
                                 }
                             } else {
                                 Alert.alert('Store Unavailable', 'Could not load offerings. Try again later.');

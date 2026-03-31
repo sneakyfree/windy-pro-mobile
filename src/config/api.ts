@@ -84,6 +84,21 @@ export const PAIR_CDN_BASE = `${API_BASE_URL}/pairs`;
 /** Push token registration path */
 export const PUSH_TOKEN_ENDPOINT = '/api/register-push-token';
 
+/** CDN URL for translation pair model binaries (download) */
+export const PAIR_DOWNLOAD_URL = (pairId: string) => `${API_BASE_URL}/pairs/${pairId}.bin`;
+
+/** Web URL for pair purchase page */
+export const PAIR_PURCHASE_URL = (productId: string) => `${API_BASE_URL}/pairs/${productId}`;
+
+/** Web URL for bundle purchase page */
+export const BUNDLE_PURCHASE_URL = (bundleId: string) => `${API_BASE_URL}/bundles/${bundleId}`;
+
+/** Stripe checkout API */
+export const CHECKOUT_API_URL = `${API_BASE_URL}/api/v1/payments/create-checkout`;
+
+/** Marco Polo web page */
+export const MARCO_POLO_URL = `${API_BASE_URL}/marco-polo`;
+
 // ─── Helper to build full URL ──────────────────────────────────
 
 /**

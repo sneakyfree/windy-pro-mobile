@@ -5,7 +5,7 @@
  * RP-8.5: Real clone progress
  * Navigation features, translation prefs, voice selection
  */
-import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert, TextInput, ActivityIndicator } from 'react-native';
 import { useState, useCallback, memo } from 'react';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
@@ -59,6 +59,8 @@ export default function SettingsScreen() {
   const [licenseKeyDisplay, setLicenseKeyDisplay] = useState<string | null>(null);
   const [targetLangPickerVisible, setTargetLangPickerVisible] = useState(false);
   const [serverUrl, setServerUrl] = useState(getTranscriptionServerUrl());
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [loadErrors, setLoadErrors] = useState<string[]>([]);
 
   const SERVER_URL_KEY = 'windy-server-url';
 
@@ -69,10 +71,13 @@ export default function SettingsScreen() {
   );
 
   const loadData = async () => {
+    setSettingsLoading(true);
+    const errors: string[] = [];
+
     try {
       const storageData = await localStorageService.getStorageUsage();
       setStorage(storageData);
-    } catch (err) { settingsLog.warn('loadData', 'Error loading storage data'); }
+    } catch (err) { settingsLog.warn('loadData', 'Error loading storage data'); errors.push('storage'); }
 
     const progress = cloneTracker.getProgress();
     setCloneHours(progress.totalHours);
@@ -91,7 +96,7 @@ export default function SettingsScreen() {
     try {
       await offlinePackService.initialize();
       setPacks(offlinePackService.getPacks());
-    } catch (err) { settingsLog.warn('loadData', 'Offline packs init failed'); }
+    } catch (err) { settingsLog.warn('loadData', 'Offline packs init failed'); errors.push('language packs'); }
 
     // Load cloned voice ID
     try {
@@ -103,7 +108,10 @@ export default function SettingsScreen() {
     try {
       const key = await getLicenseKey();
       setLicenseKeyDisplay(key);
-    } catch (err) { settingsLog.warn('loadData', 'License key load failed'); }
+    } catch (err) { settingsLog.warn('loadData', 'License key load failed'); errors.push('license'); }
+
+    setLoadErrors(errors);
+    setSettingsLoading(false);
   };
 
   const formatBytes = (bytes: number): string => {
@@ -236,6 +244,19 @@ export default function SettingsScreen() {
     <ScreenErrorBoundary screenName="Settings">
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+          {settingsLoading && (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <ActivityIndicator color={colors.accent} size="small" />
+              <Text style={{ ...typography.caption, color: colors.textTertiary, marginTop: 8 }}>Loading settings...</Text>
+            </View>
+          )}
+          {loadErrors.length > 0 && (
+            <View style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: 12, marginHorizontal: 16, marginBottom: 8, borderRadius: 8 }}>
+              <Text style={{ ...typography.caption, color: '#f87171' }}>
+                Some settings could not be loaded: {loadErrors.join(', ')}
+              </Text>
+            </View>
+          )}
           {/* Account Section */}
           <SettingsSection title="Account">
             <SettingsRow

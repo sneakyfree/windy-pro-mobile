@@ -7,6 +7,7 @@ import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Alert, Animate
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { colors, spacing, borderRadius } from '@/theme';
+import { CHECKOUT_API_URL, MARCO_POLO_URL } from '@/config/api';
 import { useSettingsStore, setLicense } from '@/stores/useSettingsStore';
 import { licenseService, FEATURE_MATRIX, RECORDING_LIMITS } from '@/services/license';
 import { subscriptionService } from '@/services/subscription';
@@ -240,7 +241,7 @@ export default function SubscriptionScreen() {
             } else {
                 // Fallback: Stripe Checkout via web API
                 const response = await fetch(
-                    'https://windypro.thewindstorm.uk/api/v1/payments/create-checkout',
+                    CHECKOUT_API_URL,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -608,7 +609,7 @@ export default function SubscriptionScreen() {
                 </View>
                 <Pressable
                     style={styles.marcoPoloCta}
-                    onPress={() => Linking.openURL('https://windypro.thewindstorm.uk/marco-polo')}
+                    onPress={() => Linking.openURL(MARCO_POLO_URL)}
                     accessibilityLabel="Purchase Marco Polo bundle for $399"
                     accessibilityRole="button"
                 >
