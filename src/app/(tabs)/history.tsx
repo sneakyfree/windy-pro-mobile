@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { colors, spacing, borderRadius } from '@/theme';
+import { typography } from '@/theme/typography';
 import { localStorageService } from '@/services/storage-local';
 import { feedbackService } from '@/services/feedback';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
@@ -632,7 +633,7 @@ const swipeStyles = StyleSheet.create({
     backgroundColor: '#ef4444', justifyContent: 'center',
     paddingHorizontal: 20, borderRadius: borderRadius.lg,
   },
-  deleteText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  deleteText: { ...typography.bodySmall, fontWeight: '700', color: '#fff' },
 });
 
 function getQualityColor(score: number): string {
@@ -662,8 +663,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  storageTitle: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
-  storageValue: { fontSize: 12, fontWeight: '600', color: colors.textPrimary, fontVariant: ['tabular-nums'] },
+  storageTitle: { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary },
+  storageValue: { ...typography.caption, fontWeight: '600', color: colors.textPrimary, fontVariant: ['tabular-nums'] },
   storageBarBg: {
     height: 6,
     backgroundColor: colors.surfaceLight,
@@ -676,7 +677,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  storageStat: { fontSize: 10, color: colors.textTertiary },
+  storageStat: { ...typography.tabLabel, color: colors.textTertiary },
 
   // Search
   searchContainer: {
@@ -690,7 +691,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
     color: colors.textPrimary,
-    fontSize: 15,
+    ...typography.body,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
@@ -713,7 +714,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: 'rgba(163, 230, 53, 0.1)',
   },
-  sortBtnText: { fontSize: 12, color: colors.textTertiary },
+  sortBtnText: { ...typography.caption, color: colors.textTertiary },
   sortBtnTextActive: { color: colors.accent, fontWeight: '600' },
 
   listContent: {
@@ -735,9 +736,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   cardDate: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    ...typography.bodySmall,
     fontWeight: '500',
+    color: colors.textSecondary,
   },
   cardMeta: {
     flexDirection: 'row',
@@ -745,7 +746,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   cardDuration: {
-    fontSize: 13,
+    ...typography.bodySmall,
     color: colors.textTertiary,
     fontVariant: ['tabular-nums'],
   },
@@ -753,8 +754,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   cardPreview: {
-    fontSize: 15,
-    lineHeight: 22,
+    ...typography.body,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
@@ -769,12 +769,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   qualityText: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textTertiary,
     fontVariant: ['tabular-nums'],
   },
   cardSource: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textTertiary,
     textTransform: 'capitalize',
     marginLeft: spacing.xs,
@@ -786,7 +786,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     paddingVertical: 2, minHeight: 44, justifyContent: 'center',
   },
-  exportBtnText: { fontSize: 16 },
+  exportBtnText: { ...typography.body },
 
   // Empty state
   emptyState: {
@@ -800,16 +800,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontSize: 22,
-    fontWeight: '600',
+    ...typography.h2,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
   emptySubtitle: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
   },
 
   // Batch select
@@ -821,9 +819,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs,
   },
   selectBtn: {
-    fontSize: 14,
-    color: colors.accent,
+    ...typography.bodySmall,
     fontWeight: '500',
+    color: colors.accent,
   },
   selectActions: {
     flexDirection: 'row',
@@ -831,13 +829,13 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   selectAllBtn: {
-    fontSize: 13,
+    ...typography.bodySmall,
     color: colors.accent,
   },
   batchDeleteBtn: {
-    fontSize: 14,
-    color: colors.stateError,
+    ...typography.bodySmall,
     fontWeight: '600',
+    color: colors.stateError,
   },
   checkbox: {
     fontSize: 18,
@@ -865,7 +863,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: 'rgba(163, 230, 53, 0.1)',
   },
-  filterChipText: { fontSize: 11, color: colors.textTertiary },
+  filterChipText: { ...typography.tabLabel, color: colors.textTertiary },
   filterChipTextActive: { color: colors.accent, fontWeight: '600' },
   csvExportBtn: {
     paddingVertical: 3, minHeight: 44, justifyContent: 'center',
@@ -876,5 +874,5 @@ const styles = StyleSheet.create({
     borderColor: '#6366f1',
     marginLeft: 'auto',
   },
-  csvExportText: { fontSize: 11, fontWeight: '600', color: '#6366f1' },
+  csvExportText: { ...typography.tabLabel, fontWeight: '600', color: '#6366f1' },
 });

@@ -17,6 +17,7 @@ import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import { CameraView } from 'expo-camera';
 import { colors, spacing, borderRadius } from '@/theme';
+import { typography } from '@/theme/typography';
 import { useRecordingStore } from '@/stores/useRecordingStore';
 import { useTranscriptStore } from '@/stores/useTranscriptStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -837,12 +838,11 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
     },
     title: {
-        fontSize: 28,
-        fontWeight: '700',
+        ...typography.h1,
         color: colors.textPrimary,
     },
     subtitle: {
-        fontSize: 14,
+        ...typography.bodySmall,
         color: colors.textSecondary,
         marginTop: spacing.xs,
     },
@@ -871,9 +871,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     toggleLabel: {
-        fontSize: 13,
-        color: colors.textSecondary,
+        ...typography.bodySmall,
         fontWeight: '500',
+        color: colors.textSecondary,
     },
     toggleLabelActive: {
         color: colors.accent,
@@ -970,18 +970,18 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xs,
     },
     fileSizeText: {
-        fontSize: 12,
+        ...typography.caption,
         color: colors.textTertiary,
         fontVariant: ['tabular-nums'],
     },
     fileSizeSeparator: {
-        fontSize: 12,
+        ...typography.caption,
         color: colors.textTertiary,
     },
 
     // Status
     statusText: {
-        fontSize: 14,
+        ...typography.bodySmall,
         fontWeight: '500',
         marginTop: spacing.xs,
         marginBottom: spacing.md,
@@ -1040,7 +1040,7 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     playbackTime: {
-        fontSize: 12,
+        ...typography.caption,
         color: colors.textTertiary,
         fontVariant: ['tabular-nums'],
         width: 40,
@@ -1060,12 +1060,11 @@ const styles = StyleSheet.create({
         minHeight: 100,
     },
     transcriptText: {
-        fontSize: 16,
-        lineHeight: 24,
+        ...typography.body,
         color: colors.textPrimary,
     },
     transcriptPlaceholder: {
-        fontSize: 15,
+        ...typography.body,
         color: colors.textTertiary,
         textAlign: 'center',
         paddingTop: spacing.xl,
@@ -1078,13 +1077,12 @@ const styles = StyleSheet.create({
     },
     transcriptErrorEmoji: { fontSize: 32 },
     transcriptErrorText: {
-        fontSize: 14,
+        ...typography.bodySmall,
         color: '#ef4444',
         textAlign: 'center',
-        lineHeight: 20,
     },
     transcriptErrorHint: {
-        fontSize: 12,
+        ...typography.caption,
         color: colors.textTertiary,
         textAlign: 'center',
     },
@@ -1110,7 +1108,7 @@ const styles = StyleSheet.create({
         borderColor: colors.accent,
     },
     actionButtonText: {
-        fontSize: 14,
+        ...typography.bodySmall,
         fontWeight: '500',
         color: colors.textSecondary,
     },
@@ -1135,8 +1133,8 @@ const styles = StyleSheet.create({
         position: 'absolute' as const,
         bottom: 8,
         alignSelf: 'center' as const,
+        ...typography.caption,
         color: colors.textSecondary,
-        fontSize: 12,
     },
 
     // Processing banner
@@ -1150,8 +1148,8 @@ const styles = StyleSheet.create({
         alignItems: 'center' as const,
     },
     processingText: {
-        color: colors.stateProcessing,
-        fontSize: 14,
+        ...typography.bodySmall,
         fontWeight: '500' as const,
+        color: colors.stateProcessing,
     },
 });

@@ -71,6 +71,23 @@ export default function LanguagePickerSheet({ visible, onClose }: Props) {
         onClose();
     }, []);
 
+    const renderLanguageItem = useCallback(({ item }: any) => {
+        const isSelected = defaultLanguage === item.code;
+        return (
+            <Pressable
+                style={[s.item, isSelected && s.itemSelected]}
+                onPress={() => handleSelect(item.code)}
+            >
+                <Text style={s.flag}>{item.flag}</Text>
+                <View style={s.labelWrap}>
+                    <Text style={s.name}>{item.name}</Text>
+                    <Text style={s.native}>{item.nativeName}</Text>
+                </View>
+                {isSelected && <Text style={s.check}>✓</Text>}
+            </Pressable>
+        );
+    }, [defaultLanguage, handleSelect]);
+
     return (
         <Modal visible={visible} animationType="slide" transparent>
             <View style={s.overlay}>
@@ -89,22 +106,7 @@ export default function LanguagePickerSheet({ visible, onClose }: Props) {
                         data={filtered}
                         keyExtractor={(item) => item.code}
                         style={s.list}
-                        renderItem={({ item }) => {
-                            const isSelected = defaultLanguage === item.code;
-                            return (
-                                <Pressable
-                                    style={[s.item, isSelected && s.itemSelected]}
-                                    onPress={() => handleSelect(item.code)}
-                                >
-                                    <Text style={s.flag}>{item.flag}</Text>
-                                    <View style={s.labelWrap}>
-                                        <Text style={s.name}>{item.name}</Text>
-                                        <Text style={s.native}>{item.nativeName}</Text>
-                                    </View>
-                                    {isSelected && <Text style={s.check}>✓</Text>}
-                                </Pressable>
-                            );
-                        }}
+                        renderItem={renderLanguageItem}
                     />
                     <Pressable style={s.closeBtn} onPress={onClose}>
                         <Text style={s.closeTxt}>Close</Text>

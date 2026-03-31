@@ -209,6 +209,59 @@ export default function TranscriptionViewer({
         );
     }
 
+    const renderSegment = useCallback(({ item: seg }: any) => {
+        const isActive = currentTime >= seg.startTime && currentTime <= seg.endTime;
+        return (
+            <View
+                style={[
+                    styles.segmentRow,
+                    seg.isPartial && styles.segmentPartial,
+                    isActive && styles.segmentActive,
+                ]}
+            >
+                {/* Speaker label */}
+                {showSpeakers && seg.speakerId && (
+                    <View style={[styles.speakerBadge, { backgroundColor: speakerColor(seg.speakerId) + '20', borderColor: speakerColor(seg.speakerId) + '40' }]}>
+                        <Text style={[styles.speakerText, { color: speakerColor(seg.speakerId) }]}>
+                            {speakerLabel(seg.speakerId)}
+                        </Text>
+                    </View>
+                )}
+
+                {/* Timestamp */}
+                <Text style={styles.segmentTime}>
+                    {formatTime(seg.startTime).slice(0, 5)}
+                </Text>
+
+                {/* Text with confidence highlighting */}
+                <View style={styles.segmentTextContainer}>
+                    <Text
+                        style={[
+                            styles.segmentText,
+                            seg.isPartial && styles.segmentTextPartial,
+                            showConfidence && {
+                                color: confidenceColor(seg.confidence),
+                            },
+                        ]}
+                        selectable
+                    >
+                        {seg.text}
+                    </Text>
+
+                    {/* Confidence indicator */}
+                    {showConfidence && (
+                        <View style={styles.confidenceRow}>
+                            <View style={[styles.confidenceDot, { backgroundColor: confidenceColor(seg.confidence) }]} />
+                            <Text style={styles.confidenceText}>
+                                {Math.round(seg.confidence * 100)}% {confidenceLabel(seg.confidence)}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+        );
+    }, [currentTime, showSpeakers, showConfidence]);
+
     return (
         <View style={styles.container}>
             {/* Progress indicator */}
@@ -263,58 +316,7 @@ export default function TranscriptionViewer({
                 contentContainerStyle={styles.segmentsContent}
                 data={segments}
                 keyExtractor={segmentKeyExtractor}
-                renderItem={({ item: seg }) => {
-                    const isActive = currentTime >= seg.startTime && currentTime <= seg.endTime;
-                    return (
-                        <View
-                            style={[
-                                styles.segmentRow,
-                                seg.isPartial && styles.segmentPartial,
-                                isActive && styles.segmentActive,
-                            ]}
-                        >
-                            {/* Speaker label */}
-                            {showSpeakers && seg.speakerId && (
-                                <View style={[styles.speakerBadge, { backgroundColor: speakerColor(seg.speakerId) + '20', borderColor: speakerColor(seg.speakerId) + '40' }]}>
-                                    <Text style={[styles.speakerText, { color: speakerColor(seg.speakerId) }]}>
-                                        {speakerLabel(seg.speakerId)}
-                                    </Text>
-                                </View>
-                            )}
-
-                            {/* Timestamp */}
-                            <Text style={styles.segmentTime}>
-                                {formatTime(seg.startTime).slice(0, 5)}
-                            </Text>
-
-                            {/* Text with confidence highlighting */}
-                            <View style={styles.segmentTextContainer}>
-                                <Text
-                                    style={[
-                                        styles.segmentText,
-                                        seg.isPartial && styles.segmentTextPartial,
-                                        showConfidence && {
-                                            color: confidenceColor(seg.confidence),
-                                        },
-                                    ]}
-                                    selectable
-                                >
-                                    {seg.text}
-                                </Text>
-
-                                {/* Confidence indicator */}
-                                {showConfidence && (
-                                    <View style={styles.confidenceRow}>
-                                        <View style={[styles.confidenceDot, { backgroundColor: confidenceColor(seg.confidence) }]} />
-                                        <Text style={styles.confidenceText}>
-                                            {Math.round(seg.confidence * 100)}% {confidenceLabel(seg.confidence)}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                    );
-                }}
+                renderItem={renderSegment}
                 maxToRenderPerBatch={15}
                 windowSize={7}
                 initialNumToRender={20}

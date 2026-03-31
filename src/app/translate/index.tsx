@@ -490,6 +490,30 @@ export default function TranslateScreen() {
         );
     }
 
+    const renderLangPickerItem = useCallback(({ item }: any) => {
+        const isSelected = showLangPicker === 'source'
+            ? item.code === sourceLang
+            : item.code === targetLang;
+        return (
+            <Pressable
+                style={[styles.langPickerRow, isSelected && styles.langPickerSelected]}
+                onPress={() => {
+                    if (showLangPicker === 'source') setSourceLang(item.code);
+                    else setTargetLang(item.code);
+                    setShowLangPicker(null);
+                    feedbackService.tap();
+                }}
+            >
+                <Text style={styles.langPickerFlag}>{item.flag}</Text>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.langPickerName}>{item.name}</Text>
+                    <Text style={styles.langPickerNative}>{item.nativeName}</Text>
+                </View>
+                {isSelected && <Text style={styles.langPickerCheck}>✓</Text>}
+            </Pressable>
+        );
+    }, [showLangPicker, sourceLang, targetLang]);
+
     // ─── Normal Layout (Manual / Auto) ─────────────────────────
 
     return (
@@ -760,29 +784,7 @@ export default function TranslateScreen() {
                             <FlatList
                                 data={TIER_1_LANGUAGES}
                                 keyExtractor={(item) => item.code}
-                                renderItem={({ item }) => {
-                                    const isSelected = showLangPicker === 'source'
-                                        ? item.code === sourceLang
-                                        : item.code === targetLang;
-                                    return (
-                                        <Pressable
-                                            style={[styles.langPickerRow, isSelected && styles.langPickerSelected]}
-                                            onPress={() => {
-                                                if (showLangPicker === 'source') setSourceLang(item.code);
-                                                else setTargetLang(item.code);
-                                                setShowLangPicker(null);
-                                                feedbackService.tap();
-                                            }}
-                                        >
-                                            <Text style={styles.langPickerFlag}>{item.flag}</Text>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.langPickerName}>{item.name}</Text>
-                                                <Text style={styles.langPickerNative}>{item.nativeName}</Text>
-                                            </View>
-                                            {isSelected && <Text style={styles.langPickerCheck}>✓</Text>}
-                                        </Pressable>
-                                    );
-                                }}
+                                renderItem={renderLangPickerItem}
                             />
                         </View>
                     </View>

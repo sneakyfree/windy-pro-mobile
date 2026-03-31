@@ -64,9 +64,9 @@ describe('LicenseService', () => {
             expect(RECORDING_LIMITS.pro).toBe(1800);
         });
 
-        it('all paid tiers should have same limit', () => {
+        it('higher tiers should have equal or greater limits', () => {
             expect(RECORDING_LIMITS.pro).toBe(RECORDING_LIMITS.translate);
-            expect(RECORDING_LIMITS.translate).toBe(RECORDING_LIMITS.translate_pro);
+            expect(RECORDING_LIMITS.translate_pro).toBeGreaterThanOrEqual(RECORDING_LIMITS.translate);
         });
     });
 

@@ -210,6 +210,53 @@ export default function ChatHomeScreen() {
         );
     }
 
+    // ─── Memoized renderItem for FlatList ─────────────────────────
+    const renderRoom = useCallback(({ item }: any) => (
+        <TouchableOpacity
+            style={styles.roomRow}
+            onPress={() => router.push(`/chat/${item.roomId}`)}
+            activeOpacity={0.6}
+            accessibilityLabel={
+                `${item.name}. ` +
+                (item.lastMessage ? `Last message: ${item.lastMessage}. ` : 'No messages. ') +
+                (item.unreadCount > 0 ? `${item.unreadCount} unread. ` : '') +
+                (item.lastMessageTime ? timeAgo(item.lastMessageTime) + ' ago' : '')
+            }
+            accessibilityRole="button"
+            accessibilityHint="Opens conversation"
+        >
+            <View style={styles.avatarContainer}>
+                <View style={styles.avatar} importantForAccessibility="no">
+                    <Text style={styles.avatarText}>{(item.name || '?')[0].toUpperCase()}</Text>
+                </View>
+                {(() => {
+                    const contact = contacts.find((c: any) => item.members.includes(c.userId));
+                    const memberPresence = contact?.presence || 'offline';
+                    return (
+                        <View
+                            style={[styles.presenceDot, { backgroundColor: presenceColor(memberPresence) }]}
+                            accessibilityLabel={memberPresence === 'online' ? 'Online' : memberPresence === 'unavailable' ? 'Away' : 'Offline'}
+                        />
+                    );
+                })()}
+            </View>
+            <View style={styles.roomInfo}>
+                <View style={styles.roomTop}>
+                    <Text style={styles.roomName} numberOfLines={1}>{item.name}</Text>
+                    {item.lastMessageTime && <Text style={styles.roomTime}>{timeAgo(item.lastMessageTime)}</Text>}
+                </View>
+                <View style={styles.roomBottom}>
+                    <Text style={styles.roomPreview} numberOfLines={1}>{item.lastMessage || 'No messages yet'}</Text>
+                    {item.unreadCount > 0 && (
+                        <View style={styles.badge} accessibilityLabel={`${item.unreadCount} unread messages`}>
+                            <Text style={styles.badgeText}>{item.unreadCount > 99 ? '99+' : item.unreadCount}</Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+        </TouchableOpacity>
+    ), [contacts]);
+
     // ─── Loading ────────────────────────────────────────────────
 
     if (loading) {
@@ -341,69 +388,7 @@ export default function ChatHomeScreen() {
                         </Text>
                     </View>
                 }
-                renderItem={({ item }) => (
-                    <TouchableOpacity
-                        style={styles.roomRow}
-                        onPress={() => router.push(`/chat/${item.roomId}`)}
-                        activeOpacity={0.6}
-                        accessibilityLabel={
-                            `${item.name}. ` +
-                            (item.lastMessage ? `Last message: ${item.lastMessage}. ` : 'No messages. ') +
-                            (item.unreadCount > 0 ? `${item.unreadCount} unread. ` : '') +
-                            (item.lastMessageTime ? timeAgo(item.lastMessageTime) + ' ago' : '')
-                        }
-                        accessibilityRole="button"
-                        accessibilityHint="Opens conversation"
-                    >
-                        {/* Avatar */}
-                        <View style={styles.avatarContainer}>
-                            <View style={styles.avatar} importantForAccessibility="no">
-                                <Text style={styles.avatarText}>
-                                    {(item.name || '?')[0].toUpperCase()}
-                                </Text>
-                            </View>
-                            {/* Presence dot — RC-4: use cached contacts */}
-                            {(() => {
-                                const contact = contacts.find(c => item.members.includes(c.userId));
-                                const memberPresence = contact?.presence || 'offline';
-                                return (
-                                    <View
-                                        style={[styles.presenceDot, { backgroundColor: presenceColor(memberPresence) }]}
-                                        accessibilityLabel={memberPresence === 'online' ? 'Online' : memberPresence === 'unavailable' ? 'Away' : 'Offline'}
-                                    />
-                                );
-                            })()}
-                        </View>
-
-                        {/* Info */}
-                        <View style={styles.roomInfo}>
-                            <View style={styles.roomTop}>
-                                <Text style={styles.roomName} numberOfLines={1}>
-                                    {item.name}
-                                </Text>
-                                {item.lastMessageTime && (
-                                    <Text style={styles.roomTime}>
-                                        {timeAgo(item.lastMessageTime)}
-                                    </Text>
-                                )}
-                            </View>
-                            <View style={styles.roomBottom}>
-                                <Text style={styles.roomPreview} numberOfLines={1}>
-                                    {item.lastMessage || 'No messages yet'}
-                                </Text>
-                                {item.unreadCount > 0 && (
-                                    <View style={styles.badge}
-                                        accessibilityLabel={`${item.unreadCount} unread messages`}
-                                    >
-                                        <Text style={styles.badgeText}>
-                                            {item.unreadCount > 99 ? '99+' : item.unreadCount}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                    </TouchableOpacity>
-                )}
+                renderItem={renderRoom}
             />
         </SafeAreaView>
         </ScreenErrorBoundary>

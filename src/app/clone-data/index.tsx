@@ -105,6 +105,77 @@ export default function CloneDataDashboard() {
         { key: 'pending', label: 'Pending', emoji: '⏳' },
     ];
 
+    const renderFilter = useCallback(({ item: f }: any) => (
+        <Pressable
+            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
+            onPress={() => setFilter(f.key)}
+        >
+            <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
+                {f.emoji} {f.label}
+            </Text>
+        </Pressable>
+    ), [filter]);
+
+    const renderBundle = useCallback(({ item: bundle }: any) => {
+        const syncBadge = getSyncBadge(bundle.sync_status);
+        const totalSize = bundle.audio.size_bytes + (bundle.video?.size_bytes || 0);
+        const isUploading = uploading.has(bundle.bundle_id);
+
+        return (
+            <Pressable style={styles.bundleCard} onLongPress={() => handleDelete(bundle.bundle_id)}>
+                {/* Left: Type indicator */}
+                <View style={styles.bundleIcon}>
+                    <Text style={styles.bundleIconText}>
+                        {bundle.video ? '🎥' : '🎙️'}
+                    </Text>
+                </View>
+
+                {/* Center: Info */}
+                <View style={styles.bundleInfo}>
+                    <View style={styles.bundleTopRow}>
+                        <Text style={styles.bundleDuration} numberOfLines={1}>
+                            {formatDuration(bundle.duration_seconds)}
+                        </Text>
+                        {bundle.clone_training_ready && (
+                            <View style={styles.readyBadge}>
+                                <Text style={styles.readyBadgeText}>✅ Training Ready</Text>
+                            </View>
+                        )}
+                    </View>
+
+                    <Text style={styles.bundleTranscript} numberOfLines={2}>
+                        {bundle.transcript.text || '[No transcript]'}
+                    </Text>
+
+                    <View style={styles.bundleMetaRow}>
+                        <Text style={styles.bundleMeta}>
+                            {bundle.video ? `${bundle.video.resolution} ${bundle.video.camera}` : 'Audio only'}
+                        </Text>
+                        <Text style={styles.bundleMeta}>•</Text>
+                        <Text style={styles.bundleMeta}>{formatBytes(totalSize)}</Text>
+                        <Text style={styles.bundleMeta}>•</Text>
+                        <Text style={[styles.bundleMeta, { color: syncBadge.color }]}>{syncBadge.text}</Text>
+                    </View>
+                </View>
+
+                {/* Right: Upload button */}
+                {bundle.sync_status !== 'synced' && (
+                    <Pressable
+                        style={styles.uploadBtn}
+                        onPress={() => handleUpload(bundle.bundle_id)}
+                        disabled={isUploading}
+                    >
+                        {isUploading ? (
+                            <ActivityIndicator color={colors.accent} size="small" />
+                        ) : (
+                            <Text style={styles.uploadBtnText}>⬆️</Text>
+                        )}
+                    </Pressable>
+                )}
+            </Pressable>
+        );
+    }, [uploading]);
+
     return (
         <ScreenErrorBoundary screenName="CloneData">
             <View style={styles.container}>
@@ -146,16 +217,7 @@ export default function CloneDataDashboard() {
                     keyExtractor={f => f.key}
                     contentContainerStyle={styles.filterRow}
                     style={styles.filterScroll}
-                    renderItem={({ item: f }) => (
-                        <Pressable
-                            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
-                            onPress={() => setFilter(f.key)}
-                        >
-                            <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-                                {f.emoji} {f.label}
-                            </Text>
-                        </Pressable>
-                    )}
+                    renderItem={renderFilter}
                 />
 
                 {/* Bundle List */}
@@ -176,65 +238,7 @@ export default function CloneDataDashboard() {
                             </View>
                         )
                     }
-                    renderItem={({ item: bundle }) => {
-                        const syncBadge = getSyncBadge(bundle.sync_status);
-                        const totalSize = bundle.audio.size_bytes + (bundle.video?.size_bytes || 0);
-                        const isUploading = uploading.has(bundle.bundle_id);
-
-                        return (
-                            <Pressable style={styles.bundleCard} onLongPress={() => handleDelete(bundle.bundle_id)}>
-                                {/* Left: Type indicator */}
-                                <View style={styles.bundleIcon}>
-                                    <Text style={styles.bundleIconText}>
-                                        {bundle.video ? '🎥' : '🎙️'}
-                                    </Text>
-                                </View>
-
-                                {/* Center: Info */}
-                                <View style={styles.bundleInfo}>
-                                    <View style={styles.bundleTopRow}>
-                                        <Text style={styles.bundleDuration} numberOfLines={1}>
-                                            {formatDuration(bundle.duration_seconds)}
-                                        </Text>
-                                        {bundle.clone_training_ready && (
-                                            <View style={styles.readyBadge}>
-                                                <Text style={styles.readyBadgeText}>✅ Training Ready</Text>
-                                            </View>
-                                        )}
-                                    </View>
-
-                                    <Text style={styles.bundleTranscript} numberOfLines={2}>
-                                        {bundle.transcript.text || '[No transcript]'}
-                                    </Text>
-
-                                    <View style={styles.bundleMetaRow}>
-                                        <Text style={styles.bundleMeta}>
-                                            {bundle.video ? `${bundle.video.resolution} ${bundle.video.camera}` : 'Audio only'}
-                                        </Text>
-                                        <Text style={styles.bundleMeta}>•</Text>
-                                        <Text style={styles.bundleMeta}>{formatBytes(totalSize)}</Text>
-                                        <Text style={styles.bundleMeta}>•</Text>
-                                        <Text style={[styles.bundleMeta, { color: syncBadge.color }]}>{syncBadge.text}</Text>
-                                    </View>
-                                </View>
-
-                                {/* Right: Upload button */}
-                                {bundle.sync_status !== 'synced' && (
-                                    <Pressable
-                                        style={styles.uploadBtn}
-                                        onPress={() => handleUpload(bundle.bundle_id)}
-                                        disabled={isUploading}
-                                    >
-                                        {isUploading ? (
-                                            <ActivityIndicator color={colors.accent} size="small" />
-                                        ) : (
-                                            <Text style={styles.uploadBtnText}>⬆️</Text>
-                                        )}
-                                    </Pressable>
-                                )}
-                            </Pressable>
-                        );
-                    }}
+                    renderItem={renderBundle}
                 />
             </View>
         </ScreenErrorBoundary>

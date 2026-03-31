@@ -130,10 +130,16 @@ describe('WindyTune Engine Recommendation', () => {
             expect(result.recommendedEngine).toBe('base');
         });
 
-        it('should fall back to cloud for very low RAM (<1500)', () => {
+        it('should fall back to cloud for very low RAM (<1500) when cloud fallback enabled', () => {
+            const profile = makeProfile({ totalRam: 1000 });
+            const result = getWindyTuneRecommendation(profile, new Set(), true);
+            expect(result.recommendedEngine).toBe('cloud-standard');
+        });
+
+        it('should use tiny model for very low RAM (<1500) when cloud fallback disabled', () => {
             const profile = makeProfile({ totalRam: 1000 });
             const result = getWindyTuneRecommendation(profile);
-            expect(result.recommendedEngine).toBe('cloud-standard');
+            expect(result.recommendedEngine).toBe('tiny');
         });
 
         it('should note download required when engine not downloaded', () => {

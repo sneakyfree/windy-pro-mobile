@@ -15,6 +15,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import Constants from 'expo-constants';
 import { colors, spacing, borderRadius } from '@/theme';
+import { typography } from '@/theme/typography';
 import { useSettingsStore, setLicense, getLicenseKey } from '@/stores/useSettingsStore';
 import { localStorageService } from '@/services/storage-local';
 import { cloneTracker } from '@/services/clone-tracker';
@@ -812,18 +813,18 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: spacing.screenPadding, paddingTop: spacing.md, paddingBottom: spacing.xxl },
   section: { marginBottom: spacing.lg },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm, paddingLeft: spacing.xs },
+  sectionTitle: { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm, paddingLeft: spacing.xs },
   sectionContent: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.md - 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight, minHeight: 48 },
   rowLabelContainer: { flex: 1 },
-  rowLabel: { fontSize: 15, color: colors.textPrimary },
-  rowSubtitle: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
-  rowValue: { fontSize: 15, color: colors.textSecondary },
-  chevron: { fontSize: 20, color: colors.textTertiary, fontWeight: '300' },
+  rowLabel: { ...typography.body, color: colors.textPrimary },
+  rowSubtitle: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
+  rowValue: { ...typography.body, color: colors.textSecondary },
+  chevron: { ...typography.h2, fontWeight: '300', color: colors.textTertiary },
   navRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.md - 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight, minHeight: 48 },
-  navRowLabel: { fontSize: 15, color: colors.textPrimary },
+  navRowLabel: { ...typography.body, color: colors.textPrimary },
   upgradeButton: { backgroundColor: colors.accent, margin: spacing.sm, paddingVertical: spacing.sm + 2, borderRadius: borderRadius.md, alignItems: 'center' },
-  upgradeText: { fontSize: 15, fontWeight: '600', color: colors.background },
+  upgradeText: { ...typography.button, color: colors.background },
 
   // Theme toggle
   themeRow: { flexDirection: 'row', gap: spacing.xs, padding: spacing.sm },
@@ -832,7 +833,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.borderLight,
   },
   themeBtnActive: { borderColor: colors.accent, backgroundColor: 'rgba(163, 230, 53, 0.1)' },
-  themeBtnText: { fontSize: 13, color: colors.textTertiary },
+  themeBtnText: { ...typography.bodySmall, color: colors.textTertiary },
   themeBtnTextActive: { color: colors.accent, fontWeight: '600' },
 
   // Storage actions
@@ -840,7 +841,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight,
   },
-  storageActionText: { fontSize: 14, color: colors.accent, fontWeight: '500' },
+  storageActionText: { ...typography.bodySmall, color: colors.accent, fontWeight: '500' },
 
   // Language pack progress
   packProgress: { height: 3, backgroundColor: colors.surfaceLight, borderRadius: 2, marginTop: 4, overflow: 'hidden' },
@@ -848,11 +849,11 @@ const styles = StyleSheet.create({
 
   // Danger zone
   dangerRow: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, alignItems: 'center' },
-  dangerText: { fontSize: 15, fontWeight: '600', color: colors.stateError },
+  dangerText: { ...typography.button, color: colors.stateError },
 
   footer: { alignItems: 'center', paddingVertical: spacing.xl },
-  footerText: { fontSize: 13, color: colors.textTertiary },
-  footerVersion: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
+  footerText: { ...typography.bodySmall, color: colors.textTertiary },
+  footerVersion: { ...typography.tabLabel, color: colors.textTertiary, marginTop: 2 },
 
   // Translation prefs
   qualityPresetRow: { flexDirection: 'row', gap: 6 },
@@ -860,21 +861,21 @@ const styles = StyleSheet.create({
     paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8,
     borderWidth: 1, borderColor: colors.borderLight,
   },
-  qualityPresetText: { fontSize: 11, color: colors.textTertiary },
+  qualityPresetText: { ...typography.tabLabel, color: colors.textTertiary },
 
   // Voice selection
   voiceRowActive: { backgroundColor: 'rgba(163, 230, 53, 0.06)' },
   // Server URL
   serverUrlRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  settingLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '600', marginBottom: 4 },
+  settingLabel: { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 },
   serverUrlInput: {
     backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
-    fontSize: 14, color: colors.textPrimary, borderWidth: 1, borderColor: colors.border,
+    ...typography.bodySmall, color: colors.textPrimary, borderWidth: 1, borderColor: colors.border,
   },
   serverResetBtn: {
     alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12,
     backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border,
   },
-  serverResetText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
-  voiceCheck: { fontSize: 16, color: colors.accent, fontWeight: '700' },
+  serverResetText: { ...typography.caption, fontWeight: '600', color: colors.textSecondary },
+  voiceCheck: { ...typography.body, fontWeight: '700', color: colors.accent },
 });

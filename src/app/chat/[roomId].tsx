@@ -223,84 +223,7 @@ export default function ConversationScreen() {
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    // ─── Loading ────────────────────────────────────────────────
-
-    if (loading) {
-        return (
-            <ScreenErrorBoundary screenName="Conversation">
-            <SafeAreaView style={styles.container}>
-                <View style={styles.loadingContainer}
-                    accessibilityLabel="Loading conversation" accessibilityRole="none"
-                >
-                    <ActivityIndicator size="large" color={colors.accent} />
-                </View>
-            </SafeAreaView>
-            </ScreenErrorBoundary>
-        );
-    }
-
-    // ─── Render ─────────────────────────────────────────────────
-
-    return (
-        <ScreenErrorBoundary screenName="Conversation">
-        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}
-                    accessibilityLabel="Go back" accessibilityRole="button"
-                >
-                    <Text style={styles.backText}>←</Text>
-                </TouchableOpacity>
-                <View style={styles.headerInfo}>
-                    <Text style={styles.headerName} numberOfLines={1}
-                        accessibilityRole="header"
-                    >{roomName}</Text>
-                    {typingUsers.length > 0 && (
-                        <Text style={styles.typingText}
-                            accessibilityLabel={`${typingUsers.length === 1 ? 'Someone is' : `${typingUsers.length} people are`} typing`}
-                            accessibilityRole="text"
-                        >typing...</Text>
-                    )}
-                </View>
-            </View>
-
-            {/* Offline Banner */}
-            {isOffline && (
-                <View style={styles.offlineBanner}
-                    accessibilityLabel="You are offline. Messages will send when connected."
-                    accessibilityRole="alert"
-                >
-                    <Text style={styles.offlineBannerText}>
-                        {syncState === 'reconnecting' ? '⏳ Reconnecting...' : '📡 Offline — messages will send when connected'}
-                    </Text>
-                </View>
-            )}
-
-            {/* Load Error Banner */}
-            {loadError && (
-                <View style={styles.sendErrorBar}
-                    accessibilityLabel={loadError}
-                    accessibilityRole="alert"
-                >
-                    <Text style={styles.sendErrorText}>{loadError}</Text>
-                </View>
-            )}
-
-            {/* Messages */}
-            <KeyboardAvoidingView
-                style={styles.flex}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={0}
-            >
-                <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    keyExtractor={item => item.eventId}
-                    contentContainerStyle={styles.messageList}
-                    onContentSizeChange={() => {
-                        flatListRef.current?.scrollToEnd({ animated: false });
-                    }}
-                    renderItem={({ item }) => (
+    const renderMessage = useCallback(({ item }: any) => (
                         <View
                             style={[
                                 styles.bubbleRow,
@@ -422,7 +345,86 @@ export default function ConversationScreen() {
                                 </Text>
                             </View>
                         </View>
+    ), [setMessages]);
+
+    // ─── Loading ────────────────────────────────────────────────
+
+    if (loading) {
+        return (
+            <ScreenErrorBoundary screenName="Conversation">
+            <SafeAreaView style={styles.container}>
+                <View style={styles.loadingContainer}
+                    accessibilityLabel="Loading conversation" accessibilityRole="none"
+                >
+                    <ActivityIndicator size="large" color={colors.accent} />
+                </View>
+            </SafeAreaView>
+            </ScreenErrorBoundary>
+        );
+    }
+
+    // ─── Render ─────────────────────────────────────────────────
+
+    return (
+        <ScreenErrorBoundary screenName="Conversation">
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}
+                    accessibilityLabel="Go back" accessibilityRole="button"
+                >
+                    <Text style={styles.backText}>←</Text>
+                </TouchableOpacity>
+                <View style={styles.headerInfo}>
+                    <Text style={styles.headerName} numberOfLines={1}
+                        accessibilityRole="header"
+                    >{roomName}</Text>
+                    {typingUsers.length > 0 && (
+                        <Text style={styles.typingText}
+                            accessibilityLabel={`${typingUsers.length === 1 ? 'Someone is' : `${typingUsers.length} people are`} typing`}
+                            accessibilityRole="text"
+                        >typing...</Text>
                     )}
+                </View>
+            </View>
+
+            {/* Offline Banner */}
+            {isOffline && (
+                <View style={styles.offlineBanner}
+                    accessibilityLabel="You are offline. Messages will send when connected."
+                    accessibilityRole="alert"
+                >
+                    <Text style={styles.offlineBannerText}>
+                        {syncState === 'reconnecting' ? '⏳ Reconnecting...' : '📡 Offline — messages will send when connected'}
+                    </Text>
+                </View>
+            )}
+
+            {/* Load Error Banner */}
+            {loadError && (
+                <View style={styles.sendErrorBar}
+                    accessibilityLabel={loadError}
+                    accessibilityRole="alert"
+                >
+                    <Text style={styles.sendErrorText}>{loadError}</Text>
+                </View>
+            )}
+
+            {/* Messages */}
+            <KeyboardAvoidingView
+                style={styles.flex}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={0}
+            >
+                <FlatList
+                    ref={flatListRef}
+                    data={messages}
+                    keyExtractor={item => item.eventId}
+                    contentContainerStyle={styles.messageList}
+                    onContentSizeChange={() => {
+                        flatListRef.current?.scrollToEnd({ animated: false });
+                    }}
+                    renderItem={renderMessage}
                 />
 
                 {/* Typing indicator */}
