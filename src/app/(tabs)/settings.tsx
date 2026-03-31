@@ -27,6 +27,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import EnginePickerSheet from '@/components/EnginePickerSheet';
 import LanguagePickerSheet from '@/components/LanguagePickerSheet';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
+import { getEcosystemStatus, PRODUCT_DISPLAY, getStatusLabel, getStatusColor, type EcosystemStatus } from '@/services/ecosystem-status';
+import { cloudApi } from '@/services/cloudApi';
 import type { StorageUsage } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { syncManager } from '@/services/sync-manager';
@@ -61,6 +63,7 @@ export default function SettingsScreen() {
   const [serverUrl, setServerUrl] = useState(getTranscriptionServerUrl());
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [loadErrors, setLoadErrors] = useState<string[]>([]);
+  const [ecosystem, setEcosystem] = useState<EcosystemStatus | null>(settings.ecosystemStatus);
 
   const SERVER_URL_KEY = 'windy-server-url';
 
@@ -109,6 +112,15 @@ export default function SettingsScreen() {
       const key = await getLicenseKey();
       setLicenseKeyDisplay(key);
     } catch (err) { settingsLog.warn('loadData', 'License key load failed'); errors.push('license'); }
+
+    // Fetch ecosystem status (non-blocking)
+    try {
+      const ecoStatus = await getEcosystemStatus();
+      if (ecoStatus) {
+        setEcosystem(ecoStatus);
+        settings.setEcosystemStatus(ecoStatus);
+      }
+    } catch { /* Non-critical */ }
 
     setLoadErrors(errors);
     setSettingsLoading(false);
@@ -257,6 +269,55 @@ export default function SettingsScreen() {
               </Text>
             </View>
           )}
+          {/* Ecosystem Section */}
+          {ecosystem && (
+            <SettingsSection title="Your Windy Ecosystem">
+              {PRODUCT_DISPLAY.map((product) => {
+                const productStatus = ecosystem.products[product.key];
+                if (!productStatus) return null;
+                const statusLabel = getStatusLabel(productStatus.status, productStatus.detail);
+                const statusColor = getStatusColor(productStatus.status);
+                const isActive = productStatus.status === 'active';
+                const needsAction = productStatus.status === 'not_provisioned' || productStatus.status === 'available';
+
+                return (
+                  <Pressable
+                    key={product.key}
+                    style={styles.navRow}
+                    onPress={() => {
+                      feedbackService.tap().catch(() => {});
+                      if (product.route) {
+                        router.push(product.route as any);
+                      } else if (product.externalUrl) {
+                        Linking.openURL(product.externalUrl).catch(() => {});
+                      }
+                    }}
+                    accessibilityLabel={`${product.label}: ${statusLabel}`}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.navRowLabel}>{product.emoji} {product.label}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      {needsAction ? (
+                        <Text style={{ ...typography.caption, color: colors.accent }}>{product.cta}</Text>
+                      ) : (
+                        <Text style={{ ...typography.caption, color: statusColor }}>{statusLabel}</Text>
+                      )}
+                      <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </SettingsSection>
+          )}
+          {!ecosystem && cloudApi.isAuthenticated() && (
+            <SettingsSection title="Your Windy Ecosystem">
+              <View style={{ padding: 16, alignItems: 'center' }}>
+                <ActivityIndicator color={colors.accent} size="small" />
+                <Text style={{ ...typography.caption, color: colors.textTertiary, marginTop: 8 }}>Loading ecosystem...</Text>
+              </View>
+            </SettingsSection>
+          )}
+
           {/* Account Section */}
           <SettingsSection title="Account">
             <SettingsRow

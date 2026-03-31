@@ -20,7 +20,11 @@ jest.mock('expo-file-system', () => ({
 }));
 
 jest.mock('@/stores/useSettingsStore', () => ({
-    useSettingsStore: { getState: () => ({ setWindyIdentityId: jest.fn(), setTier: jest.fn() }) },
+    useSettingsStore: { getState: () => ({ setWindyIdentityId: jest.fn(), setTier: jest.fn(), setEcosystemStatus: jest.fn() }) },
+}));
+
+jest.mock('../../src/services/ecosystem-status', () => ({
+    getEcosystemStatus: jest.fn().mockResolvedValue(null),
 }));
 
 const mockFetch = jest.fn();

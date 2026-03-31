@@ -27,6 +27,10 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     },
 }));
 
+jest.mock('../ecosystem-status', () => ({
+    getEcosystemStatus: jest.fn().mockResolvedValue(null),
+}));
+
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 

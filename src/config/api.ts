@@ -52,6 +52,9 @@ export const ENDPOINTS = {
     // Stripe
     STRIPE_CHECKOUT: '/api/stripe/checkout',
 
+    // Identity / Ecosystem
+    ECOSYSTEM_STATUS: '/api/v1/identity/ecosystem-status',
+
     // Health
     HEALTH: '/health',
 

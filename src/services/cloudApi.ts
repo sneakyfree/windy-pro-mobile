@@ -619,6 +619,26 @@ class CloudApiClient {
         } catch {
             // Store may not be ready during early init
         }
+
+        // Fetch ecosystem status after auth (non-blocking)
+        this.fetchEcosystemStatus();
+    }
+
+    /**
+     * Fetch ecosystem status and store in Zustand (non-blocking).
+     * Called after login, register, and token refresh.
+     */
+    private async fetchEcosystemStatus(): Promise<void> {
+        try {
+            const { getEcosystemStatus } = require('./ecosystem-status');
+            const status = await getEcosystemStatus();
+            if (status) {
+                const { useSettingsStore } = require('@/stores/useSettingsStore');
+                useSettingsStore.getState().setEcosystemStatus(status);
+            }
+        } catch {
+            // Non-critical — ecosystem status is supplementary
+        }
     }
 
     private handleAuthExpired(): void {

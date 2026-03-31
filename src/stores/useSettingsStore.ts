@@ -13,6 +13,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import type { EngineId, LicenseTier } from '@/types';
+import type { EcosystemStatus } from '@/services/ecosystem-status';
 
 // ─── SecureStore Keys ────────────────────────────────────────
 const LICENSE_KEY_SECURE = 'windy_license_key';
@@ -71,6 +72,10 @@ interface SettingsStore {
     // Identity (cross-product correlation) — in-memory only, loaded from SecureStore
     windyIdentityId: string | null;
     setWindyIdentityId: (id: string | null) => void;
+
+    // Ecosystem status — in-memory only, fetched after login
+    ecosystemStatus: EcosystemStatus | null;
+    setEcosystemStatus: (status: EcosystemStatus | null) => void;
 
     // Theme
     theme: 'dark' | 'light' | 'system';
@@ -133,6 +138,9 @@ export const useSettingsStore = create<SettingsStore>()(
             windyIdentityId: null,
             setWindyIdentityId: (id) => set({ windyIdentityId: id }),
 
+            ecosystemStatus: null,
+            setEcosystemStatus: (status) => set({ ecosystemStatus: status }),
+
             theme: 'dark',
             setTheme: (theme) => set({ theme }),
 
@@ -149,7 +157,7 @@ export const useSettingsStore = create<SettingsStore>()(
             // SEC-AUDIT: Exclude sensitive fields from AsyncStorage persistence
             partialize: (state) => {
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { windyIdentityId, ...rest } = state;
+                const { windyIdentityId, ecosystemStatus, ...rest } = state;
                 return rest;
             },
         }
