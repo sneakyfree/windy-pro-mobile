@@ -79,7 +79,9 @@ class TranscriptionService {
 
     /**
      * Local transcription via whisper.rn
-     * Will be fully functional once whisper.rn is installed
+     * Will be fully functional once whisper.rn is installed.
+     * When unavailable: auto-falls back to cloud if network is available,
+     * otherwise queues the audio for transcription when connectivity returns.
      */
     private async localTranscribe(
         uri: string,
@@ -98,14 +100,46 @@ class TranscriptionService {
             await whisperManager.release();
             return segments;
         } catch (err: unknown) {
-            // Only fall back to cloud if user has explicitly enabled cloud fallback
-            // AND has an active subscription (not lifetime)
+            log.warn('Local_unavailable', 'On-device transcription not available', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
+
+            // Check if cloud fallback is possible
             const { cloudFallbackEnabled } = require('../stores/useSettingsStore').useSettingsStore.getState();
             const { licenseService: licSvc } = require('./license');
+
             if (cloudFallbackEnabled && licSvc.isCloudSttEnabled()) {
-                log.warn('Local_failed_falling_back_to_c', 'Local failed, falling back to cloud (user-enabled)', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
-                return this.cloudTranscribe(uri, 'cloud-standard');
+                // Check network availability before attempting cloud
+                const { networkMonitor } = require('./network-monitor');
+                if (networkMonitor.isOnline) {
+                    log.info('Local_fallback_cloud', 'On-device transcription coming soon. Using cloud transcription.');
+                    return this.cloudTranscribe(uri, 'cloud-standard');
+                }
+
+                // No network — queue audio for transcription when connectivity returns
+                log.info('Local_queued_offline', 'No network available. Audio queued for transcription when connection returns.');
+                const { syncManager } = require('./sync-manager');
+                const bundleId = `pending-transcription-${Date.now()}`;
+                await syncManager.addToQueue({
+                    bundleId,
+                    filePath: uri,
+                    fileType: 'audio',
+                    metadata: { status: 'pending_transcription', engine: 'cloud-standard' },
+                });
+
+                // Return a placeholder segment so the UI shows a message
+                const placeholder: TranscriptSegment = {
+                    id: `seg-queued-${Date.now()}`,
+                    text: '[Queued for transcription — will process when online]',
+                    startTime: 0,
+                    endTime: 0,
+                    confidence: 0,
+                    isPartial: true,
+                    speakerId: null,
+                    language: 'en',
+                };
+                this.onSegment?.(placeholder);
+                return [placeholder];
             }
+
             log.warn('Local_failed_no_cloud_fallback', 'Local transcription failed. Cloud fallback is off — staying local.', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             throw err;
         }

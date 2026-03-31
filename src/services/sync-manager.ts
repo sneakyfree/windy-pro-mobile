@@ -362,6 +362,29 @@ class SyncManager {
         if (this.isSyncing || this.networkType === 'none') return;
         if (!this.settings.auto_sync) return;
 
+        // Network-aware: skip if wifi-only sync and on cellular
+        if (this.networkType === 'cellular' && !this.settings.sync_on_cellular) {
+            log.info('processQueue', 'Skipping sync — on cellular and sync_on_cellular is disabled');
+            return;
+        }
+
+        // Battery-aware: skip if not plugged in when pluggedInOnly setting is active
+        try {
+            const Battery = require('expo-battery');
+            const batteryState = await Battery.getBatteryStateAsync();
+            const batteryLevel = await Battery.getBatteryLevelAsync();
+            const isPluggedIn = batteryState === Battery.BatteryState.CHARGING ||
+                                batteryState === Battery.BatteryState.FULL;
+
+            // Don't sync on battery below 20% unless plugged in
+            if (!isPluggedIn && batteryLevel < 0.20) {
+                log.info('processQueue', `Skipping sync — battery low (${Math.round(batteryLevel * 100)}%) and not charging`);
+                return;
+            }
+        } catch {
+            // Battery API unavailable — proceed with sync
+        }
+
         this.isSyncing = true;
         this.emit();
 

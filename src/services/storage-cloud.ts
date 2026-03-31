@@ -395,7 +395,7 @@ class CloudStorageClient {
         }
     }
 
-    // ─── Compatibility bridge (for existing sync-engine.ts) ────
+    // ─── Compatibility bridge (legacy API) ────
 
     /**
      * @deprecated Use uploadRecording instead. Kept for backward compat.

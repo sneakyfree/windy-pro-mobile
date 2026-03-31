@@ -116,13 +116,13 @@ class CloneBundleService {
         try {
             const audioInfo = await FileSystem.getInfoAsync(params.audioPath);
             audioSize = audioInfo.exists && 'size' in audioInfo ? (audioInfo as any).size : 0;
-        } catch (err) { console.warn('[cloneuundle] File error:', err); }
+        } catch (err) { console.warn('[clonebundle] File error:', err); }
 
         if (params.videoPath) {
             try {
                 const videoInfo = await FileSystem.getInfoAsync(params.videoPath);
                 videoSize = videoInfo.exists && 'size' in videoInfo ? (videoInfo as any).size : 0;
-            } catch (err) { console.warn('[cloneuundle] File error:', err); }
+            } catch (err) { console.warn('[clonebundle] File error:', err); }
         }
 
         const hasVideo = !!params.videoPath && videoSize > 0;

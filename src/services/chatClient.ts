@@ -558,15 +558,29 @@ class ChatClient {
         });
 
         // ── Attempt E2E encryption initialization ───────────────
+        // @matrix-org/olm is installed — runtime check ensures graceful fallback
+        // if the native module fails to load on a specific platform.
         try {
-            if (typeof this.client.initCrypto === 'function') {
+            // Check if Olm is available at runtime before attempting crypto init
+            let olmAvailable = false;
+            try {
+                require('@matrix-org/olm');
+                olmAvailable = true;
+            } catch {
+                // Olm not installed/bundled
+            }
+
+            if (olmAvailable && typeof this.client.initCrypto === 'function') {
                 await this.client.initCrypto();
                 this.client.setCryptoTrustCrossSignedDevices?.(true);
                 this.cryptoEnabled = true;
                 log.info('E2E_encryption_enabled', 'E2E encryption enabled');
+            } else {
+                log.warn('E2E_disabled_olm_not_bundled', 'E2E encryption disabled — @matrix-org/olm is not bundled. Messages will be sent unencrypted.');
+                this.cryptoEnabled = false;
             }
         } catch (e) {
-            log.warn('Crypto_init_not_available_Olm_', 'Crypto init not available (Olm not bundled)', { error: sanitizeError(e) });
+            log.warn('Crypto_init_failed', 'E2E crypto initialization failed — falling back to unencrypted', { error: sanitizeError(e) });
             this.cryptoEnabled = false;
         }
 

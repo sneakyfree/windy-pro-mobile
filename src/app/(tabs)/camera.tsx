@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
     overlayLabel: { fontSize: 11, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
     overlayOriginal: { fontSize: 15, color: colors.textPrimary, lineHeight: 22 },
     overlayDivider: { height: 1, backgroundColor: colors.borderLight, marginVertical: 8 },
-    overlayTranslated: { fontSize: 18, color: colors.accent, lineHeight: 26, fontWeight: '600' },
+    overlayTranslated: { fontSize: 18, color: colors.textPrimary, lineHeight: 26, fontWeight: '600' },
     overlayActions: { flexDirection: 'row', gap: 12, marginTop: 12 },
     overlayActionBtn: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: colors.surface, borderRadius: borderRadius.md },
     overlayActionText: { fontSize: 14, color: colors.textPrimary },
@@ -607,7 +607,7 @@ const styles = StyleSheet.create({
     },
     bubbleOriginal: { fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 18 },
     bubbleDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 8 },
-    bubbleTranslated: { fontSize: 17, color: '#a3e635', lineHeight: 24, fontWeight: '600' },
+    bubbleTranslated: { fontSize: 17, color: '#e2e8f0', lineHeight: 24, fontWeight: '600' },
     bubbleFreezeBtn: {
         marginTop: 10, backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: 10,
         paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)',
@@ -627,5 +627,5 @@ const styles = StyleSheet.create({
     historyLang: { fontSize: 12, color: colors.textTertiary, marginBottom: 4 },
     historyOriginal: { fontSize: 14, color: colors.textPrimary, lineHeight: 20 },
     historyDivider: { height: 1, backgroundColor: colors.borderLight, marginVertical: 8 },
-    historyTranslated: { fontSize: 14, color: colors.accent, lineHeight: 20 },
+    historyTranslated: { fontSize: 14, color: colors.accentSecondary, lineHeight: 20 },
 });

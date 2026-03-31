@@ -569,6 +569,22 @@ export default function SettingsScreen() {
               value={syncManager.getSettings().sync_on_cellular}
               onToggle={(v) => syncManager.updateSettings({ sync_on_cellular: v })}
             />
+            {/* Sync Status Indicator */}
+            {(() => {
+              const syncState = syncManager.getState();
+              return (
+                <View style={{ paddingHorizontal: 16, paddingVertical: 10, gap: 4 }} accessibilityRole="summary" accessibilityLabel={`Sync status: ${syncState.pendingCount} items pending, network ${syncState.networkType}, last sync ${syncState.lastSyncTime ? new Date(syncState.lastSyncTime).toLocaleString() : 'never'}`}>
+                  <Text style={[styles.rowSubtitle, { color: colors.textTertiary }]}>
+                    {syncState.networkType === 'wifi' ? '📶 Wi-Fi' : syncState.networkType === 'cellular' ? '📱 Cellular' : '📵 Offline'}
+                    {' · '}{syncState.pendingCount} pending
+                    {syncState.isSyncing ? ` · Syncing ${syncState.overallProgress}%` : ''}
+                  </Text>
+                  <Text style={[styles.rowSubtitle, { color: colors.textTertiary }]}>
+                    Last sync: {syncState.lastSyncTime ? new Date(syncState.lastSyncTime).toLocaleString() : 'Never'}
+                  </Text>
+                </View>
+              );
+            })()}
             <Pressable style={styles.navRow} onPress={async () => {
               await feedbackService.tap();
               await syncManager.manualSync();

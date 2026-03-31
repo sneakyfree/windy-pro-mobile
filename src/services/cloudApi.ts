@@ -23,6 +23,7 @@ import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 import { API_BASE_URL, ENDPOINTS, apiUrl } from '@/config/api';
 import type { LicenseTier } from '@/types';
+import { normalizeBackendTier } from './license';
 import { createLogger } from './logger';
 
 const log = createLogger('CloudApi');
@@ -281,14 +282,19 @@ class CloudApiClient {
                 parameters['metadata'] = JSON.stringify(metadata);
             }
 
+            const uploadHeaders: Record<string, string> = {
+                'Authorization': `Bearer ${this.jwt}`,
+            };
+            if (this.windyIdentityId) {
+                uploadHeaders['X-Windy-Identity-Id'] = this.windyIdentityId;
+            }
+
             const result = await FileSystem.uploadAsync(uploadUrl, fileUri, {
                 httpMethod: 'POST',
                 uploadType: FileSystem.FileSystemUploadType.MULTIPART,
                 fieldName: 'file',
                 mimeType: contentType,
-                headers: {
-                    'Authorization': `Bearer ${this.jwt}`,
-                },
+                headers: uploadHeaders,
                 parameters,
             });
 
@@ -296,15 +302,19 @@ class CloudApiClient {
                 // Attempt token refresh before giving up
                 const refreshed = await this.refreshAuth();
                 if (refreshed && this.jwt) {
+                    const retryUploadHeaders: Record<string, string> = {
+                        'Authorization': `Bearer ${this.jwt}`,
+                    };
+                    if (this.windyIdentityId) {
+                        retryUploadHeaders['X-Windy-Identity-Id'] = this.windyIdentityId;
+                    }
                     // Retry the upload with the new token
                     const retryResult = await FileSystem.uploadAsync(uploadUrl, fileUri, {
                         httpMethod: 'POST',
                         uploadType: FileSystem.FileSystemUploadType.MULTIPART,
                         fieldName: 'file',
                         mimeType: contentType,
-                        headers: {
-                            'Authorization': `Bearer ${this.jwt}`,
-                        },
+                        headers: retryUploadHeaders,
                         parameters,
                     });
                     if (retryResult.status >= 200 && retryResult.status < 300) {
@@ -576,10 +586,21 @@ class CloudApiClient {
             this.refreshTokenValue = refreshToken || null;
         }
 
-        // Extract windy_identity_id from JWT payload for cross-product correlation
+        // Extract windy_identity_id and tier from JWT payload
         const payload = this.decodeJwtPayload(token);
         this.windyIdentityId = typeof payload?.windy_identity_id === 'string'
             ? payload.windy_identity_id : null;
+
+        // Normalize backend tier (free/pro/ultra/max) to mobile tier
+        if (typeof payload?.tier === 'string') {
+            const normalizedTier = normalizeBackendTier(payload.tier as string);
+            try {
+                const { useSettingsStore } = require('@/stores/useSettingsStore');
+                useSettingsStore.getState().setTier?.(normalizedTier);
+            } catch {
+                // Store may not be ready during early init
+            }
+        }
 
         await SecureStore.setItemAsync(TOKEN_KEY, token).catch(() => {});
         if (userId) await SecureStore.setItemAsync(USER_ID_KEY, userId).catch(() => {});
@@ -685,12 +706,17 @@ class CloudApiClient {
             return null;
         }
 
+        const headers: Record<string, string> = {
+            ...init?.headers as Record<string, string>,
+            'Authorization': `Bearer ${this.jwt}`,
+        };
+        if (this.windyIdentityId) {
+            headers['X-Windy-Identity-Id'] = this.windyIdentityId;
+        }
+
         const res = await this.fetchWithTimeout(url, {
             ...init,
-            headers: {
-                ...init?.headers,
-                'Authorization': `Bearer ${this.jwt}`,
-            },
+            headers,
         });
 
         if (res.status === 401) {
@@ -698,12 +724,16 @@ class CloudApiClient {
             const refreshed = await this.refreshAuth();
             if (refreshed && this.jwt) {
                 // Retry the original request with the new token
+                const retryHeaders: Record<string, string> = {
+                    ...init?.headers as Record<string, string>,
+                    'Authorization': `Bearer ${this.jwt}`,
+                };
+                if (this.windyIdentityId) {
+                    retryHeaders['X-Windy-Identity-Id'] = this.windyIdentityId;
+                }
                 const retryRes = await this.fetchWithTimeout(url, {
                     ...init,
-                    headers: {
-                        ...init?.headers,
-                        'Authorization': `Bearer ${this.jwt}`,
-                    },
+                    headers: retryHeaders,
                 });
                 if (retryRes.status === 401) {
                     // Refresh succeeded but still 401 — token is truly invalid

@@ -18,6 +18,20 @@ const log = createLogger('License');
 const TOKEN_KEY = 'windy_jwt_token';
 
 /**
+ * Normalize backend tier names (free/pro/ultra/max) to mobile LicenseTier.
+ * The backend uses a different naming scheme — this bridges the two.
+ */
+export function normalizeBackendTier(backendTier: string): LicenseTier {
+    const mapping: Record<string, LicenseTier> = {
+        'free': 'free',
+        'pro': 'pro',
+        'ultra': 'translate',      // ultra includes translation
+        'max': 'translate_pro',    // max includes everything
+    };
+    return mapping[backendTier] || 'free';
+}
+
+/**
  * 🧬 M10.1.1 — Feature matrix by tier
  */
 export const FEATURE_MATRIX: Record<LicenseTier, string[]> = {
