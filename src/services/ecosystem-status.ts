@@ -99,7 +99,25 @@ export async function getEcosystemStatus(): Promise<EcosystemStatus | null> {
             return null;
         }
 
-        return await res.json();
+        const result = await res.json();
+
+        // Defensive: fill in missing products with default status
+        // If Pro adds/removes a product key, mobile won't crash
+        const defaults: EcosystemStatus['products'] = {
+            windy_word: { status: 'not_provisioned' },
+            windy_chat: { status: 'not_provisioned' },
+            windy_mail: { status: 'not_provisioned' },
+            windy_cloud: { status: 'not_provisioned' },
+            windy_fly: { status: 'not_provisioned' },
+            windy_clone: { status: 'not_provisioned' },
+            windy_traveler: { status: 'not_provisioned' },
+            eternitas: { status: 'not_provisioned' },
+        };
+
+        return {
+            ...result,
+            products: { ...defaults, ...result.products },
+        };
     } catch (err) {
         log.warn('getEcosystemStatus', 'Failed to fetch ecosystem status');
         return null;
