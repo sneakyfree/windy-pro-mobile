@@ -26,6 +26,7 @@ export interface EcosystemStatus {
     windy_identity_id: string;
     email: string;
     tier: string;
+    creator_name?: string;  // Display name from Pro (may be added by backend)
     products: {
         windy_word: EcosystemProduct;
         windy_chat: EcosystemProduct;
