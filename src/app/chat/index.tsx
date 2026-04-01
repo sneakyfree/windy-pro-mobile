@@ -91,9 +91,15 @@ export default function ChatHomeScreen() {
     const flyProduct = ecosystem?.products?.windy_fly;
     const agentProvisioned = flyProduct?.status === 'active';
     const agentName = flyProduct?.agent_name || 'Windy Fly';
-    const agentRoomId = flyProduct?.room_id;
     const agentMatrixId = flyProduct?.matrix_user_id;
     const passportId = flyProduct?.passport_id || ecosystem?.products?.eternitas?.passport_id;
+
+    // Detect agent room: from ecosystem response, or by scanning room members
+    // for the @windy_*:chat.windypro.com pattern
+    const AGENT_USER_PATTERN = /^@windy_[^:]+:chat\.windypro\.com$/;
+    const agentRoomId = flyProduct?.room_id || rooms.find(room =>
+        room.members?.some((m: string) => AGENT_USER_PATTERN.test(m) || m === agentMatrixId)
+    )?.roomId || null;
 
     // ─── Load ───────────────────────────────────────────────────
 

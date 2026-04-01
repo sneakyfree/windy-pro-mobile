@@ -19,6 +19,7 @@ import { pairManager } from '@/services/pairManager';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import EternitasBadge from '@/components/EternitasBadge';
 import { PAIR_CDN_BASE } from '@/config/api';
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -81,6 +82,13 @@ export default function ConversationScreen() {
     }, []);
 
     const isOffline = syncState === 'reconnecting' || syncState === 'error' || syncState === 'stopped';
+
+    // Detect if this room is an agent DM
+    const ecosystem = useSettingsStore(s => s.ecosystemStatus);
+    const flyProduct = ecosystem?.products?.windy_fly;
+    const isAgentRoom = flyProduct?.room_id === roomId ||
+        messages.some(m => /^@windy_[^:]+:chat\.windypro\.com$/.test((m as any).sender || (m as any).senderName || ''));
+    const agentPassportId = flyProduct?.passport_id || ecosystem?.products?.eternitas?.passport_id;
 
     // ─── Load + Real-time Listeners (RC-2: sequenced) ───────────
 
@@ -376,9 +384,19 @@ export default function ConversationScreen() {
                     <Text style={styles.backText}>←</Text>
                 </TouchableOpacity>
                 <View style={styles.headerInfo}>
-                    <Text style={styles.headerName} numberOfLines={1}
-                        accessibilityRole="header"
-                    >{roomName}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.headerName} numberOfLines={1}
+                            accessibilityRole="header"
+                        >{roomName}</Text>
+                        {isAgentRoom && agentPassportId && (
+                            <EternitasBadge passportId={agentPassportId} size={10} />
+                        )}
+                        {isAgentRoom && !agentPassportId && (
+                            <View style={{ backgroundColor: 'rgba(163,230,53,0.2)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3 }}>
+                                <Text style={{ fontSize: 9, fontWeight: '700', color: '#a3e635' }}>AI</Text>
+                            </View>
+                        )}
+                    </View>
                     {typingUsers.length > 0 && (
                         <Text style={styles.typingText}
                             accessibilityLabel={`${typingUsers.length === 1 ? 'Someone is' : `${typingUsers.length} people are`} typing`}
