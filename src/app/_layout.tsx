@@ -230,6 +230,17 @@ export default function RootLayout() {
           return;
         }
 
+        // Handle dashboard deep links (from birth announcement SMS/email)
+        if (url.includes('/app/fly') || parsed.path === 'fly') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push('/(tabs)/chat');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 500);
+          return;
+        }
+
         // Route deep links: windypro://translate, windypro://clone, etc.
         const routeMap: Record<string, string> = {
           'cloud': '/cloud',

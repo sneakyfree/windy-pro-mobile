@@ -234,3 +234,19 @@ class PushNotificationService {
 }
 
 export const pushNotificationService = new PushNotificationService();
+
+/**
+ * Show a birth announcement notification when an AI agent hatches.
+ * Called when the backend sends the hatch event via WebSocket or push.
+ */
+export async function showBirthAnnouncement(agentName: string): Promise<void> {
+    await Notifications.scheduleNotificationAsync({
+        content: {
+            title: "🪰 IT'S ALIVE!",
+            body: `Your AI agent ${agentName} has hatched! Tap to chat.`,
+            data: { route: '/(tabs)/chat' },
+            ...(Platform.OS === 'android' ? { channelId: 'translation' } : {}),
+        },
+        trigger: null as unknown as Notifications.NotificationTriggerInput,
+    });
+}

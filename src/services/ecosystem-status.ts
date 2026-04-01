@@ -47,13 +47,13 @@ export interface ProductDisplayInfo {
 
 export const PRODUCT_DISPLAY: ProductDisplayInfo[] = [
     { key: 'windy_word', emoji: '🎙️', label: 'Windy Word', route: '/(tabs)', cta: 'Open' },
-    { key: 'windy_chat', emoji: '💬', label: 'Windy Chat', route: '/(tabs)/chat', cta: 'Set up' },
-    { key: 'windy_mail', emoji: '📧', label: 'Windy Mail', externalUrl: 'https://windymail.ai', cta: 'Set up' },
-    { key: 'windy_cloud', emoji: '☁️', label: 'Windy Cloud', route: '/cloud', cta: 'Set up' },
-    { key: 'windy_fly', emoji: '🪰', label: 'Windy Fly', externalUrl: 'https://windyfly.ai', cta: 'Hatch your AI agent' },
-    { key: 'windy_clone', emoji: '🧬', label: 'Windy Clone', route: '/(tabs)/clone-data', cta: 'Start recording' },
-    { key: 'windy_traveler', emoji: '🌍', label: 'Windy Traveler', route: '/(tabs)/market', cta: 'Browse pairs' },
-    { key: 'eternitas', emoji: '🪪', label: 'Eternitas', externalUrl: 'https://eternitas.ai', cta: 'Register' },
+    { key: 'windy_chat', emoji: '💬', label: 'Windy Chat', route: '/(tabs)/chat', cta: 'Open' },
+    { key: 'windy_mail', emoji: '📧', label: 'Windy Mail', externalUrl: 'https://windypro.thewindstorm.uk/app/mail', cta: 'Open Inbox' },
+    { key: 'windy_fly', emoji: '🪰', label: 'Windy Fly', externalUrl: 'https://windypro.thewindstorm.uk/app/fly', cta: 'Chat with Agent' },
+    { key: 'windy_cloud', emoji: '☁️', label: 'Windy Cloud', externalUrl: 'https://windypro.thewindstorm.uk/app/cloud', cta: 'View Files' },
+    { key: 'windy_clone', emoji: '🧬', label: 'Windy Clone', route: '/(tabs)/clone-data', cta: 'View Progress' },
+    { key: 'windy_traveler', emoji: '🌍', label: 'Windy Traveler', route: '/market', cta: 'Browse Pairs' },
+    { key: 'eternitas', emoji: '🪪', label: 'Eternitas', externalUrl: 'https://windypro.thewindstorm.uk/app/passport', cta: 'View Passport' },
 ];
 
 // ─── Status Label Helpers ───────────────────────────────────────
