@@ -12,7 +12,7 @@ import { INPUT_LIMITS } from '@/utils/validation';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
-import { chatClient, type ChatRoom, type ChatContact, type SyncState } from '@/services/chatClient';
+import { chatClient, isAgentRoom, type ChatRoom, type ChatContact, type SyncState } from '@/services/chatClient';
 import { chatTranslateService } from '@/services/chatTranslate';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
@@ -94,12 +94,18 @@ export default function ChatHomeScreen() {
     const agentMatrixId = flyProduct?.matrix_user_id;
     const passportId = flyProduct?.passport_id || ecosystem?.products?.eternitas?.passport_id;
 
-    // Detect agent room: from ecosystem response, or by scanning room members
-    // for the @windy_*:chat.windypro.com pattern
-    const AGENT_USER_PATTERN = /^@windy_[^:]+:chat\.windypro\.com$/;
-    const agentRoomId = flyProduct?.room_id || rooms.find(room =>
-        room.members?.some((m: string) => AGENT_USER_PATTERN.test(m) || m === agentMatrixId)
-    )?.roomId || null;
+    // Detect agent room: from ecosystem response, or by scanning rooms with isAgentRoom()
+    const agentRoomId = flyProduct?.room_id ||
+        rooms.find(room => isAgentRoom(room) || room.members?.includes(agentMatrixId || ''))?.roomId || null;
+
+    // Sort agent rooms to top of the list
+    const sortedRooms = [...rooms].sort((a, b) => {
+        const aIsAgent = isAgentRoom(a);
+        const bIsAgent = isAgentRoom(b);
+        if (aIsAgent && !bIsAgent) return -1;
+        if (!aIsAgent && bIsAgent) return 1;
+        return (b.lastMessageTime || 0) - (a.lastMessageTime || 0);
+    });
 
     // ─── Load ───────────────────────────────────────────────────
 
@@ -260,6 +266,11 @@ export default function ChatHomeScreen() {
             <View style={styles.roomInfo}>
                 <View style={styles.roomTop}>
                     <Text style={styles.roomName} numberOfLines={1}>{item.name}</Text>
+                    {isAgentRoom(item) && (
+                        <View style={styles.agentTag}>
+                            <Text style={styles.agentTagText}>AI</Text>
+                        </View>
+                    )}
                     {item.lastMessageTime && <Text style={styles.roomTime}>{timeAgo(item.lastMessageTime)}</Text>}
                 </View>
                 <View style={styles.roomBottom}>
@@ -430,7 +441,7 @@ export default function ChatHomeScreen() {
 
             {/* Room List */}
             <FlatList
-                data={rooms}
+                data={sortedRooms}
                 keyExtractor={item => item.roomId}
                 contentContainerStyle={rooms.length === 0 ? styles.emptyListContainer : undefined}
                 refreshControl={

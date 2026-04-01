@@ -271,7 +271,7 @@ export default function SettingsScreen() {
           )}
           {/* Ecosystem Section */}
           {ecosystem && (
-            <SettingsSection title="Your Windy Ecosystem">
+            <SettingsSection title={ecosystem.creator_name ? `${ecosystem.creator_name}'s Windy Ecosystem` : 'Your Windy Ecosystem'}>
               {PRODUCT_DISPLAY.map((product) => {
                 const productStatus = ecosystem.products[product.key];
                 if (!productStatus) return null;
