@@ -113,6 +113,15 @@ class PushNotificationService {
             importance: Notifications.AndroidImportance.LOW,
             description: 'Background sync progress and Wi-Fi reminders',
         });
+
+        await Notifications.setNotificationChannelAsync('agent', {
+            name: 'AI Agent Messages',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 100, 100, 200, 100, 200],
+            lightColor: '#a3e635',
+            sound: 'default',
+            description: 'Messages from your Windy Fly AI agent',
+        });
     }
 
     /**
@@ -245,7 +254,23 @@ export async function showBirthAnnouncement(agentName: string): Promise<void> {
             title: "🪰 IT'S ALIVE!",
             body: `Your AI agent ${agentName} has hatched! Tap to chat.`,
             data: { route: '/(tabs)/chat' },
-            ...(Platform.OS === 'android' ? { channelId: 'translation' } : {}),
+            ...(Platform.OS === 'android' ? { channelId: 'agent' } : {}),
+        },
+        trigger: null as unknown as Notifications.NotificationTriggerInput,
+    });
+}
+
+/**
+ * Show a notification for an incoming agent message.
+ * Uses the dedicated 'agent' channel with distinct vibration pattern.
+ */
+export async function showAgentMessage(agentName: string, message: string, roomId?: string): Promise<void> {
+    await Notifications.scheduleNotificationAsync({
+        content: {
+            title: `🪰 ${agentName}`,
+            body: message,
+            data: { route: roomId ? `/chat/${roomId}` : '/(tabs)/chat' },
+            ...(Platform.OS === 'android' ? { channelId: 'agent' } : {}),
         },
         trigger: null as unknown as Notifications.NotificationTriggerInput,
     });

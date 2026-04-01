@@ -16,6 +16,10 @@ export type ProductStatus = 'active' | 'pending' | 'not_provisioned' | 'upgrade_
 export interface EcosystemProduct {
     status: ProductStatus;
     detail?: string;
+    matrix_user_id?: string;   // Windy Fly agent's Matrix user ID
+    agent_name?: string;       // Windy Fly agent display name
+    passport_id?: string;      // Eternitas passport ID (ET-XXXXX)
+    room_id?: string;          // Pre-created DM room ID
 }
 
 export interface EcosystemStatus {
@@ -49,7 +53,7 @@ export const PRODUCT_DISPLAY: ProductDisplayInfo[] = [
     { key: 'windy_word', emoji: '🎙️', label: 'Windy Word', route: '/(tabs)', cta: 'Open' },
     { key: 'windy_chat', emoji: '💬', label: 'Windy Chat', route: '/(tabs)/chat', cta: 'Open' },
     { key: 'windy_mail', emoji: '📧', label: 'Windy Mail', externalUrl: 'https://windypro.thewindstorm.uk/app/mail', cta: 'Open Inbox' },
-    { key: 'windy_fly', emoji: '🪰', label: 'Windy Fly', externalUrl: 'https://windypro.thewindstorm.uk/app/fly', cta: 'Chat with Agent' },
+    { key: 'windy_fly', emoji: '🪰', label: 'Windy Fly', route: '/(tabs)/chat', cta: 'Chat with Agent' },
     { key: 'windy_cloud', emoji: '☁️', label: 'Windy Cloud', externalUrl: 'https://windypro.thewindstorm.uk/app/cloud', cta: 'View Files' },
     { key: 'windy_clone', emoji: '🧬', label: 'Windy Clone', route: '/(tabs)/clone-data', cta: 'View Progress' },
     { key: 'windy_traveler', emoji: '🌍', label: 'Windy Traveler', route: '/market', cta: 'Browse Pairs' },

@@ -16,6 +16,8 @@ import { chatClient, type ChatRoom, type ChatContact, type SyncState } from '@/s
 import { chatTranslateService } from '@/services/chatTranslate';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import EternitasPassport from '@/components/EternitasPassport';
+import type { EcosystemStatus } from '@/services/ecosystem-status';
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -83,6 +85,15 @@ export default function ChatHomeScreen() {
     }, []);
 
     const isOffline = syncState === 'reconnecting' || syncState === 'error';
+
+    // ─── Agent DM (Windy Fly) ──────────────────────────────────
+    const ecosystem: EcosystemStatus | null = useSettingsStore(s => s.ecosystemStatus);
+    const flyProduct = ecosystem?.products?.windy_fly;
+    const agentProvisioned = flyProduct?.status === 'active';
+    const agentName = flyProduct?.agent_name || 'Windy Fly';
+    const agentRoomId = flyProduct?.room_id;
+    const agentMatrixId = flyProduct?.matrix_user_id;
+    const passportId = flyProduct?.passport_id || ecosystem?.products?.eternitas?.passport_id;
 
     // ─── Load ───────────────────────────────────────────────────
 
@@ -367,6 +378,50 @@ export default function ChatHomeScreen() {
                 </View>
             )}
 
+            {/* Pinned Agent DM */}
+            {agentProvisioned && agentRoomId ? (
+                <TouchableOpacity
+                    style={styles.agentCard}
+                    onPress={() => router.push(`/chat/${agentRoomId}`)}
+                    activeOpacity={0.7}
+                    accessibilityLabel={`${agentName}, your AI agent. Tap to chat.`}
+                    accessibilityRole="button"
+                >
+                    <View style={styles.agentBadge}>
+                        <Text style={styles.agentEmoji}>🪰</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={styles.agentName}>{agentName}</Text>
+                            <View style={styles.agentTag}>
+                                <Text style={styles.agentTagText}>AI Agent</Text>
+                            </View>
+                        </View>
+                        <Text style={styles.agentSubtext}>Your Windy Fly agent</Text>
+                    </View>
+                    {passportId && <EternitasPassport passportId={passportId} compact />}
+                    <Text style={styles.agentChevron}>›</Text>
+                </TouchableOpacity>
+            ) : !agentProvisioned && isLoggedIn ? (
+                <TouchableOpacity
+                    style={styles.agentCtaCard}
+                    onPress={() => {
+                        const Linking = require('expo-linking');
+                        Linking.openURL('https://windypro.thewindstorm.uk/app/fly').catch(() => {});
+                    }}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Hatch your Windy Fly AI agent"
+                    accessibilityRole="button"
+                >
+                    <Text style={styles.agentCtaEmoji}>🪰</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.agentCtaTitle}>Hatch your Windy Fly agent</Text>
+                        <Text style={styles.agentCtaSubtext}>Your own AI that lives in chat</Text>
+                    </View>
+                    <Text style={styles.agentChevron}>›</Text>
+                </TouchableOpacity>
+            ) : null}
+
             {/* Room List */}
             <FlatList
                 data={rooms}
@@ -536,4 +591,37 @@ const styles = StyleSheet.create({
 
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { fontSize: 14, color: colors.textSecondary, marginTop: 12 },
+
+    // Agent DM card
+    agentCard: {
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        paddingHorizontal: 20, paddingVertical: 14,
+        backgroundColor: 'rgba(163,230,53,0.06)',
+        borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+    },
+    agentBadge: {
+        width: 44, height: 44, borderRadius: 22,
+        backgroundColor: 'rgba(163,230,53,0.15)',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    agentEmoji: { fontSize: 22 },
+    agentName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+    agentTag: {
+        backgroundColor: 'rgba(163,230,53,0.2)',
+        paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
+    },
+    agentTagText: { fontSize: 10, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' },
+    agentSubtext: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
+    agentChevron: { fontSize: 20, color: colors.textTertiary },
+
+    // Agent CTA card (not provisioned)
+    agentCtaCard: {
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        paddingHorizontal: 20, paddingVertical: 14,
+        backgroundColor: colors.surface,
+        borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+    },
+    agentCtaEmoji: { fontSize: 28 },
+    agentCtaTitle: { fontSize: 14, fontWeight: '600', color: colors.accent },
+    agentCtaSubtext: { fontSize: 12, color: colors.textTertiary },
 });
