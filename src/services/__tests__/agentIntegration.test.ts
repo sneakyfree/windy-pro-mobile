@@ -32,9 +32,10 @@ describe('isAgentRoom', () => {
             roomId: `!room-${Math.random().toString(36).slice(2)}:chat.windypro.com`,
             name: 'Test Room',
             members,
-            lastMessage: null,
-            lastMessageTime: null,
+            lastMessage: undefined,
+            lastMessageTime: 0,
             unreadCount: 0,
+            isDirect: true,
         } as ChatRoom;
     }
 
@@ -95,11 +96,11 @@ describe('Agent room sorting', () => {
 
     it('sorts agent room to top of list', () => {
         const rooms: ChatRoom[] = [
-            { roomId: 'r1', name: 'Alice', members: ['@alice:x.com', '@me:x.com'], lastMessageTime: 5000, unreadCount: 0, lastMessage: null } as ChatRoom,
-            { roomId: 'r2', name: 'Bob', members: ['@bob:x.com', '@me:x.com'], lastMessageTime: 3000, unreadCount: 0, lastMessage: null } as ChatRoom,
-            { roomId: 'r3', name: 'Agent', members: ['@windy_fly:chat.windypro.com', '@me:x.com'], lastMessageTime: 1000, unreadCount: 0, lastMessage: null } as ChatRoom,
-            { roomId: 'r4', name: 'Charlie', members: ['@charlie:x.com', '@me:x.com'], lastMessageTime: 4000, unreadCount: 0, lastMessage: null } as ChatRoom,
-            { roomId: 'r5', name: 'Diana', members: ['@diana:x.com', '@me:x.com'], lastMessageTime: 2000, unreadCount: 0, lastMessage: null } as ChatRoom,
+            { roomId: 'r1', name: 'Alice', members: ['@alice:x.com', '@me:x.com'], lastMessageTime: 5000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
+            { roomId: 'r2', name: 'Bob', members: ['@bob:x.com', '@me:x.com'], lastMessageTime: 3000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
+            { roomId: 'r3', name: 'Agent', members: ['@windy_fly:chat.windypro.com', '@me:x.com'], lastMessageTime: 1000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
+            { roomId: 'r4', name: 'Charlie', members: ['@charlie:x.com', '@me:x.com'], lastMessageTime: 4000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
+            { roomId: 'r5', name: 'Diana', members: ['@diana:x.com', '@me:x.com'], lastMessageTime: 2000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
         ];
 
         const sorted = [...rooms].sort((a, b) => {
@@ -119,8 +120,8 @@ describe('Agent room sorting', () => {
 
     it('handles list with no agent rooms', () => {
         const rooms: ChatRoom[] = [
-            { roomId: 'r1', name: 'A', members: ['@a:x.com', '@me:x.com'], lastMessageTime: 2000, unreadCount: 0, lastMessage: null } as ChatRoom,
-            { roomId: 'r2', name: 'B', members: ['@b:x.com', '@me:x.com'], lastMessageTime: 3000, unreadCount: 0, lastMessage: null } as ChatRoom,
+            { roomId: 'r1', name: 'A', members: ['@a:x.com', '@me:x.com'], lastMessageTime: 2000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
+            { roomId: 'r2', name: 'B', members: ['@b:x.com', '@me:x.com'], lastMessageTime: 3000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
         ];
 
         const sorted = [...rooms].sort((a, b) => {
@@ -235,7 +236,7 @@ describe('Ecosystem status creator_name', () => {
     });
 
     it('EcosystemStatus works without creator_name', () => {
-        const status = {
+        const status: Record<string, any> = {
             windy_identity_id: 'wid-456',
             email: 'user@test.com',
             tier: 'free',
