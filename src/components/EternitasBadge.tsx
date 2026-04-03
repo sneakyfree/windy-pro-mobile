@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, borderRadius, spacing } from '@/theme';
 import { typography } from '@/theme/typography';
 import { createLogger } from '@/services/logger';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 
 const log = createLogger('EternitasBadge');
 
@@ -63,7 +64,7 @@ export default function EternitasBadge({ passportId, size = 12 }: Props) {
 
             // Fetch from API
             try {
-                const res = await fetch(`${ETERNITAS_API}/${encodeURIComponent(passportId)}`);
+                const res = await fetchWithTimeout(`${ETERNITAS_API}/${encodeURIComponent(passportId)}`);
                 if (res.ok) {
                     const result = await res.json();
                     const badgeData: BadgeData = {

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import * as Haptics from 'expo-haptics';
+import { fontSizes } from '@/theme';
 
 interface Language {
     code: string;
@@ -121,16 +122,16 @@ const s = StyleSheet.create({
     overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
     sheet: { backgroundColor: '#1e293b', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40, maxHeight: '80%' },
     handle: { width: 40, height: 4, backgroundColor: '#475569', borderRadius: 2, alignSelf: 'center', marginTop: 12 },
-    title: { color: '#f8fafc', fontSize: 18, fontWeight: '700', textAlign: 'center', marginVertical: 12 },
-    search: { marginHorizontal: 16, backgroundColor: '#0f172a', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: '#f8fafc', fontSize: 14, marginBottom: 8 },
+    title: { color: '#f8fafc', fontSize: fontSizes.lg, fontWeight: '700', textAlign: 'center', marginVertical: 12 },
+    search: { marginHorizontal: 16, backgroundColor: '#0f172a', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: '#f8fafc', fontSize: fontSizes.sm, marginBottom: 8 },
     list: { paddingHorizontal: 16 },
     item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10, marginBottom: 4, backgroundColor: '#0f172a' },
     itemSelected: { borderWidth: 1, borderColor: '#a3e635' },
     flag: { fontSize: 22, marginRight: 12 },
     labelWrap: { flex: 1 },
     name: { color: '#f8fafc', fontSize: 15, fontWeight: '500' },
-    native: { color: '#94a3b8', fontSize: 12 },
-    check: { color: '#a3e635', fontSize: 18, fontWeight: '700', marginLeft: 8 },
+    native: { color: '#94a3b8', fontSize: fontSizes.xs },
+    check: { color: '#a3e635', fontSize: fontSizes.lg, fontWeight: '700', marginLeft: 8 },
     closeBtn: { marginTop: 12, alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 32, backgroundColor: '#334155', borderRadius: 12 },
     closeTxt: { color: '#f8fafc', fontSize: 15, fontWeight: '600' },
 });

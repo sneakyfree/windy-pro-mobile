@@ -11,7 +11,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '@/theme';
+import { colors, fontSizes } from '@/theme';
 import { chatClient, type ChatMessage, type SyncState } from '@/services/chatClient';
 import { chatTranslateService, type TranslatedMessage } from '@/services/chatTranslate';
 import { subscriptionService } from '@/services/subscription';
@@ -190,7 +190,10 @@ export default function ConversationScreen() {
                 // Real failure — restore input text and show error
                 if (isMounted.current) setInputText(savedInputRef.current);
                 if (isMounted.current) setSendError('Message could not be sent. Tap Retry to try again.');
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             }
+        } else {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
     };
 
@@ -526,7 +529,7 @@ const styles = StyleSheet.create({
     backText: { fontSize: 22, color: colors.accent, fontWeight: '600' },
     headerInfo: { flex: 1, marginLeft: 4 },
     headerName: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
-    typingText: { fontSize: 12, color: colors.accent, marginTop: 1 },
+    typingText: { fontSize: fontSizes.xs, color: colors.accent, marginTop: 1 },
 
     // Offline banner
     offlineBanner: {
@@ -535,7 +538,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         alignItems: 'center',
     },
-    offlineBannerText: { fontSize: 12, fontWeight: '600', color: '#1a1a1a' },
+    offlineBannerText: { fontSize: fontSizes.xs, fontWeight: '600', color: '#1a1a1a' },
 
     // Messages
     messageList: { paddingHorizontal: 12, paddingVertical: 8 },
@@ -562,7 +565,7 @@ const styles = StyleSheet.create({
     },
 
     senderName: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         fontWeight: '600',
         color: colors.accent,
         marginBottom: 2,
@@ -584,7 +587,7 @@ const styles = StyleSheet.create({
         marginBottom: 3,
     },
     translationText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: 'rgba(255,255,255,0.9)',
         fontStyle: 'italic',
     },
@@ -602,7 +605,7 @@ const styles = StyleSheet.create({
 
     // Typing
     typingBar: { paddingHorizontal: 16, paddingVertical: 4 },
-    typingBarText: { fontSize: 12, color: colors.textTertiary, fontStyle: 'italic' },
+    typingBarText: { fontSize: fontSizes.xs, color: colors.textTertiary, fontStyle: 'italic' },
 
     // Send error
     sendErrorBar: {
@@ -613,7 +616,7 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         backgroundColor: 'rgba(239,68,68,0.15)',
     },
-    sendErrorText: { fontSize: 12, color: colors.stateError, flex: 1 },
+    sendErrorText: { fontSize: fontSizes.xs, color: colors.stateError, flex: 1 },
     retryBtn: { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12 },
     retryText: { fontSize: 13, fontWeight: '600', color: colors.accent },
 
@@ -649,7 +652,7 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     sendButtonDisabled: { opacity: 0.4 },
-    sendIcon: { fontSize: 18, fontWeight: '700', color: colors.background },
+    sendIcon: { fontSize: fontSizes.lg, fontWeight: '700', color: colors.background },
 
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
@@ -661,7 +664,7 @@ const styles = StyleSheet.create({
         borderTopColor: 'rgba(255,255,255,0.2)',
     },
     pairBannerText: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: 'rgba(255,255,255,0.85)',
         marginBottom: 6,
         lineHeight: 17,
@@ -677,7 +680,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
     },
     pairBannerBuyText: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         fontWeight: '700',
         color: '#fff',
     },
@@ -688,7 +691,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
     },
     pairBannerCloudText: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: 'rgba(255,255,255,0.8)',
     },
 });

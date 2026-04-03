@@ -27,7 +27,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { pairCatalogService, type TranslationPair, type PairRegion } from '@/services/pairCatalog';
 import { pairManager, type DownloadProgress } from '@/services/pairManager';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
     },
     errorEmoji: {
-        fontSize: 48,
+        fontSize: fontSizes['5xl'],
         marginBottom: spacing.sm,
     },
     errorText: {
@@ -568,7 +568,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     retryBtnText: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: colors.background,
     },
@@ -581,14 +581,14 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xs,
     },
     headerSubtitle: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textSecondary,
         marginBottom: spacing.lg,
     },
 
     // Section titles
     sectionTitle: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         fontWeight: '700',
         color: colors.textPrimary,
         marginTop: spacing.lg,
@@ -620,11 +620,11 @@ const styles = StyleSheet.create({
     },
     heroDismissText: {
         color: '#fff',
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '600',
     },
     heroEmoji: {
-        fontSize: 48,
+        fontSize: fontSizes['5xl'],
         marginBottom: spacing.sm,
     },
     heroTitle: {
@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     heroStats: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: '#c7d2fe',
         marginBottom: spacing.xs,
         textAlign: 'center',
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     heroBtnText: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: '#1e1b4b',
     },
@@ -686,11 +686,11 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     bundleCount: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: colors.textSecondary,
     },
     bundlePrice: {
-        fontSize: 20,
+        fontSize: fontSizes.xl,
         fontWeight: '800',
         color: colors.textPrimary,
     },
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
         fontSize: 40,
     },
     emptyTitle: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '600',
         color: colors.textPrimary,
     },
@@ -734,13 +734,13 @@ const styles = StyleSheet.create({
         gap: spacing.sm,
     },
     engineFlags: {
-        fontSize: 20,
+        fontSize: fontSizes.xl,
     },
     engineInfo: {
         flex: 1,
     },
     engineName: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '600',
         color: colors.textPrimary,
     },
@@ -750,7 +750,7 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     engineBadge: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
     },
 
     // Search
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.lg,
     },
     footerText: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: colors.textTertiary,
         textAlign: 'center',
     },

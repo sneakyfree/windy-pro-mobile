@@ -3,6 +3,12 @@
  * All server endpoint URLs in one place.
  * Point API_BASE_URL at localhost for dev, or at production for release.
  */
+let _expoExtra: Record<string, unknown> = {};
+try {
+    // expo-constants may not be available in test environments
+    const Constants = require('expo-constants').default;
+    _expoExtra = Constants?.expoConfig?.extra || {};
+} catch { /* test environment — no native module */ }
 
 export const API_BASE_URL = 'https://windypro.thewindstorm.uk';
 
@@ -69,8 +75,9 @@ export const CHAT_HOMESERVER = 'https://chat.windypro.com';
 
 // ─── CDN / External Service URLs ──────────────────────────────
 
-/** HuggingFace CDN for whisper.cpp GGML models */
-export const WHISPER_MODEL_CDN = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
+/** HuggingFace CDN for whisper.cpp GGML models (overridable via app.json extra) */
+export const WHISPER_MODEL_CDN: string =
+    (_expoExtra.whisperModelCdn as string) || 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
 
 /** Windy CDN for engine binaries, offline packs, and pair catalog */
 export const WINDY_CDN_BASE = `${API_BASE_URL}/models`;
@@ -80,6 +87,10 @@ export const PAIR_CATALOG_URL = `${API_BASE_URL}/api/v1/pairs/catalog.json`;
 
 /** Google Cloud Vision API */
 export const GOOGLE_VISION_API = 'https://vision.googleapis.com/v1/images:annotate';
+
+/** Google Cloud Vision API key — loaded from app.json extra config */
+export const GOOGLE_VISION_API_KEY: string =
+    (_expoExtra.googleVisionApiKey as string) || '';
 
 /** Windy CDN URL for translation pair model binaries */
 export const PAIR_CDN_BASE = `${API_BASE_URL}/pairs`;

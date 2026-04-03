@@ -4,7 +4,7 @@
  */
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { syncManager, type SyncState } from '@/services/sync-manager';
 import { feedbackService } from '@/services/feedback';
 
@@ -130,12 +130,12 @@ const styles = StyleSheet.create({
     rightCol: { alignItems: 'flex-end' },
     label: {
         color: colors.textPrimary,
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '600',
     },
     detail: {
         color: colors.textSecondary,
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         marginTop: 2,
     },
     syncBtn: {
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     },
     syncBtnText: {
         color: colors.accent,
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         fontWeight: '600',
     },
     lastSync: {

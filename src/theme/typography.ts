@@ -1,10 +1,40 @@
 /**
  * 🧬 M1.1.3 — Typography Constants
  * Clean, modern sans-serif (Inter font family)
+ * fontSizes scale enables future Dynamic Type support.
  */
-import { TextStyle } from 'react-native';
+import { PixelRatio, TextStyle } from 'react-native';
 
 export const fontFamily = 'Inter';
+
+/**
+ * Centralised font-size scale.
+ * Every fontSize in the app should reference this object
+ * so a single change propagates everywhere.
+ */
+/**
+ * Scale a base font size by the user's system Dynamic Type / font scale preference.
+ * Use this when you need runtime-responsive text sizing, e.g.:
+ *   fontSize: scaledFontSize(fontSizes.base)
+ *
+ * For reactive scaling that updates on settings change, prefer the
+ * useAccessibility() hook's `scaledFont` method instead.
+ */
+export function scaledFontSize(size: number): number {
+    return Math.round(size * PixelRatio.getFontScale());
+}
+
+export const fontSizes = {
+    xs: 12,
+    sm: 14,
+    base: 16,
+    lg: 18,
+    xl: 20,
+    '2xl': 24,
+    '3xl': 30,
+    '4xl': 36,
+    '5xl': 48,
+} as const;
 
 export const typography: Record<string, TextStyle> = {
     h1: {
@@ -21,37 +51,37 @@ export const typography: Record<string, TextStyle> = {
     },
     h3: {
         fontFamily,
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         fontWeight: '600',
         lineHeight: 24,
     },
     body: {
         fontFamily,
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '400',
         lineHeight: 24,
     },
     bodySmall: {
         fontFamily,
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '400',
         lineHeight: 20,
     },
     caption: {
         fontFamily,
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         fontWeight: '400',
         lineHeight: 16,
     },
     mono: {
         fontFamily: 'monospace',
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '400',
         lineHeight: 20,
     },
     button: {
         fontFamily,
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '600',
         lineHeight: 20,
     },

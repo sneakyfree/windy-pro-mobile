@@ -6,7 +6,7 @@
 import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Alert, Animated, Linking } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { CHECKOUT_API_URL, MARCO_POLO_URL } from '@/config/api';
 import { useSettingsStore, setLicense } from '@/stores/useSettingsStore';
 import { licenseService, FEATURE_MATRIX, RECORDING_LIMITS } from '@/services/license';
@@ -15,6 +15,7 @@ import { feedbackService } from '@/services/feedback';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 
 // ── Billing period types ──
 type BillingPeriod = 'monthly' | 'annual' | 'lifetime';
@@ -240,7 +241,7 @@ export default function SubscriptionScreen() {
                 }
             } else {
                 // Fallback: Stripe Checkout via web API
-                const response = await fetch(
+                const response = await fetchWithTimeout(
                     CHECKOUT_API_URL,
                     {
                         method: 'POST',
@@ -672,7 +673,7 @@ const styles = StyleSheet.create({
     // Header
     header: { marginBottom: spacing.md },
     backBtn: { minWidth: 48, minHeight: 48, justifyContent: 'center' },
-    backText: { fontSize: 16, color: colors.accent },
+    backText: { fontSize: fontSizes.base, color: colors.accent },
 
     // Hero
     hero: { alignItems: 'center', marginBottom: spacing.lg },
@@ -705,7 +706,7 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     billingTabText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '600',
         color: colors.textSecondary,
     },
@@ -766,13 +767,13 @@ const styles = StyleSheet.create({
     badgeText: { fontSize: 10, fontWeight: '800', color: colors.background, letterSpacing: 1 },
 
     cardHeader: { marginBottom: spacing.md },
-    cardName: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
+    cardName: { fontSize: fontSizes.xl, fontWeight: '700', marginBottom: 4 },
     priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
-    cardPrice: { fontSize: 36, fontWeight: '800', color: colors.textPrimary },
-    cardPeriod: { fontSize: 14, color: colors.textTertiary },
+    cardPrice: { fontSize: fontSizes['4xl'], fontWeight: '800', color: colors.textPrimary },
+    cardPeriod: { fontSize: fontSizes.sm, color: colors.textTertiary },
 
     equivalentNote: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: colors.textTertiary,
         marginTop: 4,
         fontStyle: 'italic',
@@ -786,15 +787,15 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
     },
     ownForeverText: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         fontWeight: '700',
         color: '#a3e635',
     },
 
     featureList: { marginBottom: spacing.md, gap: spacing.xs + 2 },
     featureRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    featureCheck: { fontSize: 14, fontWeight: '700' },
-    featureText: { fontSize: 14, color: colors.textSecondary, flex: 1 },
+    featureCheck: { fontSize: fontSizes.sm, fontWeight: '700' },
+    featureText: { fontSize: fontSizes.sm, color: colors.textSecondary, flex: 1 },
 
     ctaButton: {
         paddingVertical: spacing.md - 2,
@@ -806,7 +807,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.accent,
     },
-    ctaText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    ctaText: { fontSize: fontSizes.base, fontWeight: '700', color: colors.background },
     ctaTextCurrent: { color: colors.accent },
 
     // Comparison toggle
@@ -815,7 +816,7 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.md,
         marginBottom: spacing.sm,
     },
-    comparisonToggleText: { fontSize: 14, fontWeight: '600', color: colors.accent },
+    comparisonToggleText: { fontSize: fontSizes.sm, fontWeight: '600', color: colors.accent },
 
     // Comparison table
     comparisonTable: {
@@ -854,7 +855,7 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.md,
         marginBottom: spacing.md,
     },
-    restoreText: { fontSize: 14, color: colors.textSecondary },
+    restoreText: { fontSize: fontSizes.sm, color: colors.textSecondary },
 
     // Guarantee
     guarantee: {
@@ -866,7 +867,7 @@ const styles = StyleSheet.create({
         padding: spacing.md,
         marginBottom: spacing.lg,
     },
-    guaranteeEmoji: { fontSize: 24 },
+    guaranteeEmoji: { fontSize: fontSizes['2xl'] },
     guaranteeText: { fontSize: 13, color: colors.textSecondary, flex: 1, lineHeight: 18 },
 
     // Marco Polo card
@@ -893,12 +894,12 @@ const styles = StyleSheet.create({
         borderRadius: borderRadius.sm,
         backgroundColor: '#d4a017',
     },
-    marcoPoloEmoji: { fontSize: 48, marginBottom: spacing.sm },
-    marcoPoloTitle: { fontSize: 24, fontWeight: '800', color: '#d4a017', marginBottom: 4 },
-    marcoPoloSubtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: spacing.md },
-    marcoPoloPrice: { fontSize: 36, fontWeight: '800', color: colors.textPrimary },
+    marcoPoloEmoji: { fontSize: fontSizes['5xl'], marginBottom: spacing.sm },
+    marcoPoloTitle: { fontSize: fontSizes['2xl'], fontWeight: '800', color: '#d4a017', marginBottom: 4 },
+    marcoPoloSubtitle: { fontSize: fontSizes.sm, color: colors.textSecondary, marginBottom: spacing.md },
+    marcoPoloPrice: { fontSize: fontSizes['4xl'], fontWeight: '800', color: colors.textPrimary },
     marcoPoloFeatures: { marginVertical: spacing.md, gap: spacing.sm, alignSelf: 'stretch' },
-    marcoPoloFeature: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
+    marcoPoloFeature: { fontSize: fontSizes.sm, color: colors.textSecondary, textAlign: 'center' },
     marcoPoloCta: {
         backgroundColor: '#d4a017',
         paddingVertical: spacing.md - 2,
@@ -907,9 +908,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '100%',
     },
-    marcoPoloCtaText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    marcoPoloCtaText: { fontSize: fontSizes.base, fontWeight: '700', color: colors.background },
 
     // Footer
     footer: { alignItems: 'center', paddingVertical: spacing.md },
-    footerText: { fontSize: 12, color: colors.textTertiary, textAlign: 'center', lineHeight: 18 },
+    footerText: { fontSize: fontSizes.xs, color: colors.textTertiary, textAlign: 'center', lineHeight: 18 },
 });

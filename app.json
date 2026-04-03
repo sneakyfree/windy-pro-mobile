@@ -113,6 +113,7 @@
     "extra": {
       "revenueCatIosKey": "PRODUCTION_KEY_REQUIRED_CONTACT_GRANT",
       "revenueCatAndroidKey": "PRODUCTION_KEY_REQUIRED_CONTACT_GRANT",
+      "googleVisionApiKey": "PRODUCTION_KEY_REQUIRED",
       "router": {
         "origin": false
       },

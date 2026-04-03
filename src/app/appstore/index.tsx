@@ -9,7 +9,7 @@ import * as Linking from 'expo-linking';
 import * as StoreReview from 'expo-store-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { feedbackService } from '@/services/feedback';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -344,8 +344,8 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
     },
     backBtn: { marginRight: spacing.md },
-    backText: { fontSize: 16, color: colors.accent },
-    title: { fontSize: 20, fontWeight: '600', color: colors.textPrimary, flex: 1 },
+    backText: { fontSize: fontSizes.base, color: colors.accent },
+    title: { fontSize: fontSizes.xl, fontWeight: '600', color: colors.textPrimary, flex: 1 },
 
     // App identity
     appIdentity: { alignItems: 'center', marginBottom: spacing.xl },
@@ -362,14 +362,14 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     appIconEmoji: { fontSize: 40 },
-    appName: { fontSize: 24, fontWeight: '700', color: colors.textPrimary },
-    appTagline: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
-    appVersion: { fontSize: 12, color: colors.textTertiary, marginTop: spacing.xs },
+    appName: { fontSize: fontSizes['2xl'], fontWeight: '700', color: colors.textPrimary },
+    appTagline: { fontSize: fontSizes.sm, color: colors.textSecondary, marginTop: 2 },
+    appVersion: { fontSize: fontSizes.xs, color: colors.textTertiary, marginTop: spacing.xs },
 
     // Sections
     section: { marginBottom: spacing.xl },
     sectionTitle: {
-        fontSize: 12, fontWeight: '600', color: colors.textSecondary,
+        fontSize: fontSizes.xs, fontWeight: '600', color: colors.textSecondary,
         textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm,
     },
 
@@ -383,9 +383,9 @@ const styles = StyleSheet.create({
         borderWidth: 1, gap: spacing.sm,
     },
     screenshotEmoji: { fontSize: 56 },
-    screenshotLabel: { fontSize: 16, fontWeight: '600' },
-    screenshotTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginTop: spacing.xs },
-    screenshotSubtitle: { fontSize: 12, color: colors.textTertiary },
+    screenshotLabel: { fontSize: fontSizes.base, fontWeight: '600' },
+    screenshotTitle: { fontSize: fontSizes.sm, fontWeight: '600', color: colors.textPrimary, marginTop: spacing.xs },
+    screenshotSubtitle: { fontSize: fontSizes.xs, color: colors.textTertiary },
 
     // Dots
     dotsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, marginTop: spacing.sm },
@@ -398,9 +398,9 @@ const styles = StyleSheet.create({
         padding: spacing.md, marginBottom: spacing.sm,
     },
     changelogHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
-    changelogTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, flex: 1 },
+    changelogTitle: { fontSize: fontSizes.base, fontWeight: '600', color: colors.textPrimary, flex: 1 },
     changelogMeta: { alignItems: 'flex-end' },
-    changelogVersion: { fontSize: 12, fontWeight: '600', color: colors.accent },
+    changelogVersion: { fontSize: fontSizes.xs, fontWeight: '600', color: colors.accent },
     changelogDate: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
     changelogList: { gap: 4 },
     changelogItem: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 },
@@ -413,15 +413,15 @@ const styles = StyleSheet.create({
     },
     rateEmoji: { fontSize: 32 },
     rateContent: { flex: 1 },
-    rateTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+    rateTitle: { fontSize: fontSizes.base, fontWeight: '600', color: colors.textPrimary },
     rateSubtext: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
     rateCta: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
         gap: spacing.sm, backgroundColor: '#fbbf24',
         borderRadius: borderRadius.md, paddingVertical: spacing.md,
     },
-    rateCtaEmoji: { fontSize: 20 },
-    rateCtaText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    rateCtaEmoji: { fontSize: fontSizes.xl },
+    rateCtaText: { fontSize: fontSizes.base, fontWeight: '700', color: colors.background },
 
     // Share
     shareButton: {
@@ -430,10 +430,10 @@ const styles = StyleSheet.create({
         padding: spacing.md, marginBottom: spacing.xl,
         borderWidth: 1, borderColor: colors.borderLight,
     },
-    shareEmoji: { fontSize: 24 },
+    shareEmoji: { fontSize: fontSizes['2xl'] },
     shareContent: { flex: 1 },
     shareTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
-    shareSubtext: { fontSize: 12, color: colors.textTertiary },
+    shareSubtext: { fontSize: fontSizes.xs, color: colors.textTertiary },
 
     // Footer links
     footerLinks: {

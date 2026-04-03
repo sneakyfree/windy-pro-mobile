@@ -199,7 +199,7 @@ class SubscriptionService {
             }
 
             const message = this.classifyPurchaseError(error);
-            log.error('purchasePackage', error, { classified: message });
+            log.error('purchasePackage', sanitizeSubError(error), { classified: message });
             return { success: false, tier: null, error: message };
         } finally {
             this.purchaseInProgress = false;

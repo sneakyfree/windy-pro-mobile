@@ -5,6 +5,7 @@
  */
 import { cloudApi } from './cloudApi';
 import { ENDPOINTS, apiUrl } from '@/config/api';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 import { createLogger } from './logger';
 
 const log = createLogger('EcosystemStatus');
@@ -92,7 +93,7 @@ export async function getEcosystemStatus(): Promise<EcosystemStatus | null> {
         const token = cloudApi.getToken();
         if (!token) return null;
 
-        const res = await fetch(apiUrl(ENDPOINTS.ECOSYSTEM_STATUS), {
+        const res = await fetchWithTimeout(apiUrl(ENDPOINTS.ECOSYSTEM_STATUS), {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',

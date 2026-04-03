@@ -5,7 +5,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { networkMonitor } from '@/services/network-monitor';
 import { syncManager } from '@/services/sync-manager';
 
@@ -109,10 +109,10 @@ const styles = StyleSheet.create({
     bannerOnline: {
         backgroundColor: 'rgba(34, 197, 94, 0.95)',
     },
-    bannerEmoji: { fontSize: 20 },
+    bannerEmoji: { fontSize: fontSizes.xl },
     bannerContent: { flex: 1 },
     bannerTitle: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '700',
         color: '#fff',
     },

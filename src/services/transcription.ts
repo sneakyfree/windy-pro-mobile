@@ -89,16 +89,20 @@ class TranscriptionService {
     ): Promise<TranscriptSegment[]> {
         try {
             const { whisperManager } = require('./whisper-manager');
-            await whisperManager.loadModel(engine);
+            // Map engine ID to GGML model filename (matches whisper-manager's static map)
+            const MODEL_MAP: Record<string, string> = {
+                'tiny': 'ggml-tiny.bin', 'base': 'ggml-base.bin',
+                'small': 'ggml-small.bin', 'medium': 'ggml-medium.bin',
+                'large-v3': 'ggml-large-v3.bin', 'large-v3-turbo': 'ggml-large-v3-turbo.bin',
+            };
+            await whisperManager.loadModel(MODEL_MAP[engine] || `ggml-${engine}.bin`);
 
-            const segments = await whisperManager.transcribe(uri, {
-                onSegment: (segment: TranscriptSegment) => {
-                    this.onSegment?.(segment);
-                },
+            const result = await whisperManager.transcribe(uri, 'auto', (segment: TranscriptSegment) => {
+                this.onSegment?.(segment);
             });
 
             await whisperManager.release();
-            return segments;
+            return result.segments;
         } catch (err: unknown) {
             log.warn('Local_unavailable', 'On-device transcription not available', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
 
@@ -185,7 +189,7 @@ class TranscriptionService {
         // Get auth token from SecureStore
         let token = '';
         try {
-            token = await SecureStore.getItemAsync('windy_cloud_jwt') || '';
+            token = await SecureStore.getItemAsync('windy_jwt_token') || '';
         } catch { /* SecureStore unavailable */ }
 
         const response = await FileSystem.uploadAsync(endpoint, uri, {
@@ -281,7 +285,7 @@ class TranscriptionService {
                         // Send auth
                         this.ws?.send(JSON.stringify({
                             type: 'auth',
-                            token: await (async () => { try { return await SecureStore.getItemAsync('windy_cloud_jwt') || 'anonymous'; } catch { return 'anonymous'; } })(),
+                            token: await (async () => { try { return await SecureStore.getItemAsync('windy_jwt_token') || 'anonymous'; } catch { return 'anonymous'; } })(),
                         }));
 
                         // Send config

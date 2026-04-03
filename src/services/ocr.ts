@@ -5,8 +5,9 @@
  */
 
 import { translationService } from './translation';
-import { ENDPOINTS, apiUrl, GOOGLE_VISION_API } from '@/config/api';
-import { parseApiError, isAuthError, isRateLimited } from '@/utils/api-error';
+import { ENDPOINTS, apiUrl, GOOGLE_VISION_API, GOOGLE_VISION_API_KEY } from '@/config/api';
+import { parseApiError } from '@/utils/api-error';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 import { createLogger } from './logger';
 
 const log = createLogger('OCR');
@@ -89,7 +90,7 @@ class OcrService {
         targetLang: string
     ): Promise<OcrTranslation> {
         try {
-            const response = await fetch(apiUrl(ENDPOINTS.OCR_TRANSLATE), {
+            const response = await fetchWithTimeout(apiUrl(ENDPOINTS.OCR_TRANSLATE), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -132,8 +133,12 @@ class OcrService {
      * Cloud OCR via Google Vision API
      */
     private async cloudOcr(base64Image: string): Promise<OcrResult> {
-        const response = await fetch(
-            `${GOOGLE_VISION_API}?key=${this.apiKey || 'DEMO_KEY'}`,
+        const key = this.apiKey || GOOGLE_VISION_API_KEY;
+        if (!key || key === 'PRODUCTION_KEY_REQUIRED') {
+            throw new Error('Google Vision API key not configured');
+        }
+        const response = await fetchWithTimeout(
+            `${GOOGLE_VISION_API}?key=${key}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -191,6 +196,7 @@ class OcrService {
      * In production, would use ML Kit or Tesseract
      */
     private async fallbackOcr(base64Image: string): Promise<OcrResult> {
+        log.warn('fallbackOcr', 'fallbackOcr: local OCR not implemented — returning empty result');
         return {
             text: '',
             confidence: 0,

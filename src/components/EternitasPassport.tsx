@@ -8,6 +8,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors, borderRadius, spacing } from '@/theme';
 import { typography } from '@/theme/typography';
 import { createLogger } from '@/services/logger';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 
 const log = createLogger('EternitasPassport');
 
@@ -37,7 +38,7 @@ export async function fetchPassport(passportId: string): Promise<PassportData | 
     }
 
     try {
-        const res = await fetch(`${ETERNITAS_API}/${encodeURIComponent(passportId)}`, {
+        const res = await fetchWithTimeout(`${ETERNITAS_API}/${encodeURIComponent(passportId)}`, {
             headers: { 'Content-Type': 'application/json' },
         });
         if (!res.ok) {

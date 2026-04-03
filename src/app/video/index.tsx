@@ -8,13 +8,14 @@ import { useRouter } from 'expo-router';
 import { CameraView, Camera } from 'expo-camera';
 import { Audio, Video, ResizeMode } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { videoCaptureService } from '@/services/video-capture';
 import { audioCaptureService, scoreAudioQuality } from '@/services/audio-capture';
 import { feedbackService } from '@/services/feedback';
 import { localStorageService } from '@/services/storage-local';
 import { useRecordingStore } from '@/stores/useRecordingStore';
+import { useAccessibility } from '@/hooks/useAccessibility';
 import type { Session } from '@/types';
 
 type RecordMode = 'audio-only' | 'video';
@@ -48,6 +49,8 @@ export default function VideoRecordScreen() {
     const [isPlaying, setIsPlaying] = useState(false);
     const [playbackPosition, setPlaybackPosition] = useState(0);
     const [playbackDuration, setPlaybackDuration] = useState(0);
+
+    const { announce } = useAccessibility();
 
     // Pulsing dot
     const pulseAnim = useRef(new Animated.Value(0.4)).current;
@@ -132,6 +135,7 @@ export default function VideoRecordScreen() {
             }
 
             setRecordingStarted(sessionId);
+            announce('Recording started');
 
             // Duration timer
             const startTime = Date.now();
@@ -156,6 +160,7 @@ export default function VideoRecordScreen() {
 
         feedbackService.recordStop().catch(() => { });
         setRecordingStopped();
+        announce('Recording stopped, processing');
 
         try {
             // Stop audio
@@ -411,6 +416,7 @@ export default function VideoRecordScreen() {
                         accessibilityRole="text"
                     >
                         {thumbnailUri ? (
+                            // Note: Using RN Image — platform default caching applies (no expo-image available)
                             <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} importantForAccessibility="no" />
                         ) : (
                             <View style={styles.thumbnailPlaceholder} importantForAccessibility="no">
@@ -508,8 +514,8 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     backBtn: { marginRight: spacing.md, minWidth: 48, minHeight: 48, justifyContent: 'center' },
-    backText: { fontSize: 16, color: colors.accent },
-    title: { fontSize: 20, fontWeight: '600', color: colors.textPrimary, flex: 1 },
+    backText: { fontSize: fontSizes.base, color: colors.accent },
+    title: { fontSize: fontSizes.xl, fontWeight: '600', color: colors.textPrimary, flex: 1 },
     headerRight: { width: 40 },
 
     // Mode toggle
@@ -532,8 +538,8 @@ const styles = StyleSheet.create({
     modeBtnActive: {
         backgroundColor: colors.accent,
     },
-    modeBtnEmoji: { fontSize: 16 },
-    modeBtnText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+    modeBtnEmoji: { fontSize: fontSizes.base },
+    modeBtnText: { fontSize: fontSizes.sm, fontWeight: '600', color: colors.textSecondary },
     modeBtnTextActive: { color: colors.background },
 
     // Preview container
@@ -567,7 +573,7 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         backgroundColor: colors.stateError,
     },
-    recordingLabel: { fontSize: 12, fontWeight: '700', color: '#fff', letterSpacing: 1 },
+    recordingLabel: { fontSize: fontSizes.xs, fontWeight: '700', color: '#fff', letterSpacing: 1 },
     flipButton: {
         position: 'absolute',
         top: spacing.md,
@@ -579,7 +585,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    flipEmoji: { fontSize: 20 },
+    flipEmoji: { fontSize: fontSizes.xl },
 
     // Video playback
     videoPlayback: { flex: 1 },
@@ -632,8 +638,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         gap: spacing.xs,
     },
-    audioOnlyEmoji: { fontSize: 48 },
-    audioOnlyText: { fontSize: 18, fontWeight: '600', color: colors.textPrimary },
+    audioOnlyEmoji: { fontSize: fontSizes['5xl'] },
+    audioOnlyText: { fontSize: fontSizes.lg, fontWeight: '600', color: colors.textPrimary },
     audioOnlySubtext: { fontSize: 13, color: colors.textTertiary },
     audioLevelContainer: {
         flexDirection: 'row',
@@ -670,10 +676,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    thumbnailEmoji: { fontSize: 20 },
+    thumbnailEmoji: { fontSize: fontSizes.xl },
     fileInfoText: { flex: 1, justifyContent: 'center' },
-    fileInfoTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 2 },
-    fileInfoMeta: { fontSize: 12, color: colors.textTertiary, fontVariant: ['tabular-nums'] },
+    fileInfoTitle: { fontSize: fontSizes.sm, fontWeight: '600', color: colors.textPrimary, marginBottom: 2 },
+    fileInfoMeta: { fontSize: fontSizes.xs, color: colors.textTertiary, fontVariant: ['tabular-nums'] },
 
     // Duration
     durationRow: {
@@ -689,13 +695,13 @@ const styles = StyleSheet.create({
         backgroundColor: colors.stateRecording,
     },
     durationText: {
-        fontSize: 36,
+        fontSize: fontSizes['4xl'],
         fontWeight: '300',
         color: colors.textPrimary,
         fontVariant: ['tabular-nums'],
     },
     liveSizeText: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: colors.textTertiary,
         marginBottom: spacing.md,
         fontVariant: ['tabular-nums'],
@@ -726,7 +732,7 @@ const styles = StyleSheet.create({
 
     // Status
     statusText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '500',
         marginBottom: spacing.lg,
     },

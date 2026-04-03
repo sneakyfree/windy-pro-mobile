@@ -10,7 +10,7 @@ import * as SecureStore from 'expo-secure-store';
 import type { LicenseTier, LicenseValidation } from '@/types';
 import { API_BASE_URL, ENDPOINTS, apiUrl } from '@/config/api';
 import { fetchWithTimeout } from '@/utils/fetch-timeout';
-import { parseApiError, createNetworkError, isAuthError, isRateLimited } from '@/utils/api-error';
+import { parseApiError, isAuthError, isRateLimited } from '@/utils/api-error';
 import { createLogger } from './logger';
 
 const log = createLogger('License');

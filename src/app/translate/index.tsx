@@ -7,6 +7,7 @@
 import {
     View, Text, StyleSheet, Pressable, ScrollView, Platform,
     Alert, Modal, FlatList, Dimensions, Animated, KeyboardAvoidingView, Share, Linking,
+    RefreshControl,
 } from 'react-native';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
@@ -14,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { PAIR_DOWNLOAD_URL } from '@/config/api';
 import {
     translationService, TIER_1_LANGUAGES,
@@ -30,6 +31,7 @@ import { networkMonitor, type NetworkStatus } from '@/services/network-monitor';
 import { analyticsService } from '@/services/analytics';
 import { ratingPromptService } from '@/services/rating-prompt';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { EmptyState } from '@/components/EmptyState';
 import { subscriptionService } from '@/services/subscription';
 import { pairManager, type PairLimitResult, PAIR_LIMITS } from '@/services/pairManager';
 import type { TranscriptSegment } from '@/types';
@@ -58,6 +60,7 @@ export default function TranslateScreen() {
     const [showModeMenu, setShowModeMenu] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
     const [history, setHistory] = useState<ConversationTurn[]>([]);
+    const [refreshingHistory, setRefreshingHistory] = useState(false);
     const [copyToast, setCopyToast] = useState(false);
     const [detectedLangInfo, setDetectedLangInfo] = useState<{ lang: string; confidence: number } | null>(null);
     const [audioLevel, setAudioLevel] = useState(0);
@@ -99,6 +102,12 @@ export default function TranslateScreen() {
             if (raw) setHistory(JSON.parse(raw));
         } catch (err) { console.warn("[Translate] Error:", err); }
     };
+
+    const handleRefreshHistory = useCallback(async () => {
+        setRefreshingHistory(true);
+        await loadHistory();
+        setRefreshingHistory(false);
+    }, []);
 
     const saveToHistory = async (turn: ConversationTurn) => {
         try {
@@ -601,18 +610,20 @@ export default function TranslateScreen() {
                     style={styles.conversation}
                     contentContainerStyle={styles.conversationContent}
                     keyboardDismissMode="on-drag"
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshingHistory}
+                            onRefresh={handleRefreshHistory}
+                            tintColor={colors.accent}
+                        />
+                    }
                 >
                     {turns.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <Text style={styles.emptyEmoji}>🌪️</Text>
-                            <Text style={styles.emptyTitle}>
-                                {mode === 'auto' ? 'Start speaking in any language'
-                                    : 'Select a speaker, then record'}
-                            </Text>
-                            <Text style={styles.emptySubtitle}>
-                                Windy translates your speech in real-time
-                            </Text>
-                        </View>
+                        <EmptyState
+                            icon="🌪️"
+                            title={mode === 'auto' ? 'Start speaking in any language' : 'Select a speaker, then record'}
+                            subtitle="Windy translates your speech in real-time"
+                        />
                     ) : (
                         turns.map((turn) => (
                             <Pressable
@@ -934,10 +945,10 @@ const styles = StyleSheet.create({
     // Header
     header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.screenPadding, marginBottom: 8 },
     backBtn: { marginRight: spacing.md },
-    backText: { fontSize: 16, color: colors.accent },
-    title: { fontSize: 20, fontWeight: '600', color: colors.textPrimary, flex: 1 },
+    backText: { fontSize: fontSizes.base, color: colors.accent },
+    title: { fontSize: fontSizes.xl, fontWeight: '600', color: colors.textPrimary, flex: 1 },
     iconBtn: { padding: spacing.xs },
-    iconBtnText: { fontSize: 18 },
+    iconBtnText: { fontSize: fontSizes.lg },
     offlineBadge: { backgroundColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
     offlineBadgeText: { fontSize: 11, fontWeight: '700', color: '#ef4444' },
     queueBadge: { backgroundColor: 'rgba(234, 179, 8, 0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
@@ -956,15 +967,15 @@ const styles = StyleSheet.create({
     langFlag: { fontSize: 28 },
     langName: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
     swapButton: { backgroundColor: colors.surface, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-    swapText: { fontSize: 20, color: colors.accent },
+    swapText: { fontSize: fontSizes.xl, color: colors.accent },
 
     // Conversation
     conversation: { flex: 1, paddingHorizontal: spacing.screenPadding },
     conversationContent: { paddingBottom: spacing.lg },
     emptyState: { alignItems: 'center', marginTop: 60 },
-    emptyEmoji: { fontSize: 48, marginBottom: 12 },
-    emptyTitle: { fontSize: 16, color: colors.textSecondary, fontWeight: '500', textAlign: 'center' },
-    emptySubtitle: { fontSize: 14, color: colors.textTertiary, marginTop: 4, textAlign: 'center' },
+    emptyEmoji: { fontSize: fontSizes['5xl'], marginBottom: 12 },
+    emptyTitle: { fontSize: fontSizes.base, color: colors.textSecondary, fontWeight: '500', textAlign: 'center' },
+    emptySubtitle: { fontSize: fontSizes.sm, color: colors.textTertiary, marginTop: 4, textAlign: 'center' },
 
     // Bubbles
     bubble: { marginBottom: spacing.md, borderRadius: borderRadius.lg, padding: spacing.md, maxWidth: '85%' },
@@ -975,14 +986,14 @@ const styles = StyleSheet.create({
     bubbleDivider: { height: 1, backgroundColor: colors.borderLight, marginVertical: 8 },
     bubbleTransRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     bubbleTranslated: { fontSize: 15, color: colors.accent, lineHeight: 22, flex: 1 },
-    bubbleTtsHint: { fontSize: 14, color: colors.textTertiary, marginLeft: 8 },
+    bubbleTtsHint: { fontSize: fontSizes.sm, color: colors.textTertiary, marginLeft: 8 },
     bubbleFavorite: { borderWidth: 1, borderColor: 'rgba(234, 179, 8, 0.4)' },
     bubbleTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
     bubbleActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     confidenceBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
     confidenceText: { fontSize: 10, fontWeight: '700', color: colors.textPrimary },
-    favoriteBtn: { fontSize: 16 },
-    copyBtn: { fontSize: 14 },
+    favoriteBtn: { fontSize: fontSizes.base },
+    copyBtn: { fontSize: fontSizes.sm },
     detectedLangHint: { fontSize: 11, color: colors.textTertiary, marginBottom: 4, fontStyle: 'italic' },
     confidencePill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginTop: 6, alignSelf: 'center' },
     confidencePillText: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
@@ -992,44 +1003,44 @@ const styles = StyleSheet.create({
     speakerRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: 10 },
     speakerBtn: { flex: 1, paddingVertical: spacing.sm, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
     speakerActive: { borderColor: colors.accent, backgroundColor: colors.accentTransparent },
-    speakerText: { fontSize: 14, color: colors.textPrimary },
+    speakerText: { fontSize: fontSizes.sm, color: colors.textPrimary },
     autoDetectRow: { alignItems: 'center', marginBottom: 10 },
     autoHint: { fontSize: 13, color: colors.textTertiary, textAlign: 'center' },
-    detectedLangBadge: { fontSize: 12, color: colors.accent, fontWeight: '600', marginTop: 2 },
+    detectedLangBadge: { fontSize: fontSizes.xs, color: colors.accent, fontWeight: '600', marginTop: 2 },
     recordRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
     ttsBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.borderLight },
     ttsBtnActive: { borderColor: colors.accent },
-    ttsBtnText: { fontSize: 18 },
+    ttsBtnText: { fontSize: fontSizes.lg },
     clearMiniBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
     recordBtn: { flex: 1, backgroundColor: colors.surface, borderRadius: borderRadius.lg, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderWidth: 2, borderColor: colors.border },
     recordBtnActive: { borderColor: colors.stateRecording, backgroundColor: 'rgba(34,197,94,0.1)' },
     recordBtnProcessing: { borderColor: colors.stateProcessing, backgroundColor: 'rgba(234,179,8,0.1)' },
-    recordBtnEmoji: { fontSize: 24 },
-    recordBtnText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+    recordBtnEmoji: { fontSize: fontSizes['2xl'] },
+    recordBtnText: { fontSize: fontSizes.base, fontWeight: '600', color: colors.textPrimary },
 
     // Language Picker Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
     modalContent: { backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: SCREEN_HEIGHT * 0.6, paddingBottom: Platform.OS === 'ios' ? 34 : 16 },
     modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-    modalTitle: { fontSize: 18, fontWeight: '600', color: colors.textPrimary },
-    modalClose: { fontSize: 20, color: colors.textTertiary, padding: 4 },
+    modalTitle: { fontSize: fontSizes.lg, fontWeight: '600', color: colors.textPrimary },
+    modalClose: { fontSize: fontSizes.xl, color: colors.textTertiary, padding: 4 },
     langPickerRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
     langPickerSelected: { backgroundColor: colors.accentTransparent },
     langPickerFlag: { fontSize: 28 },
-    langPickerName: { fontSize: 16, color: colors.textPrimary, fontWeight: '500' },
+    langPickerName: { fontSize: fontSizes.base, color: colors.textPrimary, fontWeight: '500' },
     langPickerNative: { fontSize: 13, color: colors.textSecondary },
-    langPickerCheck: { fontSize: 18, color: colors.accent, fontWeight: '700' },
+    langPickerCheck: { fontSize: fontSizes.lg, color: colors.accent, fontWeight: '700' },
 
     // Export Modal
     exportSheet: { backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 20 },
-    exportTitle: { fontSize: 18, fontWeight: '600', color: colors.textPrimary, marginBottom: 16 },
+    exportTitle: { fontSize: fontSizes.lg, fontWeight: '600', color: colors.textPrimary, marginBottom: 16 },
     exportOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
     exportOptionEmoji: { fontSize: 22 },
-    exportOptionText: { fontSize: 16, color: colors.textPrimary },
+    exportOptionText: { fontSize: fontSizes.base, color: colors.textPrimary },
 
     // Settings
     settingsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
-    settingsLabel: { fontSize: 16, color: colors.textPrimary },
+    settingsLabel: { fontSize: fontSizes.base, color: colors.textPrimary },
     settingsToggle: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, backgroundColor: colors.surface },
     settingsToggleOn: { backgroundColor: colors.accentTransparent },
     settingsToggleText: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
@@ -1039,20 +1050,20 @@ const styles = StyleSheet.create({
     splitTop: {},
     splitBottom: {},
     splitDivider: { height: 40, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 },
-    splitDividerText: { fontSize: 16, color: colors.textPrimary },
+    splitDividerText: { fontSize: fontSizes.base, color: colors.textPrimary },
     splitExitBtn: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, backgroundColor: colors.border },
-    splitExitText: { fontSize: 12, color: colors.textSecondary },
+    splitExitText: { fontSize: fontSizes.xs, color: colors.textSecondary },
     splitPanel: { flex: 1, paddingTop: 8 },
-    splitLabel: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, textAlign: 'center', paddingVertical: 8 },
+    splitLabel: { fontSize: fontSizes.sm, fontWeight: '600', color: colors.textSecondary, textAlign: 'center', paddingVertical: 8 },
     splitLabelActive: { color: colors.accent },
     splitBubble: { backgroundColor: colors.surface, borderRadius: borderRadius.md, padding: 10, marginBottom: 8 },
     splitBubbleOther: { backgroundColor: 'rgba(255,255,255,0.03)' },
     splitSpeakerLabel: { fontSize: 11, fontWeight: '600', color: colors.textTertiary, marginBottom: 4 },
-    splitOriginal: { fontSize: 14, color: colors.textPrimary, marginBottom: 4 },
-    splitTranslated: { fontSize: 14, color: colors.accent },
+    splitOriginal: { fontSize: fontSizes.sm, color: colors.textPrimary, marginBottom: 4 },
+    splitTranslated: { fontSize: fontSizes.sm, color: colors.accent },
     splitRecordBtn: { padding: 16, alignItems: 'center', backgroundColor: colors.surface, marginHorizontal: 12, marginBottom: 8, borderRadius: borderRadius.lg, borderWidth: 2, borderColor: colors.border },
     splitRecordBtnReady: { borderColor: colors.accent, backgroundColor: 'rgba(56,189,248,0.08)' },
     splitRecordBtnActive: { borderColor: colors.stateRecording, backgroundColor: 'rgba(34,197,94,0.1)' },
     splitRecordBtnProcessing: { borderColor: colors.stateProcessing },
-    splitRecordText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+    splitRecordText: { fontSize: fontSizes.base, fontWeight: '600', color: colors.textPrimary },
 });

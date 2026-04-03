@@ -8,7 +8,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import { Camera } from 'expo-camera';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { detectDeviceProfile, getWindyTuneRecommendation } from '@/services/windy-tune';
@@ -329,13 +329,13 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     subtitle: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         color: colors.accent,
         marginTop: spacing.sm,
         fontWeight: '500',
     },
     description: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         color: colors.textSecondary,
         textAlign: 'center',
         marginTop: spacing.lg,
@@ -365,9 +365,9 @@ const styles = StyleSheet.create({
     },
     permissionEmoji: { fontSize: 28 },
     permissionTextCol: { flex: 1 },
-    permissionLabel: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+    permissionLabel: { fontSize: fontSizes.base, fontWeight: '600', color: colors.textPrimary },
     permissionDesc: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-    permissionStatus: { fontSize: 14, color: colors.accent, fontWeight: '500' },
+    permissionStatus: { fontSize: fontSizes.sm, color: colors.accent, fontWeight: '500' },
 
     // Engine
     engineCard: {
@@ -381,13 +381,13 @@ const styles = StyleSheet.create({
         borderColor: colors.accent,
     },
     engineName: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '600',
         color: colors.textPrimary,
         textAlign: 'center',
     },
     engineReason: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textSecondary,
         textAlign: 'center',
         marginTop: spacing.sm,
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
         marginTop: spacing.sm,
     },
     skipText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textTertiary,
     },
 });

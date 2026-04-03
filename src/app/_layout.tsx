@@ -138,8 +138,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
-      // Let the router handle back first; only intercept at root
-      return false;
+      Alert.alert('Exit Windy?', undefined, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Exit', style: 'destructive', onPress: () => BackHandler.exitApp() },
+      ]);
+      return true;
     });
     return () => handler.remove();
   }, []);
@@ -197,7 +200,7 @@ export default function RootLayout() {
       try {
         const parsed = Linking.parse(url);
 
-        // License activation: windypro://license?key=XXX
+        /** Deep-link format: windypro://license?key=<LICENSE_KEY> */
         if (parsed.path === 'license' && parsed.queryParams?.key) {
           const rawKey = String(parsed.queryParams.key).trim().slice(0, INPUT_LIMITS.LICENSE_KEY);
           if (!rawKey || !SAFE_ID_RE.test(rawKey)) {
@@ -299,7 +302,7 @@ export default function RootLayout() {
     // Check if app was opened via deep link
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url });
-    });
+    }).catch(() => {});
 
     return () => sub.remove();
   }, []);

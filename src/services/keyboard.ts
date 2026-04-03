@@ -15,7 +15,6 @@
  * This JS wrapper provides the main app's side of that communication.
  */
 import { NativeModules, Platform, Linking, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { WindyKeyboard } = NativeModules;
 

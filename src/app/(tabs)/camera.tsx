@@ -9,13 +9,15 @@ import {
 } from 'react-native';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { typography } from '@/theme/typography';
 import { ocrService, type OcrTranslation } from '@/services/ocr';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { feedbackService } from '@/services/feedback';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { EmptyState } from '@/components/EmptyState';
+import { useAccessibility } from '@/hooks/useAccessibility';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -42,6 +44,7 @@ export default function CameraTab() {
     const scanningRef = useRef(false);
     const isMountedRef = useRef(true);
 
+    const { announce } = useAccessibility();
     const overlayOpacity = useRef(new Animated.Value(0)).current;
 
     // Show overlay animation
@@ -94,6 +97,7 @@ export default function CameraTab() {
 
             if (!ocrResult.original.text.trim()) {
                 setError('No text detected. Point camera at readable text.');
+                announce('No text detected');
                 feedbackService.error();
                 return;
             }
@@ -101,6 +105,7 @@ export default function CameraTab() {
             setResult(ocrResult);
             setHistory((prev) => [ocrResult, ...prev.slice(0, 19)]); // Keep last 20
             feedbackService.success();
+            announce('Translation ready');
 
             // TTS: speak the translation
             translationService.speak(ocrResult.translated, targetLang);
@@ -214,7 +219,13 @@ export default function CameraTab() {
                 </View>
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.screenPadding }}>
                     {history.length === 0 ? (
-                        <Text style={styles.emptyHistory}>No translations yet. Capture some text!</Text>
+                        <EmptyState
+                            icon="📷"
+                            title="No translations yet"
+                            subtitle="Point your camera at text and tap Capture to translate it"
+                            actionLabel="Start Scanning"
+                            onAction={() => setShowHistory(false)}
+                        />
                     ) : (
                         history.map((h, i) => (
                             <View key={`h-${i}`} style={styles.historyCard}>
@@ -550,7 +561,7 @@ const styles = StyleSheet.create({
         borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface,
     },
     langChipActive: { borderColor: colors.accent, backgroundColor: colors.accentTransparent },
-    langChipFlag: { fontSize: 18 },
+    langChipFlag: { fontSize: fontSizes.lg },
     langChipName: { ...typography.bodySmall, color: colors.textSecondary },
     langChipNameActive: { color: colors.accent, fontWeight: '600' },
     captureBtn: {

@@ -6,7 +6,7 @@
 import { View, Text, StyleSheet, FlatList, Pressable, Platform, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { feedbackService } from '@/services/feedback';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { cloneBundleService, type CloneBundle, type BundleStats } from '@/services/clone-bundle';
@@ -257,12 +257,12 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
     header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.screenPadding, marginBottom: spacing.md },
     backBtn: { marginRight: spacing.sm },
-    backText: { fontSize: 16, color: colors.accent },
-    title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+    backText: { fontSize: fontSizes.base, color: colors.accent },
+    title: { fontSize: fontSizes.xl, fontWeight: '700', color: colors.textPrimary },
 
     statsRow: { flexDirection: 'row', paddingHorizontal: spacing.screenPadding, gap: 8, marginBottom: spacing.md },
     statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: borderRadius.md, padding: spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: colors.borderLight },
-    statValue: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
+    statValue: { fontSize: fontSizes.lg, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
     statLabel: { fontSize: 11, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5 },
 
     filterScroll: { maxHeight: 44, marginBottom: spacing.sm },
@@ -276,10 +276,10 @@ const styles = StyleSheet.create({
 
     bundleCard: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: spacing.sm, gap: spacing.sm, borderWidth: 1, borderColor: colors.borderLight },
     bundleIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accentTransparent, alignItems: 'center', justifyContent: 'center' },
-    bundleIconText: { fontSize: 18 },
+    bundleIconText: { fontSize: fontSizes.lg },
     bundleInfo: { flex: 1 },
     bundleTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-    bundleDuration: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+    bundleDuration: { fontSize: fontSizes.base, fontWeight: '700', color: colors.textPrimary },
     readyBadge: { backgroundColor: 'rgba(16,185,129,0.15)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
     readyBadgeText: { fontSize: 11, color: '#10b981', fontWeight: '600' },
     bundleTranscript: { fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginBottom: 6 },
@@ -287,9 +287,9 @@ const styles = StyleSheet.create({
     bundleMeta: { fontSize: 11, color: colors.textTertiary },
 
     uploadBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accentTransparent, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
-    uploadBtnText: { fontSize: 16 },
+    uploadBtnText: { fontSize: fontSizes.base },
 
     empty: { alignItems: 'center', paddingTop: 80 },
-    emptyEmoji: { fontSize: 48, marginBottom: spacing.md },
-    emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+    emptyEmoji: { fontSize: fontSizes['5xl'], marginBottom: spacing.md },
+    emptyText: { fontSize: fontSizes.sm, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
 });

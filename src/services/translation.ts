@@ -168,7 +168,7 @@ class TranslationService {
         // Cloud translation
         try {
             let token = '';
-            try { token = await SecureStore.getItemAsync('windy_cloud_jwt') || ''; } catch { /* SecureStore unavailable */ }
+            try { token = await SecureStore.getItemAsync('windy_jwt_token') || ''; } catch { /* SecureStore unavailable */ }
             const response = await fetchWithTimeout(TRANSLATE_API, {
                 method: 'POST',
                 headers: {
@@ -281,8 +281,8 @@ class TranslationService {
     async detectLanguage(text: string): Promise<{ language: string; confidence: number }> {
         try {
             let token = '';
-            try { token = await SecureStore.getItemAsync('windy_cloud_jwt') || ''; } catch { /* SecureStore unavailable */ }
-            const response = await fetch(DETECT_API, {
+            try { token = await SecureStore.getItemAsync('windy_jwt_token') || ''; } catch { /* SecureStore unavailable */ }
+            const response = await fetchWithTimeout(DETECT_API, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

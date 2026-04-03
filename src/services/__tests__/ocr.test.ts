@@ -21,6 +21,7 @@ jest.mock('@/config/api', () => ({
     ENDPOINTS: { OCR_TRANSLATE: '/api/v1/ocr/translate' },
     apiUrl: jest.fn((path: string) => `https://test.windypro.com${path}`),
     GOOGLE_VISION_API: 'https://vision.googleapis.com/v1/images:annotate',
+    GOOGLE_VISION_API_KEY: '',
 }));
 
 jest.mock('@/utils/api-error', () => ({
@@ -143,23 +144,16 @@ describe('OcrService', () => {
         });
     });
 
-    describe('extractText — DEMO_KEY warning', () => {
-        it('should use DEMO_KEY when no API key is set', async () => {
-            // Reset API key by creating fresh reference
+    describe('extractText — missing API key', () => {
+        it('should fall back to local OCR when no API key is configured', async () => {
+            // Reset API key — cloud OCR should throw, triggering fallback
             ocrService.setApiKey(null as unknown as string);
 
-            mockFetch.mockResolvedValueOnce({
-                ok: false,
-                status: 400,
-            });
+            const result = await ocrService.extractText('test');
 
-            await ocrService.extractText('test');
-
-            // Verify the URL contains DEMO_KEY
-            expect(mockFetch).toHaveBeenCalledWith(
-                expect.stringContaining('DEMO_KEY'),
-                expect.anything(),
-            );
+            // With no API key, cloud OCR throws → falls back to empty local OCR result
+            expect(result.text).toBe('');
+            expect(result.confidence).toBe(0);
         });
     });
 

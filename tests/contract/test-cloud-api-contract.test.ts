@@ -115,7 +115,7 @@ describe('CloudApi Auth Contract', () => {
 
             await cloudApi.register('user@test.com', 'pass');
 
-            expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_jwt', fakeToken);
+            expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_jwt_token', fakeToken);
             expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_refresh_token', 'rt-register');
             expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_user_id', 'u-1');
             expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_email', 'user@test.com');
@@ -193,7 +193,7 @@ describe('CloudApi Auth Contract', () => {
 
             await cloudApi.login('user2@test.com', 'pass2');
 
-            expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_jwt', fakeToken);
+            expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_jwt_token', fakeToken);
             expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_refresh_token', 'rt-login-2');
             expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_identity_id', 'wid-2');
         });
@@ -251,7 +251,7 @@ describe('CloudApi Auth Contract', () => {
             expect(refreshBody).toEqual({ refreshToken: 'rt-old' });
 
             // Verify new token stored
-            expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_jwt', newToken);
+            expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_jwt_token', newToken);
             expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_refresh_token', 'rt-new');
         });
     });

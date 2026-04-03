@@ -2,7 +2,7 @@
  * 🧬 RP-8.3 — Terms of Service Screen
  */
 import { ScrollView, Text, StyleSheet } from 'react-native';
-import { colors, spacing } from '@/theme';
+import { colors, spacing, fontSizes } from '@/theme';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 export default function TermsOfServiceScreen() {
@@ -55,8 +55,8 @@ export default function TermsOfServiceScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     content: { padding: spacing.screenPadding, paddingBottom: spacing.xxl },
-    title: { fontSize: 24, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
+    title: { fontSize: fontSizes['2xl'], fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
     updated: { fontSize: 13, color: colors.textTertiary, marginBottom: spacing.xl },
-    heading: { fontSize: 18, fontWeight: '600', color: colors.textPrimary, marginTop: spacing.lg, marginBottom: spacing.sm },
+    heading: { fontSize: fontSizes.lg, fontWeight: '600', color: colors.textPrimary, marginTop: spacing.lg, marginBottom: spacing.sm },
     body: { fontSize: 15, lineHeight: 24, color: colors.textSecondary },
 });

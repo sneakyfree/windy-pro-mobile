@@ -16,15 +16,16 @@ import {
     ActivityIndicator, Animated, Keyboard,
 } from 'react-native';
 import { INPUT_LIMITS, validatePhone, validateEmail, validateDisplayName, validateOtp } from '@/utils/validation';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/theme';
+import { colors, fontSizes } from '@/theme';
 import {
     chatOnboarding,
     type IdentifierType,
 } from '@/services/chatOnboarding';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { networkMonitor } from '@/services/network-monitor';
 
 // Common country codes for phone registration
 const COUNTRY_CODES = [
@@ -95,6 +96,13 @@ export default function ChatOnboardingScreen() {
         return () => { isMounted.current = false; };
     }, []);
 
+    // Clear stale error when screen regains focus (prevents persistent error from prior session)
+    useFocusEffect(
+        useCallback(() => {
+            setError('');
+        }, [])
+    );
+
     // ─── Step Transition ────────────────────────────────────────
 
     const animateToStep = useCallback((nextStep: OnboardingStep) => {
@@ -140,6 +148,15 @@ export default function ChatOnboardingScreen() {
                 return;
             }
         }
+        // Check connectivity before making network call
+        if (!networkMonitor.isOnline) {
+            const isOnline = await networkMonitor.checkConnectivity();
+            if (!isOnline) {
+                setError('You appear to be offline. Please check your internet connection and try again.');
+                return;
+            }
+        }
+
         setLoading(true);
         setError('');
 
@@ -214,6 +231,16 @@ export default function ChatOnboardingScreen() {
             setError(otpResult.error || 'Enter all 6 digits');
             return;
         }
+
+        // Check connectivity before making network call
+        if (!networkMonitor.isOnline) {
+            const isOnline = await networkMonitor.checkConnectivity();
+            if (!isOnline) {
+                setError('You appear to be offline. Please check your internet connection and try again.');
+                return;
+            }
+        }
+
         setLoading(true);
         setError('');
 
@@ -244,6 +271,15 @@ export default function ChatOnboardingScreen() {
         if (!credentials) {
             setError('Session error — please restart');
             return;
+        }
+
+        // Check connectivity before making network call
+        if (!networkMonitor.isOnline) {
+            const isOnline = await networkMonitor.checkConnectivity();
+            if (!isOnline) {
+                setError('You appear to be offline. Please check your internet connection and try again.');
+                return;
+            }
         }
 
         setLoading(true);
@@ -281,6 +317,15 @@ export default function ChatOnboardingScreen() {
 
     const handleComplete = async () => {
         if (!credentials) return;
+
+        // Check connectivity before making network call
+        if (!networkMonitor.isOnline) {
+            const isOnline = await networkMonitor.checkConnectivity();
+            if (!isOnline) {
+                Alert.alert('No Connection', 'You appear to be offline. Please check your internet connection and try again.');
+                return;
+            }
+        }
 
         setLoading(true);
         const result = await chatOnboarding.completeOnboarding(credentials);
@@ -439,7 +484,21 @@ export default function ChatOnboardingScreen() {
                 </View>
             )}
 
-            {error ? <Text style={styles.errorText} accessibilityRole="alert">{error}</Text> : null}
+            {error ? (
+                <View style={styles.errorBox} accessibilityRole="alert">
+                    <Text style={styles.errorText}>{error}</Text>
+                    {error.toLowerCase().includes('connection') || error.toLowerCase().includes('timed out') || error.toLowerCase().includes('network') ? (
+                        <Pressable
+                            style={styles.retryButton}
+                            onPress={handleRequestVerification}
+                            accessibilityLabel="Retry verification"
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.retryButtonText}>Retry</Text>
+                        </Pressable>
+                    ) : null}
+                </View>
+            ) : null}
 
             <TouchableOpacity
                 style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -834,7 +893,7 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: colors.borderLight,
         textAlign: 'center',
-        fontSize: 24,
+        fontSize: fontSizes['2xl'],
         fontWeight: '700',
         color: colors.textPrimary,
     },
@@ -849,7 +908,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     verifyingText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textSecondary,
     },
     resendButton: {
@@ -858,7 +917,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     resendText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.accent,
         fontWeight: '600',
     },
@@ -895,16 +954,36 @@ const styles = StyleSheet.create({
     },
 
     // Error
+    errorBox: {
+        backgroundColor: 'rgba(239,68,68,0.1)',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+        alignItems: 'center',
+        gap: 8,
+    },
     errorText: {
         color: colors.stateError,
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         textAlign: 'center',
-        marginBottom: 12,
+    },
+    retryButton: {
+        backgroundColor: colors.accent,
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        minHeight: 44,
+        justifyContent: 'center',
+    },
+    retryButtonText: {
+        fontSize: fontSizes.sm,
+        fontWeight: '600',
+        color: colors.background,
     },
 
     // Disclaimer
     disclaimer: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: colors.textTertiary,
         textAlign: 'center',
         marginTop: 20,
@@ -924,7 +1003,7 @@ const styles = StyleSheet.create({
         borderColor: colors.accent,
     },
     avatarPlaceholderText: {
-        fontSize: 36,
+        fontSize: fontSizes['4xl'],
         fontWeight: '700',
         color: colors.accent,
     },
@@ -939,7 +1018,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         alignItems: 'flex-start',
     },
-    privacyIcon: { fontSize: 20, marginTop: 2 },
+    privacyIcon: { fontSize: fontSizes.xl, marginTop: 2 },
     privacyText: {
         flex: 1,
         fontSize: 13,
@@ -961,7 +1040,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
     },
-    featureIcon: { fontSize: 20 },
+    featureIcon: { fontSize: fontSizes.xl },
     featureText: {
         fontSize: 15,
         color: colors.textPrimary,
@@ -1023,7 +1102,7 @@ const styles = StyleSheet.create({
         zIndex: 101,
     },
     countryPickerTitle: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         fontWeight: '700',
         color: colors.textPrimary,
         textAlign: 'center',
@@ -1050,7 +1129,7 @@ const styles = StyleSheet.create({
         color: colors.textPrimary,
     },
     countryOptionCheck: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: colors.accent,
     },

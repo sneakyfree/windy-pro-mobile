@@ -129,14 +129,14 @@ describe('Category 1: Auth Flow', () => {
         mockFetch.mockResolvedValueOnce(ok({ token, userId: 'u-1', refreshToken: 'rt-reg' }));
         const r = await cloudApi.register('new@test.com', 'pass');
         expect(r.success).toBe(true);
-        expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_jwt', token);
+        expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_jwt_token', token);
     });
 
     it('1.2 login → token + refreshToken + userId stored', async () => {
         const token = jwt();
         mockFetch.mockResolvedValueOnce(ok({ token, userId: 'u-1', refreshToken: 'rt-login' }));
         await cloudApi.login('user@test.com', 'pass');
-        expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_jwt', token);
+        expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_jwt_token', token);
         expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_refresh_token', 'rt-login');
         expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_user_id', 'u-1');
     });
@@ -157,7 +157,7 @@ describe('Category 1: Auth Flow', () => {
             .mockResolvedValueOnce(ok({ files: [] }));
 
         await cloudApi.listFiles();
-        expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_jwt', newToken);
+        expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_jwt_token', newToken);
         expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_refresh_token', 'rt-new');
     });
 

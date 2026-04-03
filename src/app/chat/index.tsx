@@ -11,7 +11,7 @@ import {
 import { INPUT_LIMITS } from '@/utils/validation';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '@/theme';
+import { colors, fontSizes } from '@/theme';
 import { chatClient, isAgentRoom, type ChatRoom, type ChatContact, type SyncState } from '@/services/chatClient';
 import { chatTranslateService } from '@/services/chatTranslate';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         alignItems: 'center',
     },
-    offlineBannerText: { fontSize: 12, fontWeight: '600', color: '#1a1a1a' },
+    offlineBannerText: { fontSize: fontSizes.xs, fontWeight: '600', color: '#1a1a1a' },
 
     searchContainer: { paddingHorizontal: 16, paddingVertical: 8 },
     searchInput: {
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     },
     searchResultInfo: { flex: 1 },
     searchResultName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
-    searchResultId: { fontSize: 12, color: colors.textTertiary, marginTop: 1 },
+    searchResultId: { fontSize: fontSizes.xs, color: colors.textTertiary, marginTop: 1 },
     noResults: { padding: 12, color: colors.textSecondary, textAlign: 'center' },
 
     roomRow: {
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    avatarText: { fontSize: 20, fontWeight: '700', color: colors.accent },
+    avatarText: { fontSize: fontSizes.xl, fontWeight: '700', color: colors.accent },
     presenceDot: {
         width: 12,
         height: 12,
@@ -564,14 +564,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 4,
     },
-    roomName: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, flex: 1 },
-    roomTime: { fontSize: 12, color: colors.textTertiary, marginLeft: 8 },
+    roomName: { fontSize: fontSizes.base, fontWeight: '600', color: colors.textPrimary, flex: 1 },
+    roomTime: { fontSize: fontSizes.xs, color: colors.textTertiary, marginLeft: 8 },
     roomBottom: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    roomPreview: { fontSize: 14, color: colors.textSecondary, flex: 1 },
+    roomPreview: { fontSize: fontSizes.sm, color: colors.textSecondary, flex: 1 },
     badge: {
         backgroundColor: colors.accent,
         borderRadius: 10,
@@ -592,8 +592,8 @@ const styles = StyleSheet.create({
     },
     emptyListContainer: { flexGrow: 1 },
     emptyIcon: { fontSize: 56, marginBottom: 16 },
-    emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
-    emptySubtext: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+    emptyTitle: { fontSize: fontSizes.xl, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
+    emptySubtext: { fontSize: fontSizes.sm, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 
     loginButton: {
         backgroundColor: colors.accent,
@@ -604,10 +604,10 @@ const styles = StyleSheet.create({
         minHeight: 48,
         justifyContent: 'center',
     },
-    loginButtonText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    loginButtonText: { fontSize: fontSizes.base, fontWeight: '700', color: colors.background },
 
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { fontSize: 14, color: colors.textSecondary, marginTop: 12 },
+    loadingText: { fontSize: fontSizes.sm, color: colors.textSecondary, marginTop: 12 },
 
     // Agent DM card
     agentCard: {
@@ -628,8 +628,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
     },
     agentTagText: { fontSize: 10, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' },
-    agentSubtext: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
-    agentChevron: { fontSize: 20, color: colors.textTertiary },
+    agentSubtext: { fontSize: fontSizes.xs, color: colors.textTertiary, marginTop: 2 },
+    agentChevron: { fontSize: fontSizes.xl, color: colors.textTertiary },
 
     // Agent CTA card (not provisioned)
     agentCtaCard: {
@@ -639,6 +639,6 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1, borderBottomColor: colors.borderLight,
     },
     agentCtaEmoji: { fontSize: 28 },
-    agentCtaTitle: { fontSize: 14, fontWeight: '600', color: colors.accent },
-    agentCtaSubtext: { fontSize: 12, color: colors.textTertiary },
+    agentCtaTitle: { fontSize: fontSizes.sm, fontWeight: '600', color: colors.accent },
+    agentCtaSubtext: { fontSize: fontSizes.xs, color: colors.textTertiary },
 });

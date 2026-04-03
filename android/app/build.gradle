@@ -103,9 +103,9 @@ android {
         }
         release {
             storeFile file('windy-release.keystore')
-            storePassword findProperty('WINDY_RELEASE_STORE_PASSWORD') ?: 'WindyPro2026!'
-            keyAlias findProperty('WINDY_RELEASE_KEY_ALIAS') ?: 'windy'
-            keyPassword findProperty('WINDY_RELEASE_KEY_PASSWORD') ?: 'WindyPro2026!'
+            storePassword findProperty('WINDY_RELEASE_STORE_PASSWORD') ?: ''
+            keyAlias findProperty('WINDY_RELEASE_KEY_ALIAS') ?: ''
+            keyPassword findProperty('WINDY_RELEASE_KEY_PASSWORD') ?: ''
         }
     }
     buildTypes {

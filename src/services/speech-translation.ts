@@ -9,6 +9,7 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import * as Speech from 'expo-speech';
+import * as SecureStore from 'expo-secure-store';
 import { TIER_1_LANGUAGES } from './translation';
 import { ENDPOINTS, apiUrl } from '@/config/api';
 import { parseUploadError, isAuthError, isRateLimited } from '@/utils/api-error';
@@ -17,7 +18,6 @@ import { createLogger } from './logger';
 const log = createLogger('SpeechTranslation');
 
 const SPEECH_TRANSLATE_ENDPOINT = apiUrl(ENDPOINTS.TRANSLATE_SPEECH);
-const DETECT_ENDPOINT = apiUrl(ENDPOINTS.TRANSLATE_LANGUAGES);
 
 // ─── Error types ────────────────────────────────────────────────
 
@@ -255,6 +255,10 @@ class SpeechTranslationService {
         sourceLang: string,
         targetLang: string,
     ): Promise<Omit<SpeechTranslationResult, 'durationMs'>> {
+        // Get auth token
+        let token = '';
+        try { token = await SecureStore.getItemAsync('windy_jwt_token') || ''; } catch { /* SecureStore unavailable */ }
+
         // Race the upload against a timeout
         const uploadPromise = FileSystem.uploadAsync(SPEECH_TRANSLATE_ENDPOINT, audioUri, {
             httpMethod: 'POST',
@@ -266,6 +270,7 @@ class SpeechTranslationService {
             },
             headers: {
                 'Accept': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             },
         });
 
@@ -329,13 +334,19 @@ class SpeechTranslationService {
         audioUri: string,
     ): Promise<{ language: string; confidence: number }> {
         try {
+            let detectToken = '';
+            try { detectToken = await SecureStore.getItemAsync('windy_jwt_token') || ''; } catch { /* SecureStore unavailable */ }
+
             const response = await Promise.race([
                 FileSystem.uploadAsync(SPEECH_TRANSLATE_ENDPOINT, audioUri, {
                     httpMethod: 'POST',
                     uploadType: FileSystem.FileSystemUploadType.MULTIPART,
                     fieldName: 'audio',
                     parameters: { source_lang: 'auto', target_lang: 'en' },
-                    headers: { 'Accept': 'application/json' },
+                    headers: {
+                        'Accept': 'application/json',
+                        ...(detectToken ? { 'Authorization': `Bearer ${detectToken}` } : {}),
+                    },
                 }),
                 new Promise<never>((_, reject) =>
                     setTimeout(() => reject(new Error('Detection timeout')), UPLOAD_TIMEOUT_MS)

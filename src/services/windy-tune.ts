@@ -314,10 +314,10 @@ class WindyTuneManager {
         // Cancel any existing download for this engine
         this.cancelDownload(engineId);
 
-        const modelDir = `${FileSystem.documentDirectory}models/`;
+        const modelDir = `${FileSystem.documentDirectory}windy/engines/`;
         await FileSystem.makeDirectoryAsync(modelDir, { intermediates: true }).catch(() => { });
 
-        const filePath = `${modelDir}${engineId}.bin`;
+        const filePath = `${modelDir}ggml-${engineId}.bin`;
         const downloadUrl = `${ENGINE_CDN_BASE}/${engineId}.bin`;
 
         const info: EngineDownloadInfo = {

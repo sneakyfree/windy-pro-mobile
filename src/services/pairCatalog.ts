@@ -13,6 +13,7 @@
  *   - Cache has 24-hour TTL
  */
 import * as SecureStore from 'expo-secure-store';
+import { fetchWithTimeout, UPLOAD_TIMEOUT_MS } from '@/utils/fetch-timeout';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from './logger';
 
@@ -155,9 +156,9 @@ class PairCatalogService {
                 this.catalog = cached;
                 log.info('loadCatalog', 'loaded from cache', { count: cached.length });
             } else {
-                const response = await fetch(CDN_CATALOG_URL, {
+                const response = await fetchWithTimeout(CDN_CATALOG_URL, {
                     headers: { Accept: 'application/json' },
-                });
+                }, UPLOAD_TIMEOUT_MS);
                 if (response.ok) {
                     let rawData: unknown;
                     try {
@@ -237,10 +238,24 @@ class PairCatalogService {
     /**
      * Get pairs included in a subscription tier.
      * Tiers are cumulative: pro includes free, ultra includes pro+free, etc.
+     * Accepts both catalog tier names (free/pro/ultra/max) and
+     * license tier names (free/pro/translate/translate_pro).
      */
-    getIncludedPairs(tier: PairTier): TranslationPair[] {
+    getIncludedPairs(tier: PairTier | string): TranslationPair[] {
+        // Map license tier names to catalog tier names
+        const LICENSE_TO_CATALOG: Record<string, PairTier> = {
+            'free': 'free',
+            'pro': 'pro',
+            'translate': 'ultra',
+            'translate_pro': 'max',
+            'ultra': 'ultra',
+            'max': 'max',
+        };
+        const catalogTier: PairTier | undefined = LICENSE_TO_CATALOG[tier];
+        if (!catalogTier) return [];
+
         const tierHierarchy: PairTier[] = ['free', 'pro', 'ultra', 'max'];
-        const tierIndex = tierHierarchy.indexOf(tier);
+        const tierIndex = tierHierarchy.indexOf(catalogTier);
         if (tierIndex === -1) return [];
 
         const includedTiers = tierHierarchy.slice(0, tierIndex + 1);

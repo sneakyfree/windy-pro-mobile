@@ -9,6 +9,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { createLogger } from './logger';
 import { API_BASE_URL, PUSH_TOKEN_ENDPOINT, apiUrl } from '@/config/api';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 
 const log = createLogger('PushNotifications');
 
@@ -129,9 +130,19 @@ class PushNotificationService {
      */
     private async registerTokenWithBackend(token: string): Promise<void> {
         try {
-            await fetch(REGISTER_TOKEN_URL, {
+            // Get auth token for backend registration
+            let authToken = '';
+            try {
+                const SecureStore = require('expo-secure-store');
+                authToken = await SecureStore.getItemAsync('windy_jwt_token') || '';
+            } catch { /* SecureStore unavailable */ }
+
+            await fetchWithTimeout(REGISTER_TOKEN_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+                },
                 body: JSON.stringify({
                     token,
                     platform: Platform.OS,

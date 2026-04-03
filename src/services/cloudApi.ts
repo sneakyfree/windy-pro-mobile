@@ -20,7 +20,6 @@
  */
 import * as SecureStore from 'expo-secure-store';
 import * as FileSystem from 'expo-file-system';
-import { Platform } from 'react-native';
 import { API_BASE_URL, ENDPOINTS, apiUrl } from '@/config/api';
 import type { LicenseTier } from '@/types';
 import { normalizeBackendTier } from './license';
@@ -29,7 +28,8 @@ import { createLogger } from './logger';
 const log = createLogger('CloudApi');
 
 // ─── Secure Store Keys ──────────────────────────────────────────
-const TOKEN_KEY = 'windy_cloud_jwt';
+// Unified token key — shared with heartbeat, license, pairManager, model-crypto
+const TOKEN_KEY = 'windy_jwt_token';
 const REFRESH_TOKEN_KEY = 'windy_cloud_refresh_token';
 const USER_ID_KEY = 'windy_cloud_user_id';
 const USER_EMAIL_KEY = 'windy_cloud_email';

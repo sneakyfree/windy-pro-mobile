@@ -12,4 +12,5 @@ module.exports = {
     'src/services/**/*.ts',
     '!src/services/**/*.d.ts',
   ],
+  forceExit: true,
 };

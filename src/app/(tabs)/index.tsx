@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import { CameraView } from 'expo-camera';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { typography } from '@/theme/typography';
 import { useRecordingStore } from '@/stores/useRecordingStore';
 import { useTranscriptStore } from '@/stores/useTranscriptStore';
@@ -902,7 +902,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.accentTransparent,
     },
     toggleEmoji: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
     },
     toggleLabel: {
         ...typography.bodySmall,
@@ -973,7 +973,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.stateRecording,
     },
     buttonEmoji: {
-        fontSize: 48,
+        fontSize: fontSizes['5xl'],
     },
 
     // Duration row with pulsing dot
@@ -1041,7 +1041,7 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
     },
     playPauseEmoji: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
     },
     playbackBarOuter: {
         flex: 1,
@@ -1124,7 +1124,7 @@ const styles = StyleSheet.create({
         marginTop: spacing.sm,
         paddingVertical: spacing.xs,
         paddingHorizontal: spacing.md,
-        backgroundColor: colors.primary,
+        backgroundColor: colors.accent,
         borderRadius: borderRadius.md,
         alignSelf: 'center',
     },

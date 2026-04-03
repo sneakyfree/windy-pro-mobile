@@ -29,6 +29,7 @@ const MATRIX_DEVICE_KEY = 'windy_matrix_device';
 
 // ─── Default Homeserver ─────────────────────────────────────────
 import { CHAT_HOMESERVER } from '@/config/api';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 const DEFAULT_HOMESERVER = CHAT_HOMESERVER;
 
 // ─── Constants ──────────────────────────────────────────────────
@@ -250,7 +251,9 @@ class ChatClient {
     // ─── SDK Loading ────────────────────────────────────────────
 
     /**
-     * Load matrix-js-sdk (handles ESM/CJS via require).
+     * Load matrix-js-sdk lazily on first use (handles ESM/CJS via require).
+     * The SDK is NOT imported at the top level — this avoids loading ~200KB+
+     * of Matrix code at app startup for users who haven't enabled chat.
      */
     private async loadSdk(): Promise<any> {
         if (this.sdk) return this.sdk;
@@ -502,7 +505,7 @@ class ChatClient {
         }
         try {
             // ERR-AUDIT: Check fetch response before using blob
-            const response = await fetch(uri);
+            const response = await fetchWithTimeout(uri);
             if (!response.ok) {
                 return { success: false, error: 'Could not load avatar image' };
             }

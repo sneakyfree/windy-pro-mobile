@@ -9,7 +9,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { typography } from '@/theme/typography';
 import { localStorageService } from '@/services/storage-local';
 import { feedbackService } from '@/services/feedback';
@@ -17,6 +17,7 @@ import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import type { SessionSummary, StorageUsage } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { INPUT_LIMITS } from '@/utils/validation';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 
 import { apiUrl } from '@/config/api';
 
@@ -78,7 +79,7 @@ export default function HistoryScreen() {
     try {
       // Try backend first
       try {
-        const res = await fetch(HISTORY_API, { headers: { 'Accept': 'application/json' } });
+        const res = await fetchWithTimeout(HISTORY_API, { headers: { 'Accept': 'application/json' } });
         if (res.ok) {
           const backendData = await res.json();
           if (Array.isArray(backendData.sessions)) {
@@ -166,7 +167,7 @@ export default function HistoryScreen() {
   const toggleFavorite = async (id: string) => {
     const isFav = favorites.has(id);
     try {
-      await fetch(FAVORITES_API, {
+      await fetchWithTimeout(FAVORITES_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: id, action: isFav ? 'remove' : 'add' }),
@@ -751,7 +752,7 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   syncBadge: {
-    fontSize: 12,
+    fontSize: fontSizes.xs,
   },
   cardPreview: {
     ...typography.body,
@@ -838,11 +839,11 @@ const styles = StyleSheet.create({
     color: colors.stateError,
   },
   checkbox: {
-    fontSize: 18,
+    fontSize: fontSizes.lg,
     marginBottom: spacing.xs,
   },
   favStar: {
-    fontSize: 16,
+    fontSize: fontSizes.base,
   },
   filterRow: {
     flexDirection: 'row',

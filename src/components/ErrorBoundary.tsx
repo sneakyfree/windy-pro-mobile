@@ -6,7 +6,7 @@ import * as React from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView, Platform, Animated } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 
 interface Props {
     children: React.ReactNode;
@@ -208,10 +208,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginBottom: spacing.lg,
     },
-    emoji: { fontSize: 48 },
+    emoji: { fontSize: fontSizes['5xl'] },
 
     title: {
-        fontSize: 24,
+        fontSize: fontSizes['2xl'],
         fontWeight: '700',
         color: colors.textPrimary,
         textAlign: 'center',
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
         borderRadius: borderRadius.lg,
         marginBottom: spacing.md,
     },
-    primaryBtnEmoji: { fontSize: 18 },
+    primaryBtnEmoji: { fontSize: fontSizes.lg },
     primaryBtnText: { fontSize: 17, fontWeight: '700', color: colors.background },
 
     secondaryRow: {

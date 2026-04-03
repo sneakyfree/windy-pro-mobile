@@ -84,6 +84,10 @@ jest.mock('expo-crypto', () => ({
     CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
 }));
 
+jest.mock('expo-constants', () => ({
+    default: { expoConfig: { version: '1.0.0', extra: {} } },
+}));
+
 import { pairManager, PAIR_LIMITS, StorageFullError, InvalidInputError } from '../pairManager';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';

@@ -4,7 +4,10 @@
  * Prevents requests from hanging indefinitely on poor connections.
  */
 
-const DEFAULT_TIMEOUT_MS = 15_000; // 15 seconds
+const DEFAULT_TIMEOUT_MS = 10_000; // 10 seconds for standard API calls
+
+/** Use for file uploads/downloads and other long-running requests */
+export const UPLOAD_TIMEOUT_MS = 30_000; // 30 seconds
 
 /**
  * Fetch with an automatic timeout.

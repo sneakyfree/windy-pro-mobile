@@ -20,7 +20,9 @@ import * as FileSystem from 'expo-file-system';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
+import * as SecureStore from 'expo-secure-store';
 import { ENDPOINTS, apiUrl } from '@/config/api';
+import { fetchWithTimeout, UPLOAD_TIMEOUT_MS } from '@/utils/fetch-timeout';
 import { parseUploadError, isAuthError, isRateLimited, getUserMessage } from '@/utils/api-error';
 import { cloudApi, STORAGE_TIERS, type CloudFile } from './cloudApi';
 import type { LicenseTier } from '@/types';
@@ -207,6 +209,8 @@ class SyncManager {
 
             // Find local items completed but not yet in cloud → upload
             const completedLocal = this.queue.filter(q => q.status === 'completed');
+            const localBundleIds = new Set(this.queue.map(q => q.bundle_id));
+
             for (const item of completedLocal) {
                 if (!cloudFileMap.has(item.bundle_id)) {
                     // Not in cloud → re-queue for upload if quota allows
@@ -220,6 +224,17 @@ class SyncManager {
                         );
                         if (result.success) uploaded++;
                     }
+                } else {
+                    // Both local and cloud have this item — count as conflict (resolved by skip)
+                    conflicts++;
+                }
+            }
+
+            // Find cloud-only files → download
+            for (const cloudFile of cloudFiles) {
+                if (!localBundleIds.has(cloudFile.id)) {
+                    const localPath = await cloudApi.downloadFile(cloudFile.id, cloudFile.filename);
+                    if (localPath) downloaded++;
                 }
             }
 
@@ -479,12 +494,22 @@ class SyncManager {
         }
     }
 
+    private async getAuthHeaders(): Promise<Record<string, string>> {
+        try {
+            const token = await SecureStore.getItemAsync('windy_jwt_token');
+            if (token) return { 'Authorization': `Bearer ${token}` };
+        } catch { /* SecureStore unavailable */ }
+        return {};
+    }
+
     private async uploadSingle(item: SyncQueueItem): Promise<boolean> {
         try {
+            const authHeaders = await this.getAuthHeaders();
             const result = await FileSystem.uploadAsync(UPLOAD_API, item.file_path, {
                 httpMethod: 'POST',
                 uploadType: FileSystem.FileSystemUploadType.MULTIPART,
                 fieldName: item.file_type,
+                headers: authHeaders,
                 parameters: {
                     bundle_id: item.bundle_id,
                     file_type: item.file_type,
@@ -541,9 +566,10 @@ class SyncManager {
                 });
 
                 // Upload chunk
-                const res = await fetch(`${UPLOAD_API}/chunk`, {
+                const chunkAuthHeaders = await this.getAuthHeaders();
+                const res = await fetchWithTimeout(`${UPLOAD_API}/chunk`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...chunkAuthHeaders },
                     body: JSON.stringify({
                         bundle_id: item.bundle_id,
                         file_type: item.file_type,
@@ -553,7 +579,7 @@ class SyncManager {
                         ...item.metadata,
                     }),
                     signal: this.abortController.signal,
-                });
+                }, UPLOAD_TIMEOUT_MS);
 
                 if (!res.ok) {
                     // Parse structured error
@@ -599,7 +625,10 @@ class SyncManager {
 
     private async checkConflict(item: SyncQueueItem): Promise<'upload' | 'skip' | 'download'> {
         try {
-            const res = await fetch(`${CHECK_API}?bundle_id=${item.bundle_id}&file_type=${item.file_type}`);
+            const conflictAuthHeaders = await this.getAuthHeaders();
+            const res = await fetchWithTimeout(`${CHECK_API}?bundle_id=${item.bundle_id}&file_type=${item.file_type}`, {
+                headers: conflictAuthHeaders,
+            });
             if (res.ok) {
                 const data = await res.json();
                 if (data.exists) {
@@ -644,11 +673,12 @@ class SyncManager {
                     files[item.file_type] = content;
                 }
 
-                const res = await fetch(`${UPLOAD_API}/batch`, {
+                const batchAuthHeaders = await this.getAuthHeaders();
+                const res = await fetchWithTimeout(`${UPLOAD_API}/batch`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...batchAuthHeaders },
                     body: JSON.stringify({ bundle_id: bundleId, files }),
-                });
+                }, UPLOAD_TIMEOUT_MS);
 
                 if (res.ok) {
                     for (const item of items) {

@@ -31,6 +31,7 @@
  */
 import * as FileSystem from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
 // Graceful import: expo-crypto may not be available in dev builds
 // that haven't been rebuilt with the native module
 let Crypto: typeof import('expo-crypto') | null = null;
@@ -426,7 +427,7 @@ class PairManager {
             destPath,
             {
                 headers: {
-                    'User-Agent': 'WindyPro/1.0.0',
+                    'User-Agent': `WindyPro/${Constants.expoConfig?.version || '1.0.0'}`,
                 },
                 ...(Platform.OS === 'ios' ? { sessionType: FileSystem.FileSystemSessionType.BACKGROUND } : {}),
             },

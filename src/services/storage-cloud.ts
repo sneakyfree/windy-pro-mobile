@@ -32,6 +32,7 @@ import {
     ApiError,
 } from '@/utils/api-error';
 import { createLogger } from './logger';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 
 const log = createLogger('StorageCloud');
 
@@ -85,7 +86,7 @@ class CloudStorageClient {
      */
     async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
         try {
-            const response = await fetch(this.url(ENDPOINTS.AUTH_LOGIN), {
+            const response = await fetchWithTimeout(this.url(ENDPOINTS.AUTH_LOGIN), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
@@ -147,7 +148,7 @@ class CloudStorageClient {
         if (!this.refreshToken) return false;
 
         try {
-            const response = await fetch(this.url(ENDPOINTS.AUTH_REFRESH), {
+            const response = await fetchWithTimeout(this.url(ENDPOINTS.AUTH_REFRESH), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refreshToken: this.refreshToken }),
@@ -241,7 +242,7 @@ class CloudStorageClient {
             onProgress?.(10);
 
             // Step 1: Upload metadata
-            const metaResponse = await fetch(this.url(ENDPOINTS.RECORDINGS_UPLOAD), {
+            const metaResponse = await fetchWithTimeout(this.url(ENDPOINTS.RECORDINGS_UPLOAD), {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
@@ -290,7 +291,7 @@ class CloudStorageClient {
                     );
 
                     if (uploadResult.status < 200 || uploadResult.status >= 300) {
-                        log.warn('Audio_upload_got_HTTP_uploadRe', 'Audio upload got HTTP ${uploadResult.status} — metadata still synced');
+                        log.warn('Audio_upload_got_HTTP_uploadRe', `Audio upload got HTTP ${uploadResult.status} — metadata still synced`);
                     }
                 }
             }
@@ -315,7 +316,7 @@ class CloudStorageClient {
     ): Promise<{ recordings: CloudRecording[]; total: number }> {
         try {
             const headers = await this.getAuthHeaders();
-            const response = await fetch(
+            const response = await fetchWithTimeout(
                 `${this.url(ENDPOINTS.RECORDINGS_LIST)}?page=${page}&limit=${limit}`,
                 { headers }
             );
@@ -347,7 +348,7 @@ class CloudStorageClient {
     async getRecording(id: string): Promise<CloudRecording | null> {
         try {
             const headers = await this.getAuthHeaders();
-            const response = await fetch(
+            const response = await fetchWithTimeout(
                 `${this.url(ENDPOINTS.RECORDINGS_BY_ID)}/${id}`,
                 { headers }
             );
@@ -373,7 +374,7 @@ class CloudStorageClient {
     async deleteRecording(id: string): Promise<boolean> {
         try {
             const headers = await this.getAuthHeaders();
-            const response = await fetch(
+            const response = await fetchWithTimeout(
                 `${this.url(ENDPOINTS.RECORDINGS_BY_ID)}/${id}`,
                 {
                     method: 'DELETE',
