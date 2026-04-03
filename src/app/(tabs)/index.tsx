@@ -411,6 +411,30 @@ export default function RecordScreen() {
     };
 
     /**
+     * Retry transcription on the last recorded file
+     */
+    const handleRetryTranscription = useCallback(async () => {
+        if (!playbackUri) return;
+        setTranscriptionError(null);
+        clearTranscript();
+        transcriptionService.onSegment = (segment) => { addSegment(segment); };
+        try {
+            const segments = await transcriptionService.transcribeFile(playbackUri);
+            if (segments.length > 0 && useTranscriptStore.getState().segments.length === 0) {
+                setSegments(segments);
+            }
+            const transcriptText = useTranscriptStore.getState().segments.map(s => s.text).join(' ').trim();
+            if (transcriptText.length > 0) {
+                await Clipboard.setStringAsync(transcriptText);
+                feedbackService.success().catch(() => {});
+                announce('Transcript ready, copied to clipboard');
+            }
+        } catch (err: unknown) {
+            setTranscriptionError((err instanceof Error ? err.message : String(err)) || 'Transcription failed');
+        }
+    }, [playbackUri, addSegment, setSegments, clearTranscript, announce]);
+
+    /**
      * Playback controls
      */
     const handlePlayPause = async () => {
@@ -780,6 +804,16 @@ export default function RecordScreen() {
                                     ? "You're offline — recording saved locally. Transcription will run when connected."
                                     : 'Check Settings → Server URL is reachable'}
                             </Text>
+                            {playbackUri && (
+                                <Pressable
+                                    style={styles.retryButton}
+                                    onPress={handleRetryTranscription}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Retry transcription"
+                                >
+                                    <Text style={styles.retryButtonText}>Retry Transcription</Text>
+                                </Pressable>
+                            )}
                         </View>
                     ) : fullText ? (
                         <Text style={styles.transcriptText} selectable>{fullText}</Text>
@@ -1085,6 +1119,19 @@ const styles = StyleSheet.create({
         ...typography.caption,
         color: colors.textTertiary,
         textAlign: 'center',
+    },
+    retryButton: {
+        marginTop: spacing.sm,
+        paddingVertical: spacing.xs,
+        paddingHorizontal: spacing.md,
+        backgroundColor: colors.primary,
+        borderRadius: borderRadius.md,
+        alignSelf: 'center',
+    },
+    retryButtonText: {
+        ...typography.caption,
+        color: '#ffffff',
+        fontWeight: '600',
     },
 
     // Action buttons
