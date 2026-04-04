@@ -55,6 +55,7 @@ export default function ChatHomeScreen() {
     const [createError, setCreateError] = useState<string | null>(null);
     // PERF-AUDIT: Cache contacts outside render loop instead of calling per FlatList item
     const [contacts, setContacts] = useState<ChatContact[]>([]);
+    const [showHatchBanner, setShowHatchBanner] = useState(false);
 
     const userLang = useSettingsStore(s => s.defaultLanguage);
 
@@ -106,6 +107,16 @@ export default function ChatHomeScreen() {
         if (!aIsAgent && bIsAgent) return 1;
         return (b.lastMessageTime || 0) - (a.lastMessageTime || 0);
     });
+
+    // Detect newly hatched agent (show banner once)
+    const prevAgentRoomRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (agentRoomId && agentRoomId !== prevAgentRoomRef.current && prevAgentRoomRef.current !== null) {
+            setShowHatchBanner(true);
+            setTimeout(() => setShowHatchBanner(false), 8000);
+        }
+        prevAgentRoomRef.current = agentRoomId;
+    }, [agentRoomId]);
 
     // ─── Load ───────────────────────────────────────────────────
 
@@ -268,7 +279,7 @@ export default function ChatHomeScreen() {
                     <Text style={styles.roomName} numberOfLines={1}>{item.name}</Text>
                     {isAgentRoom(item) && (
                         <View style={styles.agentTag}>
-                            <Text style={styles.agentTagText}>AI</Text>
+                            <Text style={styles.agentTagText}>{'\uD83E\uDEB0'} AI Agent</Text>
                         </View>
                     )}
                     {item.lastMessageTime && <Text style={styles.roomTime}>{timeAgo(item.lastMessageTime)}</Text>}
@@ -395,6 +406,33 @@ export default function ChatHomeScreen() {
                 </View>
             )}
 
+            {/* Agent Hatch Banner */}
+            {showHatchBanner && (
+                <TouchableOpacity
+                    style={{
+                        backgroundColor: 'rgba(163,230,53,0.15)',
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+                    }}
+                    onPress={() => {
+                        setShowHatchBanner(false);
+                        if (agentRoomId) router.push(`/chat/${agentRoomId}`);
+                    }}
+                    accessibilityLabel={`${agentName} just hatched! Tap to chat.`}
+                    accessibilityRole="button"
+                >
+                    <Text style={{ fontSize: 24 }}>{'\uD83E\uDEB0'}</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.accent }}>{agentName} just hatched!</Text>
+                        <Text style={{ fontSize: 12, color: colors.textSecondary }}>Tap to start chatting with your AI agent</Text>
+                    </View>
+                    <Text style={{ fontSize: 18, color: colors.textTertiary }}>›</Text>
+                </TouchableOpacity>
+            )}
+
             {/* Pinned Agent DM */}
             {agentProvisioned && agentRoomId ? (
                 <TouchableOpacity
@@ -414,7 +452,10 @@ export default function ChatHomeScreen() {
                                 <Text style={styles.agentTagText}>AI Agent</Text>
                             </View>
                         </View>
-                        <Text style={styles.agentSubtext}>Your Windy Fly agent</Text>
+                        <Text style={styles.agentSubtext}>
+                            {flyProduct?.agent_status || 'Your Windy Fly agent'}
+                            {flyProduct?.trust_score != null ? ` \u00B7 Trust: ${flyProduct.trust_score}%` : ''}
+                        </Text>
                     </View>
                     {passportId && <EternitasPassport passportId={passportId} compact />}
                     <Text style={styles.agentChevron}>›</Text>

@@ -20,6 +20,7 @@ import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import EternitasBadge from '@/components/EternitasBadge';
+import VoiceChatButton from '@/components/VoiceChatButton';
 import { PAIR_CDN_BASE } from '@/config/api';
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -476,11 +477,21 @@ export default function ConversationScreen() {
 
                 {/* Input */}
                 <View style={styles.inputBar}>
+                    <VoiceChatButton
+                        onTranscription={(text) => {
+                            // Insert transcribed text into input (user can review before sending)
+                            setInputText(prev => prev ? `${prev} ${text}` : text);
+                        }}
+                        onError={(err) => {
+                            Alert.alert('Voice Input', err);
+                        }}
+                        disabled={sending}
+                    />
                     <TextInput
                         style={styles.textInput}
                         value={inputText}
                         onChangeText={handleTextChange}
-                        placeholder="Type a message..."
+                        placeholder="Type or hold 🎙️ to speak..."
                         placeholderTextColor={colors.textTertiary}
                         multiline
                         maxLength={10000}
