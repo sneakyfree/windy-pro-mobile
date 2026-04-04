@@ -77,6 +77,10 @@ interface SettingsStore {
     ecosystemStatus: EcosystemStatus | null;
     setEcosystemStatus: (status: EcosystemStatus | null) => void;
 
+    // Voice chat mode
+    voiceChatMode: 'dictate' | 'autosend';
+    setVoiceChatMode: (mode: 'dictate' | 'autosend') => void;
+
     // Chat homeserver (overridable from settings)
     chatHomeserver: string;
     setChatHomeserver: (url: string) => void;
@@ -144,6 +148,9 @@ export const useSettingsStore = create<SettingsStore>()(
 
             ecosystemStatus: null,
             setEcosystemStatus: (status) => set({ ecosystemStatus: status }),
+
+            voiceChatMode: 'dictate',
+            setVoiceChatMode: (mode) => set({ voiceChatMode: mode }),
 
             chatHomeserver: '',
             setChatHomeserver: (url) => set({ chatHomeserver: url }),

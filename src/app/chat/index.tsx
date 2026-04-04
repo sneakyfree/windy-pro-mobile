@@ -56,6 +56,7 @@ export default function ChatHomeScreen() {
     // PERF-AUDIT: Cache contacts outside render loop instead of calling per FlatList item
     const [contacts, setContacts] = useState<ChatContact[]>([]);
     const [showHatchBanner, setShowHatchBanner] = useState(false);
+    const [showAgentTooltip, setShowAgentTooltip] = useState(false);
 
     const userLang = useSettingsStore(s => s.defaultLanguage);
 
@@ -117,6 +118,20 @@ export default function ChatHomeScreen() {
         }
         prevAgentRoomRef.current = agentRoomId;
     }, [agentRoomId]);
+
+    // Show first-time agent tooltip (once per device)
+    useEffect(() => {
+        if (agentProvisioned && agentRoomId) {
+            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+            AsyncStorage.getItem('windy_agent_tooltip_shown').then((shown: string | null) => {
+                if (!shown) {
+                    setShowAgentTooltip(true);
+                    AsyncStorage.setItem('windy_agent_tooltip_shown', '1');
+                    setTimeout(() => setShowAgentTooltip(false), 10000);
+                }
+            }).catch(() => {});
+        }
+    }, [agentProvisioned, agentRoomId]);
 
     // ─── Load ───────────────────────────────────────────────────
 
@@ -479,6 +494,29 @@ export default function ChatHomeScreen() {
                     <Text style={styles.agentChevron}>›</Text>
                 </TouchableOpacity>
             ) : null}
+
+            {/* First-time agent tooltip */}
+            {showAgentTooltip && (
+                <TouchableOpacity
+                    style={{
+                        backgroundColor: 'rgba(163,230,53,0.1)',
+                        borderLeftWidth: 3,
+                        borderLeftColor: colors.accent,
+                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                        marginHorizontal: 12,
+                        marginBottom: 8,
+                        borderRadius: 8,
+                    }}
+                    onPress={() => setShowAgentTooltip(false)}
+                    accessibilityLabel="Agent introduction tooltip. Tap to dismiss."
+                >
+                    <Text style={{ fontSize: 13, color: colors.textPrimary, lineHeight: 18 }}>
+                        {'\uD83D\uDCA1'} This is your AI agent. It can help with emails, messages, translations, and more. Just ask!
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>Tap to dismiss</Text>
+                </TouchableOpacity>
+            )}
 
             {/* Room List */}
             <FlatList

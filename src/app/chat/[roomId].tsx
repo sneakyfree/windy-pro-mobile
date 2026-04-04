@@ -20,7 +20,7 @@ import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import EternitasBadge from '@/components/EternitasBadge';
-import VoiceChatButton from '@/components/VoiceChatButton';
+import VoiceChatButton, { type VoiceChatMode } from '@/components/VoiceChatButton';
 import { PAIR_CDN_BASE } from '@/config/api';
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -56,6 +56,7 @@ export default function ConversationScreen() {
     const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null); // PC-4: Typing debounce
 
     const userLang = useSettingsStore(s => s.defaultLanguage);
+    const settings = useSettingsStore();
 
     useEffect(() => {
         chatTranslateService.setUserLanguage(userLang);
@@ -477,27 +478,41 @@ export default function ConversationScreen() {
 
                 {/* Input */}
                 <View style={styles.inputBar}>
-                    <VoiceChatButton
-                        onTranscription={(text) => {
-                            // Insert transcribed text into input (user can review before sending)
-                            setInputText(prev => prev ? `${prev} ${text}` : text);
-                        }}
-                        onError={(err) => {
-                            Alert.alert('Voice Input', err);
-                        }}
-                        disabled={sending}
-                    />
                     <TextInput
                         style={styles.textInput}
                         value={inputText}
                         onChangeText={handleTextChange}
-                        placeholder="Type or hold 🎙️ to speak..."
+                        placeholder="Type or tap 🎙️..."
                         placeholderTextColor={colors.textTertiary}
                         multiline
                         maxLength={10000}
                         returnKeyType="default"
                         accessibilityLabel="Type a message"
-                        accessibilityHint="Type and send a message in this conversation"
+                        accessibilityHint="Type and send a message, or use the mic button for voice input"
+                    />
+                    <VoiceChatButton
+                        mode={(settings.voiceChatMode as VoiceChatMode) || 'dictate'}
+                        onTranscription={(text) => {
+                            if ((settings.voiceChatMode as VoiceChatMode) === 'autosend') {
+                                // Auto-send: transcribe and send immediately
+                                setInputText(text);
+                                setTimeout(() => handleSend(), 50);
+                            } else {
+                                // Dictate: fill compose box for review
+                                setInputText(prev => prev ? `${prev} ${text}` : text);
+                            }
+                        }}
+                        onVoiceNote={async (uri, durationSec) => {
+                            // Send voice note as m.audio Matrix event
+                            try {
+                                const formatted = `${Math.floor(durationSec / 60)}:${Math.floor(durationSec % 60).toString().padStart(2, '0')}`;
+                                await chatClient.sendMessage(roomId, `🎵 Voice note (${formatted})`);
+                            } catch {
+                                Alert.alert('Voice Note', 'Could not send voice note.');
+                            }
+                        }}
+                        onError={(err) => Alert.alert('Voice Input', err)}
+                        disabled={sending}
                     />
                     <TouchableOpacity
                         style={[

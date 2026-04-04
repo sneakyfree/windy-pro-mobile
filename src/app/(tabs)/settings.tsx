@@ -537,6 +537,34 @@ export default function SettingsScreen() {
             <SettingsToggle label="Audio feedback" subtitle="Blip sounds on record start/stop" value={settings.audioFeedback} onToggle={settings.setAudioFeedback} />
           </SettingsSection>
 
+          {/* Voice Chat */}
+          <SettingsSection title="Voice Chat">
+            <View style={styles.row}>
+              <View style={styles.rowLabelContainer}>
+                <Text style={styles.rowLabel}>Voice chat mode</Text>
+                <Text style={styles.rowSubtitle}>
+                  {settings.voiceChatMode === 'autosend' ? 'Speak → auto-send (power user)' : 'Speak → fill compose box (review first)'}
+                </Text>
+              </View>
+              <Pressable
+                style={[styles.themeBtn, settings.voiceChatMode === 'dictate' && styles.themeBtnActive, { flex: 0, paddingHorizontal: 12 }]}
+                onPress={() => settings.setVoiceChatMode('dictate')}
+                accessibilityLabel="Tap to dictate mode"
+                accessibilityRole="button"
+              >
+                <Text style={[styles.themeBtnText, settings.voiceChatMode === 'dictate' && styles.themeBtnTextActive]}>Dictate</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.themeBtn, settings.voiceChatMode === 'autosend' && styles.themeBtnActive, { flex: 0, paddingHorizontal: 12, marginLeft: 6 }]}
+                onPress={() => settings.setVoiceChatMode('autosend')}
+                accessibilityLabel="Tap to auto-send mode"
+                accessibilityRole="button"
+              >
+                <Text style={[styles.themeBtnText, settings.voiceChatMode === 'autosend' && styles.themeBtnTextActive]}>Auto-send</Text>
+              </Pressable>
+            </View>
+          </SettingsSection>
+
           {/* Notifications */}
           <SettingsSection title="Notifications">
             <SettingsToggle label="Recording complete" subtitle="When a transcription finishes" value={settings.notifyRecordingComplete} onToggle={settings.setNotifyRecordingComplete} />
