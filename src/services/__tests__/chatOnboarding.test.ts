@@ -30,6 +30,8 @@ jest.mock('@/config/api', () => ({
         CHAT_SET_PROFILE: '/api/v1/chat/profile',
     },
     CHAT_HOMESERVER: 'https://chat.windypro.com',
+    DEFAULT_CHAT_HOMESERVER: 'https://chat.windypro.com',
+    getChatHomeserver: jest.fn(() => 'https://chat.windypro.com'),
 }));
 
 jest.mock('@/services/chatClient', () => ({

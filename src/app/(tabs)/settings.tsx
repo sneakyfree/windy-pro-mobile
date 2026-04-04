@@ -27,7 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import EnginePickerSheet from '@/components/EnginePickerSheet';
 import LanguagePickerSheet from '@/components/LanguagePickerSheet';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
-import { getEcosystemStatus, PRODUCT_DISPLAY, getStatusLabel, getStatusColor, type EcosystemStatus } from '@/services/ecosystem-status';
+import { getEcosystemStatus, PRODUCT_DISPLAY, getStatusLabel, getStatusColor, getStatusIcon, getProductSubtitle, type EcosystemStatus } from '@/services/ecosystem-status';
 import { cloudApi } from '@/services/cloudApi';
 import type { StorageUsage } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
@@ -61,9 +61,11 @@ export default function SettingsScreen() {
   const [licenseKeyDisplay, setLicenseKeyDisplay] = useState<string | null>(null);
   const [targetLangPickerVisible, setTargetLangPickerVisible] = useState(false);
   const [serverUrl, setServerUrl] = useState(getTranscriptionServerUrl());
+  const [chatHomeserver, setChatHomeserver] = useState(settings.chatHomeserver || 'https://chat.windypro.com');
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [loadErrors, setLoadErrors] = useState<string[]>([]);
   const [ecosystem, setEcosystem] = useState<EcosystemStatus | null>(settings.ecosystemStatus);
+  const [cloudUsage, setCloudUsage] = useState<{ usedBytes: number; limitBytes: number; fileCount: number; tierLabel: string; percentUsed: number } | null>(null);
 
   const SERVER_URL_KEY = 'windy-server-url';
 
@@ -119,6 +121,14 @@ export default function SettingsScreen() {
       if (ecoStatus) {
         setEcosystem(ecoStatus);
         settings.setEcosystemStatus(ecoStatus);
+      }
+    } catch { /* Non-critical */ }
+
+    // Fetch cloud storage usage (non-blocking)
+    try {
+      if (cloudApi.isAuthenticated()) {
+        const usage = await cloudApi.getStorageUsage(settings.licenseTier);
+        setCloudUsage(usage);
       }
     } catch { /* Non-critical */ }
 
@@ -277,13 +287,16 @@ export default function SettingsScreen() {
                 if (!productStatus) return null;
                 const statusLabel = getStatusLabel(productStatus.status, productStatus.detail);
                 const statusColor = getStatusColor(productStatus.status);
-                const isActive = productStatus.status === 'active';
-                const needsAction = productStatus.status === 'not_provisioned' || productStatus.status === 'available';
+                const statusIcon = getStatusIcon(productStatus.status);
+                const subtitle = getProductSubtitle(product.key, productStatus);
+                const needsSetup = productStatus.status === 'not_provisioned' || productStatus.status === 'available';
+                const isOffline = productStatus.status === 'offline';
 
                 return (
                   <Pressable
                     key={product.key}
-                    style={styles.navRow}
+                    style={[styles.navRow, { minHeight: subtitle ? 56 : 48, paddingVertical: subtitle ? 8 : spacing.md - 2 }]}
+                    disabled={isOffline}
                     onPress={() => {
                       feedbackService.tap().catch(() => {});
                       if (product.route) {
@@ -292,17 +305,29 @@ export default function SettingsScreen() {
                         Linking.openURL(product.externalUrl).catch(() => {});
                       }
                     }}
-                    accessibilityLabel={`${product.label}: ${statusLabel}`}
+                    accessibilityLabel={`${product.label}: ${statusLabel}${subtitle ? `, ${subtitle}` : ''}`}
                     accessibilityRole="button"
                   >
-                    <Text style={styles.navRowLabel}>{product.emoji} {product.label}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      {needsAction ? (
-                        <Text style={{ ...typography.caption, color: colors.accent }}>{product.cta}</Text>
-                      ) : (
-                        <Text style={{ ...typography.caption, color: statusColor }}>{statusLabel}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.navRowLabel, isOffline && { color: colors.textTertiary }]}>{product.emoji} {product.label}</Text>
+                      {subtitle && (
+                        <Text style={{ ...typography.caption, color: colors.textTertiary, marginTop: 2, paddingLeft: 28 }} numberOfLines={1}>{subtitle}</Text>
                       )}
-                      <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {needsSetup ? (
+                        <View style={{ backgroundColor: colors.accent, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                          <Text style={{ ...typography.caption, fontWeight: '600', color: colors.background }}>Set up</Text>
+                        </View>
+                      ) : isOffline ? (
+                        <Text style={{ ...typography.caption, color: colors.textTertiary }}>Offline</Text>
+                      ) : (
+                        <>
+                          <Text style={{ fontSize: 14 }}>{statusIcon}</Text>
+                          <Text style={{ ...typography.caption, color: statusColor }}>{statusLabel}</Text>
+                        </>
+                      )}
+                      {!isOffline && <Text style={styles.chevron} importantForAccessibility="no">›</Text>}
                     </View>
                   </Pressable>
                 );
@@ -640,6 +665,35 @@ export default function SettingsScreen() {
 
           {/* Cloud Sync */}
           <SettingsSection title="Cloud Sync">
+            {/* Storage Breakdown: Local + Cloud */}
+            {(storage || cloudUsage) && (
+              <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight }}>
+                {storage && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ ...typography.bodySmall, color: colors.textSecondary }}>Local (hot)</Text>
+                    <Text style={{ ...typography.bodySmall, color: colors.textPrimary }}>
+                      {formatBytes(storage.totalBytes || 0)} / {formatBytes(500 * 1024 * 1024)}
+                    </Text>
+                  </View>
+                )}
+                {cloudUsage && (
+                  <>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ ...typography.bodySmall, color: colors.textSecondary }}>Cloud (cold)</Text>
+                      <Text style={{ ...typography.bodySmall, color: colors.textPrimary }}>
+                        {formatBytes(cloudUsage.usedBytes)} / {formatBytes(cloudUsage.limitBytes)}
+                      </Text>
+                    </View>
+                    <View style={{ height: 4, backgroundColor: colors.surfaceLight, borderRadius: 2, overflow: 'hidden' }}>
+                      <View style={{ height: '100%', width: `${Math.min(cloudUsage.percentUsed, 100)}%`, backgroundColor: cloudUsage.percentUsed > 90 ? '#ef4444' : colors.accent, borderRadius: 2 }} />
+                    </View>
+                    <Text style={{ ...typography.caption, color: colors.textTertiary }}>
+                      {cloudUsage.tierLabel} tier · {cloudUsage.fileCount} file{cloudUsage.fileCount !== 1 ? 's' : ''} · {cloudUsage.percentUsed}% used
+                    </Text>
+                  </>
+                )}
+              </View>
+            )}
             <SettingsToggle
               label="Auto-Sync"
               subtitle="Automatically sync recordings when on Wi-Fi"
@@ -701,10 +755,10 @@ export default function SettingsScreen() {
             </Pressable>
           </SettingsSection>
 
-          {/* Server Config */}
-          <SettingsSection title="Server">
+          {/* Server Config (Advanced) */}
+          <SettingsSection title="Advanced">
             <View style={styles.serverUrlRow}>
-              <Text style={styles.settingLabel}>Server URL</Text>
+              <Text style={styles.settingLabel}>Transcription Server</Text>
               <TextInput
                 style={styles.serverUrlInput}
                 value={serverUrl}
@@ -740,6 +794,46 @@ export default function SettingsScreen() {
                   feedbackService.tap();
                 }}
                 accessibilityLabel="Reset server URL to default"
+                accessibilityRole="button"
+              >
+                <Text style={styles.serverResetText}>Reset</Text>
+              </Pressable>
+            </View>
+            <View style={[styles.serverUrlRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight }]}>
+              <Text style={styles.settingLabel}>Chat Homeserver</Text>
+              <TextInput
+                style={styles.serverUrlInput}
+                value={chatHomeserver}
+                onChangeText={setChatHomeserver}
+                accessibilityLabel="Matrix chat homeserver URL"
+                onEndEditing={() => {
+                  const url = chatHomeserver.trim() || 'https://chat.windypro.com';
+                  const urlCheck = validateUrl(url);
+                  if (!urlCheck.valid) {
+                    Alert.alert('Invalid URL', urlCheck.error);
+                    return;
+                  }
+                  setChatHomeserver(url);
+                  settings.setChatHomeserver(url);
+                  feedbackService.success();
+                  Alert.alert('Chat Server Updated', `Chat homeserver set to:\n${url}`);
+                }}
+                placeholder="https://chat.windypro.com"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                maxLength={INPUT_LIMITS.SERVER_URL}
+              />
+              <Pressable
+                style={styles.serverResetBtn}
+                onPress={() => {
+                  const def = 'https://chat.windypro.com';
+                  setChatHomeserver(def);
+                  settings.setChatHomeserver('');
+                  feedbackService.tap();
+                }}
+                accessibilityLabel="Reset chat homeserver to default"
                 accessibilityRole="button"
               >
                 <Text style={styles.serverResetText}>Reset</Text>

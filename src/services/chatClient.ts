@@ -28,9 +28,14 @@ const MATRIX_SERVER_KEY = 'windy_matrix_server';
 const MATRIX_DEVICE_KEY = 'windy_matrix_device';
 
 // ─── Default Homeserver ─────────────────────────────────────────
-import { CHAT_HOMESERVER } from '@/config/api';
+import { getChatHomeserver, DEFAULT_CHAT_HOMESERVER } from '@/config/api';
 import { fetchWithTimeout } from '@/utils/fetch-timeout';
-const DEFAULT_HOMESERVER = CHAT_HOMESERVER;
+/** Reads from settings store at runtime, falls back to default */
+function getDefaultHomeserver(): string {
+    return getChatHomeserver();
+}
+/** Static fallback for imports that need a constant */
+const DEFAULT_HOMESERVER = DEFAULT_CHAT_HOMESERVER;
 
 // ─── Constants ──────────────────────────────────────────────────
 const MAX_MESSAGE_LENGTH = 10_000;
@@ -275,7 +280,7 @@ class ChatClient {
     async login(
         username: string,
         password: string,
-        homeserverUrl: string = DEFAULT_HOMESERVER,
+        homeserverUrl: string = getDefaultHomeserver(),
     ): Promise<AuthResult> {
         // Validate homeserver URL
         const urlError = validateHomeserverUrl(homeserverUrl);
@@ -317,7 +322,7 @@ class ChatClient {
     async register(
         username: string,
         password: string,
-        homeserverUrl: string = DEFAULT_HOMESERVER,
+        homeserverUrl: string = getDefaultHomeserver(),
     ): Promise<AuthResult> {
         // Validate homeserver URL
         const urlError = validateHomeserverUrl(homeserverUrl);
@@ -435,7 +440,7 @@ class ChatClient {
     }
 
     getHomeserver(): string {
-        return this.session?.homeserverUrl || DEFAULT_HOMESERVER;
+        return this.session?.homeserverUrl || getDefaultHomeserver();
     }
 
     getSyncState(): SyncState {

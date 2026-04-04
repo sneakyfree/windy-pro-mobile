@@ -77,6 +77,10 @@ interface SettingsStore {
     ecosystemStatus: EcosystemStatus | null;
     setEcosystemStatus: (status: EcosystemStatus | null) => void;
 
+    // Chat homeserver (overridable from settings)
+    chatHomeserver: string;
+    setChatHomeserver: (url: string) => void;
+
     // Theme
     theme: 'dark' | 'light' | 'system';
     setTheme: (theme: 'dark' | 'light' | 'system') => void;
@@ -140,6 +144,9 @@ export const useSettingsStore = create<SettingsStore>()(
 
             ecosystemStatus: null,
             setEcosystemStatus: (status) => set({ ecosystemStatus: status }),
+
+            chatHomeserver: '',
+            setChatHomeserver: (url) => set({ chatHomeserver: url }),
 
             theme: 'dark',
             setTheme: (theme) => set({ theme }),

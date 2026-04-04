@@ -70,8 +70,27 @@ export const ENDPOINTS = {
     CHAT_SET_PROFILE: '/api/v1/chat/profile',
 } as const;
 
-/** Windy Chat Matrix homeserver — users never see this URL */
-export const CHAT_HOMESERVER = 'https://chat.windypro.com';
+/** Windy Chat Matrix homeserver — default, overridable from settings */
+export const DEFAULT_CHAT_HOMESERVER = 'https://chat.windypro.com';
+
+/** Windy Mail webmail URL */
+export const WINDY_MAIL_URL = 'https://mail.windymail.ai';
+
+/**
+ * Get the current chat homeserver URL.
+ * Reads from the settings store if available, falls back to default.
+ */
+export function getChatHomeserver(): string {
+    try {
+        const { useSettingsStore } = require('@/stores/useSettingsStore');
+        return useSettingsStore.getState().chatHomeserver || DEFAULT_CHAT_HOMESERVER;
+    } catch {
+        return DEFAULT_CHAT_HOMESERVER;
+    }
+}
+
+/** @deprecated Use getChatHomeserver() for runtime, DEFAULT_CHAT_HOMESERVER for static */
+export const CHAT_HOMESERVER = DEFAULT_CHAT_HOMESERVER;
 
 // ─── CDN / External Service URLs ──────────────────────────────
 

@@ -39,7 +39,12 @@ export default function ChatProfileScreen() {
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [homeserver, setHomeserver] = useState('https://matrix.org');
+    const [homeserver, setHomeserver] = useState(() => {
+        try {
+            const { getChatHomeserver } = require('@/config/api');
+            return getChatHomeserver();
+        } catch { return 'https://chat.windypro.com'; }
+    });
     const [isRegister, setIsRegister] = useState(false);
     const [authLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState('');

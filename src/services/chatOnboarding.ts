@@ -12,7 +12,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL, ENDPOINTS, CHAT_HOMESERVER } from '@/config/api';
+import { API_BASE_URL, ENDPOINTS, getChatHomeserver } from '@/config/api';
 import { chatClient } from '@/services/chatClient';
 import { createLogger } from './logger';
 
@@ -192,7 +192,7 @@ class ChatOnboardingService {
                         accessToken: body.credentials.accessToken,
                         userId: body.credentials.userId,
                         deviceId: body.credentials.deviceId,
-                        homeserverUrl: body.credentials.homeserverUrl || CHAT_HOMESERVER,
+                        homeserverUrl: body.credentials.homeserverUrl || getChatHomeserver(),
                     },
                 };
             }
