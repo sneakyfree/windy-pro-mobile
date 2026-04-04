@@ -30,23 +30,37 @@ const SLIDES: OnboardingSlide[] = [
     {
         key: 'welcome',
         emoji: '🌪️',
-        title: 'Welcome to Windy Pro',
-        subtitle: 'Voice to Text, Your Way',
-        description: 'The world\'s most potent, simplified voice-to-text tool.\nTap one button. Talk. Get polished text.',
+        title: 'Windy Word',
+        subtitle: 'Your voice, unlimited',
+        description: 'Tap one button. Speak. Get polished text.\nIn any app, any language, anywhere.',
     },
     {
         key: 'permissions',
         emoji: '🎤',
-        title: 'Quick Setup',
-        subtitle: 'We need a few permissions',
-        description: 'Windy Pro processes audio on your device.\nNothing is sent to the cloud without your permission.',
+        title: 'Microphone Access',
+        subtitle: 'So we can hear you',
+        description: 'Your voice is processed on-device by default.\nNothing leaves your phone without your permission.',
     },
     {
-        key: 'engine',
+        key: 'voicetest',
+        emoji: '🗣️',
+        title: 'Quick Voice Test',
+        subtitle: 'Say something — anything!',
+        description: 'Let\'s make sure everything works.\nTap the button below and say "Hello".',
+    },
+    {
+        key: 'account',
+        emoji: '👤',
+        title: 'Your Account',
+        subtitle: 'Sign in to unlock everything',
+        description: 'Cloud sync, chat, translation pairs,\nand your Windy Fly AI agent.',
+    },
+    {
+        key: 'ready',
         emoji: '⚡',
-        title: 'Ready to Go',
-        subtitle: 'Your voice engine is configured',
-        description: 'Start recording right away.\nYou can change your settings anytime.',
+        title: 'You\'re Ready!',
+        subtitle: 'Start recording right now',
+        description: 'Your voice engine is configured.\nYou can change settings anytime.',
     },
 ];
 
@@ -58,6 +72,9 @@ export default function OnboardingScreen() {
     const [overlayGranted, setOverlayGranted] = useState(false);
     const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
     const [windyTune, setWindyTune] = useState<WindyTuneResult | null>(null);
+    const [voiceTestResult, setVoiceTestResult] = useState<string | null>(null);
+    const [voiceTestRecording, setVoiceTestRecording] = useState(false);
+    const [voiceTestTranscribing, setVoiceTestTranscribing] = useState(false);
     const flatListRef = useRef<FlatList>(null);
     const scrollX = useRef(new Animated.Value(0)).current;
 
@@ -81,6 +98,43 @@ export default function OnboardingScreen() {
         feedbackService.tap().catch(() => { });
     };
 
+    const handleVoiceTest = async () => {
+        if (voiceTestRecording) {
+            // Stop recording and transcribe
+            setVoiceTestRecording(false);
+            setVoiceTestTranscribing(true);
+            try {
+                const { audioCapture } = require('@/services/audio-capture');
+                const result = await audioCapture.stopRecording();
+                if (result?.uri) {
+                    const { transcriptionService } = require('@/services/transcription');
+                    const segments = await transcriptionService.transcribeFile(result.uri);
+                    const text = segments.map((s: any) => s.text).join(' ').trim();
+                    setVoiceTestResult(text || 'No speech detected — try again');
+                }
+            } catch {
+                setVoiceTestResult('Transcription unavailable — you can set it up later');
+            }
+            setVoiceTestTranscribing(false);
+        } else {
+            // Start recording
+            try {
+                const { audioCapture } = require('@/services/audio-capture');
+                await audioCapture.startRecording(`voice-test-${Date.now()}`, { maxDuration: 10 });
+                setVoiceTestRecording(true);
+                setVoiceTestResult(null);
+                feedbackService.tap().catch(() => { });
+            } catch {
+                setVoiceTestResult('Could not access microphone');
+            }
+        }
+    };
+
+    const handleSignIn = () => {
+        const { router: r } = require('expo-router');
+        r.push('/auth/login');
+    };
+
     const handleNext = async () => {
         feedbackService.tap().catch(() => { });
 
@@ -99,14 +153,41 @@ export default function OnboardingScreen() {
             setOnboardingComplete(true);
             analyticsService.trackScreenView('onboarding_complete');
             feedbackService.success().catch(() => { });
+
+            // Check if user has a Windy Fly agent
+            try {
+                const { useSettingsStore: store } = require('@/stores/useSettingsStore');
+                const eco = store.getState().ecosystemStatus;
+                const flyProduct = eco?.products?.windy_fly;
+                if (flyProduct?.status === 'active' && flyProduct?.room_id) {
+                    Alert.alert(
+                        `${flyProduct.agent_name || 'Your agent'} is waiting!`,
+                        'Your Windy Fly AI agent is ready in Chat. Say hello!',
+                        [
+                            { text: 'Later', style: 'cancel', onPress: () => router.replace('/(tabs)') },
+                            { text: 'Say Hello', onPress: () => {
+                                router.replace('/(tabs)');
+                                setTimeout(() => router.push(`/chat/${flyProduct.room_id}`), 300);
+                            }},
+                        ]
+                    );
+                    return;
+                }
+            } catch { /* ignore — ecosystem not loaded yet */ }
+
             router.replace('/(tabs)');
         }
     };
 
     const getButtonText = () => {
-        if (currentIndex === 0) return 'Get Started →';
-        if (currentIndex === 1) return micGranted ? 'Continue →' : 'Grant Microphone to Continue';
-        return 'Start Recording →';
+        switch (SLIDES[currentIndex]?.key) {
+            case 'welcome': return 'Get Started →';
+            case 'permissions': return micGranted ? 'Continue →' : 'Grant Microphone';
+            case 'voicetest': return voiceTestResult ? 'Continue →' : 'Skip Voice Test →';
+            case 'account': return 'Continue →';
+            case 'ready': return 'Start Recording →';
+            default: return 'Continue →';
+        }
     };
 
     const renderSlide = useCallback(({ item, index }: ListRenderItemInfo<OnboardingSlide>) => {
@@ -217,8 +298,70 @@ export default function OnboardingScreen() {
                         </View>
                     )}
 
-                    {/* Engine info on slide 3 */}
-                    {index === 2 && windyTune && (
+                    {/* Voice test on slide 3 */}
+                    {item.key === 'voicetest' && (
+                        <View style={styles.permissionsContainer}>
+                            <Pressable
+                                style={[
+                                    styles.permissionCard,
+                                    voiceTestRecording && { borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)' },
+                                    voiceTestResult && styles.permissionGranted,
+                                ]}
+                                onPress={handleVoiceTest}
+                                disabled={voiceTestTranscribing}
+                            >
+                                <Text style={styles.permissionEmoji}>
+                                    {voiceTestTranscribing ? '⏳' : voiceTestRecording ? '⏹' : voiceTestResult ? '✅' : '🎤'}
+                                </Text>
+                                <View style={styles.permissionTextCol}>
+                                    <Text style={styles.permissionLabel}>
+                                        {voiceTestTranscribing ? 'Transcribing...' :
+                                         voiceTestRecording ? 'Listening... tap to stop' :
+                                         voiceTestResult ? 'Voice test complete!' : 'Tap to record'}
+                                    </Text>
+                                    {voiceTestResult && (
+                                        <Text style={[styles.permissionDesc, { color: colors.accent }]}>
+                                            "{voiceTestResult}"
+                                        </Text>
+                                    )}
+                                    {!voiceTestResult && !voiceTestRecording && !voiceTestTranscribing && (
+                                        <Text style={styles.permissionDesc}>Say "Hello" or anything you like</Text>
+                                    )}
+                                </View>
+                            </Pressable>
+                        </View>
+                    )}
+
+                    {/* Sign in on slide 4 */}
+                    {item.key === 'account' && (
+                        <View style={styles.permissionsContainer}>
+                            <Pressable style={styles.permissionCard} onPress={handleSignIn}>
+                                <Text style={styles.permissionEmoji}>🔑</Text>
+                                <View style={styles.permissionTextCol}>
+                                    <Text style={styles.permissionLabel}>Sign In</Text>
+                                    <Text style={styles.permissionDesc}>Already have a Windy account</Text>
+                                </View>
+                                <Text style={styles.permissionStatus}>→</Text>
+                            </Pressable>
+                            <Pressable style={styles.permissionCard} onPress={() => {
+                                const { router: r } = require('expo-router');
+                                r.push('/auth/register');
+                            }}>
+                                <Text style={styles.permissionEmoji}>✨</Text>
+                                <View style={styles.permissionTextCol}>
+                                    <Text style={styles.permissionLabel}>Create Account</Text>
+                                    <Text style={styles.permissionDesc}>Free — unlock cloud sync, chat, and more</Text>
+                                </View>
+                                <Text style={styles.permissionStatus}>→</Text>
+                            </Pressable>
+                            <Text style={[styles.description, { fontSize: 13, marginTop: 12 }]}>
+                                You can also skip and create an account later.
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Engine info on final slide */}
+                    {item.key === 'ready' && windyTune && (
                         <View style={styles.engineCard}>
                             <Text style={styles.engineName}>
                                 WindyTune recommends: {windyTune.recommendedEngine}
@@ -229,7 +372,7 @@ export default function OnboardingScreen() {
                 </View>
             </View>
         );
-    }, [micGranted, windyTune, overlayGranted, accessibilityEnabled]);
+    }, [micGranted, windyTune, overlayGranted, accessibilityEnabled, voiceTestResult, voiceTestRecording, voiceTestTranscribing]);
 
     return (
         <ScreenErrorBoundary screenName="Onboarding">
@@ -247,7 +390,7 @@ export default function OnboardingScreen() {
                     )}
                     onViewableItemsChanged={onViewableItemsChanged}
                     viewabilityConfig={viewabilityConfig}
-                    scrollEnabled={currentIndex !== 1 || micGranted}
+                    scrollEnabled={SLIDES[currentIndex]?.key !== 'permissions' || micGranted}
                     keyExtractor={(item) => item.key}
                 />
 
@@ -279,18 +422,18 @@ export default function OnboardingScreen() {
                     <Pressable
                         style={[
                             styles.primaryButton,
-                            currentIndex === 1 && !micGranted && styles.buttonDisabled,
+                            SLIDES[currentIndex]?.key === 'permissions' && !micGranted && styles.buttonDisabled,
                         ]}
-                        onPress={currentIndex === 1 && !micGranted ? requestMicrophone : handleNext}
-                        accessibilityLabel={currentIndex === 0 ? 'Get started' : currentIndex === 1 ? 'Grant microphone permission' : 'Continue'}
+                        onPress={SLIDES[currentIndex]?.key === 'permissions' && !micGranted ? requestMicrophone : handleNext}
+                        accessibilityLabel={getButtonText()}
                         accessibilityRole="button"
                     >
                         <Text style={styles.primaryButtonText}>{getButtonText()}</Text>
                     </Pressable>
 
-                    {currentIndex === 1 && (
+                    {(SLIDES[currentIndex]?.key === 'permissions' || SLIDES[currentIndex]?.key === 'account' || SLIDES[currentIndex]?.key === 'voicetest') && (
                         <Pressable onPress={handleNext} style={styles.skipButton}
-                            accessibilityLabel="Skip microphone setup"
+                            accessibilityLabel="Skip this step"
                             accessibilityRole="button"
                         >
                             <Text style={styles.skipText}>Skip for now</Text>

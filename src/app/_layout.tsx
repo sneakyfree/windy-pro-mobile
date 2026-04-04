@@ -161,11 +161,19 @@ export default function RootLayout() {
   useEffect(() => {
     const handleNotificationTap = (response: any) => {
       const data = response?.notification?.request?.content?.data;
-      if (!data?.type) return;
+      if (!data) return;
 
       setTimeout(() => {
         try {
           const { router } = require('expo-router');
+
+          // Chat message notification — route directly to the DM room
+          if (data.route) {
+            // data.route is like '/(tabs)/chat' or '/chat/!roomId:server'
+            router.push(data.route);
+            return;
+          }
+
           if (data.type === 'translation') {
             router.push('/translate');
           } else if (data.type === 'subscription') {

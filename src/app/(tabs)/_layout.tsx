@@ -74,9 +74,18 @@ export default function TabLayout() {
         options={{
           title: 'Clone Data',
           headerShown: false,
+          tabBarButton: () => null,
+          tabBarAccessibilityLabel: 'Voice clone data',
+        }}
+      />
+      <Tabs.Screen
+        name="ecosystem"
+        options={{
+          title: 'Ecosystem',
+          headerShown: false,
           tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '🧬 Clone',
-          tabBarAccessibilityLabel: 'Voice clone data tab',
+          tabBarLabel: '🌪️ Eco',
+          tabBarAccessibilityLabel: 'Ecosystem tab — all Windy products',
         }}
       />
       <Tabs.Screen
