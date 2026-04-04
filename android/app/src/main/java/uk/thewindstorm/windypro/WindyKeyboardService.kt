@@ -14,6 +14,7 @@ import android.widget.TextView
 import android.content.SharedPreferences
 import android.graphics.drawable.GradientDrawable
 import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.Manifest
 import android.content.pm.PackageManager
 import android.widget.Toast
@@ -158,6 +159,7 @@ class WindyKeyboardService : InputMethodService() {
 
     // ─── Recording ──────────────────────────────────────────────
 
+    @SuppressLint("MissingPermission")
     private fun startRecording() {
         val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
         if (bufferSize == AudioRecord.ERROR || bufferSize == AudioRecord.ERROR_BAD_VALUE) {
