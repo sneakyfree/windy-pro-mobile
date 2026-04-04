@@ -1,5 +1,11 @@
 <resources>
-  <string name="app_name">Windy Pro</string>
+  <string name="app_name">Windy Word</string>
+  <string name="shortcut_record_short">Record</string>
+  <string name="shortcut_record_long">Start Recording</string>
+  <string name="shortcut_chat_short">Chat</string>
+  <string name="shortcut_chat_long">Open Chat</string>
+  <string name="shortcut_translate_short">Translate</string>
+  <string name="shortcut_translate_long">Quick Translate</string>
   <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
   <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
   <string name="accessibility_service_description">Windy Pro uses accessibility to paste transcribed text directly at your cursor position in any app. No data is collected or sent externally.</string>

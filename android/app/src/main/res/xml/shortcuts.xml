@@ -4,37 +4,37 @@
     <shortcut
         android:shortcutId="start_recording"
         android:enabled="true"
-        android:shortcutShortLabel="Record"
-        android:shortcutLongLabel="Start Recording"
+        android:shortcutShortLabel="@string/shortcut_record_short"
+        android:shortcutLongLabel="@string/shortcut_record_long"
         android:icon="@android:drawable/ic_btn_speak_now">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="uk.thewindstorm.windypro"
-            android:targetClass="uk.thewindstorm.windypro.MainActivity"
+            android:targetPackage="ai.windyword.app"
+            android:targetClass="ai.windyword.app.MainActivity"
             android:data="windypro://record" />
     </shortcut>
     <shortcut
         android:shortcutId="open_chat"
         android:enabled="true"
-        android:shortcutShortLabel="Chat"
-        android:shortcutLongLabel="Open Chat"
+        android:shortcutShortLabel="@string/shortcut_chat_short"
+        android:shortcutLongLabel="@string/shortcut_chat_long"
         android:icon="@android:drawable/sym_action_chat">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="uk.thewindstorm.windypro"
-            android:targetClass="uk.thewindstorm.windypro.MainActivity"
+            android:targetPackage="ai.windyword.app"
+            android:targetClass="ai.windyword.app.MainActivity"
             android:data="windypro://chat" />
     </shortcut>
     <shortcut
         android:shortcutId="translate"
         android:enabled="true"
-        android:shortcutShortLabel="Translate"
-        android:shortcutLongLabel="Quick Translate"
+        android:shortcutShortLabel="@string/shortcut_translate_short"
+        android:shortcutLongLabel="@string/shortcut_translate_long"
         android:icon="@android:drawable/ic_menu_rotate">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="uk.thewindstorm.windypro"
-            android:targetClass="uk.thewindstorm.windypro.MainActivity"
+            android:targetPackage="ai.windyword.app"
+            android:targetClass="ai.windyword.app.MainActivity"
             android:data="windypro://translate" />
     </shortcut>
 </shortcuts>
