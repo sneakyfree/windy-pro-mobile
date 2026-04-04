@@ -215,6 +215,15 @@ export default function CloudStorageScreen() {
                         >
                             <Text style={styles.secondaryBtnText}>🗑 Clear Completed</Text>
                         </Pressable>
+
+                        <Pressable
+                            style={[styles.secondaryBtn, { borderColor: colors.accent }]}
+                            onPress={() => router.push('/cloud/files')}
+                            accessibilityLabel="Browse cloud files"
+                            accessibilityRole="button"
+                        >
+                            <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>📂 Browse Files</Text>
+                        </Pressable>
                     </View>
 
                     {/* Info */}

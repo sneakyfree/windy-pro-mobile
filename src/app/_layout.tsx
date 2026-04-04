@@ -252,14 +252,46 @@ export default function RootLayout() {
           return;
         }
 
+        // App shortcuts: windypro://record, windypro://chat
+        if (parsed.path === 'record') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push('/(tabs)');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+        if (parsed.path === 'chat') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push('/(tabs)/chat');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+        if (parsed.path === 'hatch') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push('/hatch');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+
         // Route deep links: windypro://translate, windypro://clone, etc.
         const routeMap: Record<string, string> = {
           'cloud': '/cloud',
+          'files': '/cloud/files',
           'clone': '/clone',
           'subscribe': '/subscription',
           'subscription': '/subscription',
           'video': '/video',
           'settings': '/(tabs)/settings',
+          'ecosystem': '/(tabs)/ecosystem',
+          'agent': '/agent',
         };
 
         // Handle translate deep link specially — with params goes to quick-translate
@@ -415,6 +447,27 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="quick-translate"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="hatch/index"
+              options={{
+                presentation: 'fullScreenModal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="agent/index"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="cloud/files"
               options={{
                 presentation: 'modal',
                 animation: 'slide_from_bottom',

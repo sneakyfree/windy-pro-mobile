@@ -158,7 +158,7 @@ export default function EcosystemScreen() {
                     {ecosystem && ecosystem.products.windy_fly?.status === 'not_provisioned' && (
                         <Pressable
                             style={styles.ctaCard}
-                            onPress={() => Linking.openURL('https://windypro.thewindstorm.uk/app/fly').catch(() => {})}
+                            onPress={() => router.push('/hatch')}
                         >
                             <Text style={styles.ctaEmoji}>{'\uD83E\uDEB0'}</Text>
                             <View style={{ flex: 1 }}>
