@@ -45,7 +45,7 @@ export default function PrivacyPolicyScreen() {
 
             <Text style={styles.heading}>Contact</Text>
             <Text style={styles.body}>
-                Questions? Email privacy@thewindstorm.uk
+                Questions? Email privacy@windyword.ai
             </Text>
         </ScrollView>
         </ScreenErrorBoundary>

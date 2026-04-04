@@ -68,7 +68,7 @@ export const PRODUCT_DISPLAY: ProductDisplayInfo[] = [
     { key: 'windy_cloud', emoji: '☁️', label: 'Windy Cloud', route: '/cloud/files', cta: 'View Files' },
     { key: 'windy_clone', emoji: '🧬', label: 'Windy Clone', route: '/(tabs)/clone-data', cta: 'View Progress' },
     { key: 'windy_traveler', emoji: '🌍', label: 'Windy Traveler', route: '/market', cta: 'Browse Pairs' },
-    { key: 'eternitas', emoji: '🪪', label: 'Eternitas', externalUrl: 'https://windypro.thewindstorm.uk/app/passport', cta: 'View Passport' },
+    { key: 'eternitas', emoji: '🪪', label: 'Eternitas', externalUrl: 'https://windyword.ai/app/passport', cta: 'View Passport' },
 ];
 
 // ─── Status Label Helpers ───────────────────────────────────────

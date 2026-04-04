@@ -480,7 +480,7 @@ export default function ChatHomeScreen() {
                     style={styles.agentCtaCard}
                     onPress={() => {
                         const Linking = require('expo-linking');
-                        Linking.openURL('https://windypro.thewindstorm.uk/app/fly').catch(() => {});
+                        Linking.openURL('https://windyword.ai/app/fly').catch(() => {});
                     }}
                     activeOpacity={0.7}
                     accessibilityLabel="Hatch your Windy Fly AI agent"

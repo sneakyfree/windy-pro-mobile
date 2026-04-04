@@ -122,7 +122,7 @@ export default function AgentScreen() {
                                 emoji="🌐"
                                 label="View Dashboard"
                                 subtitle="Full agent management (web)"
-                                onPress={() => Linking.openURL('https://windypro.thewindstorm.uk/app/fly').catch(() => {})}
+                                onPress={() => Linking.openURL('https://windyword.ai/app/fly').catch(() => {})}
                             />
                             {passportId && (
                                 <ActionRow

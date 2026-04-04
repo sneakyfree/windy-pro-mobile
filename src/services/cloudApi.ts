@@ -1,6 +1,6 @@
 /**
  * 🧬 Cloud API Client
- * Typed client for windypro.thewindstorm.uk R2 cloud storage API.
+ * Typed client for windyword.ai R2 cloud storage API.
  *
  * Endpoints:
  *   POST /api/auth/register       → { email, password } → { token, userId }

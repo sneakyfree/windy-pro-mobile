@@ -196,10 +196,30 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, []);
 
-  // Network monitor lifecycle
+  // Network monitor lifecycle + recovery
   useEffect(() => {
     networkMonitor.start();
-    return () => networkMonitor.stop();
+    let wasOffline = false;
+
+    const checkInterval = setInterval(() => {
+      const isOnline = networkMonitor.isOnline;
+      if (wasOffline && isOnline) {
+        // Just came back online — auto-sync everything
+        log.info('network', 'Back online — syncing');
+        syncManager.processQueue().catch(() => {});
+        // Refresh ecosystem status
+        try {
+          const { getEcosystemStatus } = require('@/services/ecosystem-status');
+          const { useSettingsStore: store } = require('@/stores/useSettingsStore');
+          getEcosystemStatus().then((eco: any) => {
+            if (eco) store.getState().setEcosystemStatus(eco);
+          }).catch(() => {});
+        } catch { /* ignore */ }
+      }
+      wasOffline = !isOnline;
+    }, 5000);
+
+    return () => { networkMonitor.stop(); clearInterval(checkInterval); };
   }, []);
 
   // RP-5.2: Deep link handler (windypro:// scheme)

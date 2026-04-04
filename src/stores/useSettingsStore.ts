@@ -75,6 +75,7 @@ interface SettingsStore {
 
     // Ecosystem status — in-memory only, fetched after login
     ecosystemStatus: EcosystemStatus | null;
+    ecosystemLastFetched: number; // timestamp
     setEcosystemStatus: (status: EcosystemStatus | null) => void;
 
     // Voice chat mode
@@ -147,7 +148,8 @@ export const useSettingsStore = create<SettingsStore>()(
             setWindyIdentityId: (id) => set({ windyIdentityId: id }),
 
             ecosystemStatus: null,
-            setEcosystemStatus: (status) => set({ ecosystemStatus: status }),
+            ecosystemLastFetched: 0,
+            setEcosystemStatus: (status) => set({ ecosystemStatus: status, ecosystemLastFetched: Date.now() }),
 
             voiceChatMode: 'dictate',
             setVoiceChatMode: (mode) => set({ voiceChatMode: mode }),
@@ -171,7 +173,7 @@ export const useSettingsStore = create<SettingsStore>()(
             // SEC-AUDIT: Exclude sensitive fields from AsyncStorage persistence
             partialize: (state) => {
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { windyIdentityId, ecosystemStatus, ...rest } = state;
+                const { windyIdentityId, ecosystemStatus, ecosystemLastFetched, ...rest } = state;
                 return rest;
             },
         }

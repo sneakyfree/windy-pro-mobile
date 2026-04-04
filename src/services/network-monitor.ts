@@ -1,6 +1,6 @@
 /**
  * 🧬 Network Monitor Service
- * Detects connectivity to windypro.thewindstorm.uk and manages a translation queue
+ * Detects connectivity to windyword.ai and manages a translation queue
  * for offline fallback. Queued items are processed on reconnect.
  */
 import * as FileSystem from 'expo-file-system';

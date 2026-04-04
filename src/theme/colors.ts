@@ -1,6 +1,6 @@
 /**
  * 🧬 M1.1.2 — Theme Color Constants
- * Matches windypro.thewindstorm.uk design language
+ * Matches windyword.ai design language
  */
 export const colors = {
     // Backgrounds

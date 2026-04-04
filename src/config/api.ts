@@ -10,7 +10,10 @@ try {
     _expoExtra = Constants?.expoConfig?.extra || {};
 } catch { /* test environment — no native module */ }
 
-export const API_BASE_URL = 'https://windypro.thewindstorm.uk';
+export const API_BASE_URL: string =
+    (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL)
+        || (_expoExtra.apiBaseUrl as string)
+        || 'https://windyword.ai';
 
 // ─── Endpoint paths (relative to API_BASE_URL) ────────────────
 

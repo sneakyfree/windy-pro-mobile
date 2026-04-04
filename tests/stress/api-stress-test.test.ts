@@ -307,7 +307,7 @@ describe('Category 3: Ecosystem Status', () => {
 
         // Simulate what getEcosystemStatus does
         try {
-            const res = await fetch('https://windypro.thewindstorm.uk/api/v1/identity/ecosystem-status', {});
+            const res = await fetch('https://windyword.ai/api/v1/identity/ecosystem-status', {});
             expect(true).toBe(false); // Should not reach
         } catch (err) {
             expect(err).toBeDefined(); // Graceful: caught, not crash
@@ -318,7 +318,7 @@ describe('Category 3: Ecosystem Status', () => {
         await loginAs();
         mockFetch.mockResolvedValueOnce(fail(500, { error: 'Internal error' }));
 
-        const res = await fetch('https://windypro.thewindstorm.uk/api/v1/identity/ecosystem-status', {});
+        const res = await fetch('https://windyword.ai/api/v1/identity/ecosystem-status', {});
         expect(res.ok).toBe(false);
         expect(res.status).toBe(500);
     });
@@ -330,7 +330,7 @@ describe('Category 3: Ecosystem Status', () => {
             json: () => Promise.reject(new SyntaxError('Unexpected token')),
         });
 
-        const res = await fetch('https://windypro.thewindstorm.uk/api/v1/identity/ecosystem-status', {});
+        const res = await fetch('https://windyword.ai/api/v1/identity/ecosystem-status', {});
         await expect(res.json()).rejects.toThrow('Unexpected token');
     });
 

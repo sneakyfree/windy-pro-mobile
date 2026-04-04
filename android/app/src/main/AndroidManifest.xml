@@ -39,7 +39,7 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="https" android:host="windypro.thewindstorm.uk" android:pathPrefix="/app"/>
+        <data android:scheme="https" android:host="windyword.ai" android:pathPrefix="/app"/>
       </intent-filter>
       <!-- Share INTO Windy: receive text, images, files from other apps -->
       <intent-filter>

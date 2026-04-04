@@ -74,7 +74,7 @@ class WindyKeyboardService : InputMethodService() {
     }
 
     private val serverUrl: String
-        get() = prefs.getString("server_url", "https://windypro.thewindstorm.uk") ?: "https://windypro.thewindstorm.uk"
+        get() = prefs.getString("server_url", "https://windyword.ai") ?: "https://windyword.ai"
 
     private val authToken: String?
         get() = prefs.getString("jwt_token", null)

@@ -134,7 +134,7 @@ export default function AppStoreScreen() {
         const storeUrl = Platform.select({
             ios: 'https://apps.apple.com/app/windy-pro/id6759985867',
             android: 'https://play.google.com/store/apps/details?id=uk.thewindstorm.windypro',
-            default: 'https://windypro.thewindstorm.uk',
+            default: 'https://windyword.ai',
         });
         Linking.openURL(storeUrl);
     };
@@ -143,7 +143,7 @@ export default function AppStoreScreen() {
         feedbackService.tap().catch(() => { });
         const deepLink = Linking.createURL('/', { scheme: 'windypro' });
         await Share.share({
-            message: `🌪️ Check out Windy Pro — the best voice-to-text app!\n\nDownload: https://windypro.thewindstorm.uk/download\n\n${deepLink}`,
+            message: `🌪️ Check out Windy Pro — the best voice-to-text app!\n\nDownload: https://windyword.ai/download\n\n${deepLink}`,
             title: 'Share Windy Pro',
         });
     };
@@ -281,7 +281,7 @@ export default function AppStoreScreen() {
 
                 {/* Footer links */}
                 <View style={styles.footerLinks}>
-                    <Pressable onPress={() => Linking.openURL('https://windypro.thewindstorm.uk')}
+                    <Pressable onPress={() => Linking.openURL('https://windyword.ai')}
                         accessibilityLabel="Visit website" accessibilityRole="link"
                     >
                         <Text style={styles.footerLink}>🌐 Website</Text>
@@ -292,7 +292,7 @@ export default function AppStoreScreen() {
                     <Pressable onPress={() => router.push('/legal/terms')}>
                         <Text style={styles.footerLink}>📋 Terms</Text>
                     </Pressable>
-                    <Pressable onPress={() => Linking.openURL('mailto:support@thewindstorm.uk')}
+                    <Pressable onPress={() => Linking.openURL('mailto:support@windyword.ai')}
                         accessibilityLabel="Contact support" accessibilityRole="link"
                     >
                         <Text style={styles.footerLink}>✉️ Support</Text>

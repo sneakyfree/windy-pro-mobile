@@ -45,7 +45,7 @@ export default function TermsOfServiceScreen() {
 
             <Text style={styles.heading}>Contact</Text>
             <Text style={styles.body}>
-                Questions? Email legal@thewindstorm.uk
+                Questions? Email legal@windyword.ai
             </Text>
         </ScrollView>
         </ScreenErrorBoundary>

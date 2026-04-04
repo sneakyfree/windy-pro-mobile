@@ -811,7 +811,7 @@ export default function SettingsScreen() {
                 onChangeText={setServerUrl}
                 accessibilityLabel="Transcription server URL"
                 onEndEditing={async () => {
-                  const url = serverUrl.trim() || 'https://windypro.thewindstorm.uk';
+                  const url = serverUrl.trim() || 'https://windyword.ai';
                   const urlCheck = validateUrl(url);
                   if (!urlCheck.valid) {
                     Alert.alert('Invalid URL', urlCheck.error);
@@ -823,7 +823,7 @@ export default function SettingsScreen() {
                   feedbackService.success();
                   Alert.alert('Server Updated', `Transcription server set to:\n${url}`);
                 }}
-                placeholder="https://windypro.thewindstorm.uk"
+                placeholder="https://windyword.ai"
                 placeholderTextColor={colors.textTertiary}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -833,7 +833,7 @@ export default function SettingsScreen() {
               <Pressable
                 style={styles.serverResetBtn}
                 onPress={async () => {
-                  const def = 'https://windypro.thewindstorm.uk';
+                  const def = 'https://windyword.ai';
                   setServerUrl(def);
                   setTranscriptionServerUrl(def);
                   await AsyncStorage.setItem(SERVER_URL_KEY, def);

@@ -105,6 +105,13 @@ export default function EcosystemScreen() {
                         </View>
                     )}
 
+                    {/* Stale data indicator */}
+                    {ecosystem && settings.ecosystemLastFetched > 0 && (Date.now() - settings.ecosystemLastFetched > 5 * 60 * 1000) && (
+                        <Text style={{ ...typography.caption, color: colors.textTertiary, marginBottom: spacing.sm }}>
+                            Last updated {Math.round((Date.now() - settings.ecosystemLastFetched) / 60000)} min ago
+                        </Text>
+                    )}
+
                     {/* Product Cards */}
                     {ecosystem && PRODUCT_DISPLAY.map((product) => {
                         const p = ecosystem.products[product.key];
