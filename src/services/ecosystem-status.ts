@@ -182,7 +182,6 @@ export async function getEcosystemStatus(): Promise<EcosystemStatus | null> {
         const result = await res.json();
 
         // Defensive: fill in missing products with default status
-        // If Pro adds/removes a product key, mobile won't crash
         const defaults: EcosystemStatus['products'] = {
             windy_word: { status: 'not_provisioned' },
             windy_chat: { status: 'not_provisioned' },
@@ -194,13 +193,46 @@ export async function getEcosystemStatus(): Promise<EcosystemStatus | null> {
             eternitas: { status: 'not_provisioned' },
         };
 
-        // Post-process: if healthy field is explicitly false, override to 'unhealthy'
-        const products = { ...defaults, ...result.products };
-        for (const key of Object.keys(products) as (keyof typeof products)[]) {
-            const p = products[key];
-            if (p.status === 'active' && p.healthy === false) {
-                products[key] = { ...p, status: 'unhealthy' };
+        const raw = { ...defaults, ...result.products };
+
+        // Transform backend field names to mobile field names
+        const productKeys: (keyof EcosystemStatus['products'])[] = [
+            'windy_word', 'windy_chat', 'windy_mail', 'windy_cloud',
+            'windy_fly', 'windy_clone', 'windy_traveler', 'eternitas',
+        ];
+        const products = { ...defaults };
+        for (const key of productKeys) {
+            const p: any = raw[key] || defaults[key];
+            const transformed: EcosystemProduct = {
+                status: p.status || 'not_provisioned',
+                detail: p.detail,
+                // Map backend health: 'ok'|'down' → mobile healthy: boolean
+                healthy: p.health != null ? p.health === 'ok' : undefined,
+                // Chat fields
+                matrix_user_id: p.matrix_user_id,
+                online: p.online,
+                // Mail: backend uses 'address', mobile uses 'email_address'
+                email_address: p.email_address || p.address,
+                // Cloud: backend uses storage_used/storage_limit
+                storage_used_bytes: p.storage_used_bytes ?? p.storage_used,
+                storage_limit_bytes: p.storage_limit_bytes ?? p.storage_limit,
+                // Eternitas: backend uses 'passport', mobile uses 'passport_id'
+                passport_id: p.passport_id || p.passport,
+                trust_score: p.trust_score,
+                clearance_level: p.clearance_level,
+                // Fly agent
+                agent_name: p.agent_name,
+                agent_status: p.agent_status,
+                agent_vps: p.agent_vps,
+                room_id: p.room_id,
+            };
+
+            // If service is 'active' but health check reports 'down', show as unhealthy
+            if (transformed.status === 'active' && transformed.healthy === false) {
+                transformed.status = 'unhealthy';
             }
+
+            products[key] = transformed;
         }
 
         return {

@@ -5,7 +5,7 @@
  * RP-8.5: Real clone progress
  * Navigation features, translation prefs, voice selection
  */
-import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
 import { useState, useCallback, memo } from 'react';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
@@ -63,11 +63,18 @@ export default function SettingsScreen() {
   const [serverUrl, setServerUrl] = useState(getTranscriptionServerUrl());
   const [chatHomeserver, setChatHomeserver] = useState(settings.chatHomeserver || 'https://chat.windypro.com');
   const [settingsLoading, setSettingsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadErrors, setLoadErrors] = useState<string[]>([]);
   const [ecosystem, setEcosystem] = useState<EcosystemStatus | null>(settings.ecosystemStatus);
   const [cloudUsage, setCloudUsage] = useState<{ usedBytes: number; limitBytes: number; fileCount: number; tierLabel: string; percentUsed: number } | null>(null);
 
   const SERVER_URL_KEY = 'windy-server-url';
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -265,7 +272,11 @@ export default function SettingsScreen() {
   return (
     <ScreenErrorBoundary screenName="Settings">
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent]} />}
+        >
           {settingsLoading && (
             <View style={{ padding: 20, alignItems: 'center' }}>
               <ActivityIndicator color={colors.accent} size="small" />
@@ -282,6 +293,13 @@ export default function SettingsScreen() {
           {/* Ecosystem Section */}
           {ecosystem && (
             <SettingsSection title={ecosystem.creator_name ? `${ecosystem.creator_name}'s Windy Ecosystem` : 'Your Windy Ecosystem'}>
+              {/* Identity card */}
+              <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight }}>
+                <Text style={{ ...typography.bodySmall, color: colors.textTertiary }}>{ecosystem.email}</Text>
+                <Text style={{ ...typography.caption, color: colors.accent, marginTop: 2 }}>
+                  {formatTier(ecosystem.tier)} tier{ecosystem.windy_identity_id ? ` \u00B7 ${ecosystem.windy_identity_id.slice(0, 8)}...` : ''}
+                </Text>
+              </View>
               {PRODUCT_DISPLAY.map((product) => {
                 const productStatus = ecosystem.products[product.key];
                 if (!productStatus) return null;
