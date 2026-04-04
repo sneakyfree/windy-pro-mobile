@@ -70,7 +70,9 @@ export default function EcosystemScreen() {
                         <Text style={styles.emptySubtitle}>
                             Sign in to see all your Windy products in one place.
                         </Text>
-                        <Pressable style={styles.signInBtn} onPress={() => router.push('/auth/login')}>
+                        <Pressable style={styles.signInBtn} onPress={() => router.push('/auth/login')}
+                            accessibilityLabel="Sign in to see your Windy ecosystem" accessibilityRole="button"
+                        >
                             <Text style={styles.signInText}>Sign In</Text>
                         </Pressable>
                     </View>
@@ -124,6 +126,8 @@ export default function EcosystemScreen() {
                                     if (product.route) router.push(product.route as any);
                                     else if (product.externalUrl) Linking.openURL(product.externalUrl).catch(() => {});
                                 }}
+                                accessibilityLabel={`${product.label}: ${subtitle || statusLabel}${needsSetup ? '. Tap to set up.' : ''}`}
+                                accessibilityRole="button"
                             >
                                 <View style={styles.cardLeft}>
                                     <Text style={styles.cardEmoji}>{product.emoji}</Text>

@@ -131,7 +131,9 @@ export default function CloudFilesScreen() {
                     <View style={styles.emptyState}>
                         <Text style={{ fontSize: 48, marginBottom: 16 }}>☁️</Text>
                         <Text style={styles.emptyTitle}>Sign in to browse files</Text>
-                        <Pressable style={styles.signInBtn} onPress={() => router.push('/auth/login')}>
+                        <Pressable style={styles.signInBtn} onPress={() => router.push('/auth/login')}
+                            accessibilityLabel="Sign in to browse cloud files" accessibilityRole="button"
+                        >
                             <Text style={styles.signInText}>Sign In</Text>
                         </Pressable>
                     </View>

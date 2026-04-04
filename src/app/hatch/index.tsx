@@ -153,6 +153,8 @@ export default function HatchScreen() {
                 style={[styles.primaryBtn, !agentName.trim() && styles.btnDisabled]}
                 disabled={!agentName.trim()}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setStep('brain'); }}
+                accessibilityLabel="Next: choose an AI brain"
+                accessibilityRole="button"
             >
                 <Text style={styles.primaryBtnText}>Next →</Text>
             </Pressable>
@@ -170,6 +172,9 @@ export default function HatchScreen() {
                     key={opt.id}
                     style={[styles.brainCard, selectedBrain === opt.id && styles.brainCardSelected]}
                     onPress={() => { setSelectedBrain(opt.id); setApiKey(''); }}
+                    accessibilityLabel={`${opt.label}: ${opt.desc}`}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: selectedBrain === opt.id }}
                 >
                     <Text style={styles.brainEmoji}>{opt.emoji}</Text>
                     <View style={{ flex: 1 }}>
@@ -203,11 +208,15 @@ export default function HatchScreen() {
             <Pressable
                 style={[styles.primaryBtn, { marginTop: spacing.lg }]}
                 onPress={startHatch}
+                accessibilityLabel={`Hatch ${agentName || 'agent'} with ${selectedBrain} brain`}
+                accessibilityRole="button"
             >
                 <Text style={styles.primaryBtnText}>{'\uD83E\uDD5A'} Hatch {agentName || 'Agent'}</Text>
             </Pressable>
 
-            <Pressable style={styles.backBtn} onPress={() => setStep('name')}>
+            <Pressable style={styles.backBtn} onPress={() => setStep('name')}
+                accessibilityLabel="Go back to name step" accessibilityRole="button"
+            >
                 <Text style={styles.backBtnText}>← Back</Text>
             </Pressable>
         </ScrollView>
@@ -257,6 +266,8 @@ export default function HatchScreen() {
 
             <Pressable
                 style={[styles.primaryBtn, { backgroundColor: '#22c55e' }]}
+                accessibilityLabel="Go to chat with your new agent"
+                accessibilityRole="button"
                 onPress={() => {
                     if (result?.dm_room_id) {
                         router.replace('/(tabs)/chat');
@@ -269,7 +280,9 @@ export default function HatchScreen() {
                 <Text style={styles.primaryBtnText}>💬 Go to Chat</Text>
             </Pressable>
 
-            <Pressable style={styles.backBtn} onPress={() => router.replace('/(tabs)/ecosystem')}>
+            <Pressable style={styles.backBtn} onPress={() => router.replace('/(tabs)/ecosystem')}
+                accessibilityLabel="Back to ecosystem" accessibilityRole="button"
+            >
                 <Text style={styles.backBtnText}>Back to Ecosystem</Text>
             </Pressable>
         </View>

@@ -54,7 +54,9 @@ export default function AgentScreen() {
                         <Text style={{ fontSize: 64, marginBottom: 16 }}>{'\uD83E\uDEB0'}</Text>
                         <Text style={styles.emptyTitle}>No agent yet</Text>
                         <Text style={styles.emptySubtitle}>Hatch a Windy Fly to get your own AI assistant.</Text>
-                        <Pressable style={styles.hatchBtn} onPress={() => router.push('/hatch')}>
+                        <Pressable style={styles.hatchBtn} onPress={() => router.push('/hatch')}
+                            accessibilityLabel="Hatch a new Windy Fly agent" accessibilityRole="button"
+                        >
                             <Text style={styles.hatchBtnText}>{'\uD83E\uDD5A'} Hatch Agent</Text>
                         </Pressable>
                     </View>
@@ -157,7 +159,10 @@ function ActionRow({ emoji, label, subtitle, onPress }: {
     emoji: string; label: string; subtitle?: string; onPress: () => void;
 }) {
     return (
-        <Pressable style={styles.actionRow} onPress={onPress}>
+        <Pressable style={styles.actionRow} onPress={onPress}
+            accessibilityLabel={subtitle ? `${label}: ${subtitle}` : label}
+            accessibilityRole="button"
+        >
             <Text style={{ fontSize: 22 }}>{emoji}</Text>
             <View style={{ flex: 1 }}>
                 <Text style={styles.actionLabel}>{label}</Text>
