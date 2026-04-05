@@ -51,17 +51,16 @@ export default function MarcoPolo() {
     const estimatedStorageGB = Math.round((pairCount * ESTIMATED_PAIR_SIZE_MB) / 1024 * 10) / 10;
     const hasEnoughStorage = freeMB > estimatedStorageGB * 1024;
 
-    const handlePurchase = () => {
+    const handlePurchase = async () => {
         if (purchasing) return;
         setPurchasing(true);
         haptic.medium();
-        // NOTE: Uses web checkout until RevenueCat production keys are configured
-        // Purchases.purchaseProduct('windy_bundle_marco_polo')
-        Alert.alert(
-            'Coming Soon',
-            'Marco Polo bundle will be available for purchase shortly.',
-            [{ text: 'OK' }]
-        );
+        try {
+            const { default: Linking } = require('expo-linking');
+            await Linking.openURL('https://windyword.ai/pricing?bundle=marco-polo');
+        } catch {
+            Alert.alert('Purchase', 'Visit windyword.ai/pricing to purchase the Marco Polo bundle.');
+        }
         setPurchasing(false);
     };
 

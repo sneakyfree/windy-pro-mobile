@@ -61,16 +61,20 @@ export default function CloudFilesScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [usage, setUsage] = useState<{ usedBytes: number; limitBytes: number; percentUsed: number; tierLabel: string } | null>(null);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const loadFiles = useCallback(async () => {
         try {
+            setLoadError(null);
             const [fileResult, usageResult] = await Promise.all([
                 cloudApi.listFiles(),
                 cloudApi.getStorageUsage(settings.licenseTier),
             ]);
             setFiles(fileResult.files);
             setUsage(usageResult);
-        } catch { /* ignore */ }
+        } catch {
+            setLoadError('Could not load files. Check your connection and pull to refresh.');
+        }
     }, [settings.licenseTier]);
 
     useFocusEffect(useCallback(() => {
@@ -179,6 +183,12 @@ export default function CloudFilesScreen() {
                         accessibilityLabel="Search files"
                     />
                 </View>
+
+                {loadError && (
+                    <View style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: 12, margin: 12, borderRadius: 8 }}>
+                        <Text style={{ fontSize: 13, color: '#f87171', textAlign: 'center' }}>{loadError}</Text>
+                    </View>
+                )}
 
                 {loading ? (
                     <View style={styles.emptyState}>

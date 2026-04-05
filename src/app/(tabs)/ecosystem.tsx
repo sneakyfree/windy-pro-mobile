@@ -33,16 +33,20 @@ export default function EcosystemScreen() {
     const [ecosystem, setEcosystem] = useState<EcosystemStatus | null>(settings.ecosystemStatus);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const loadEcosystem = useCallback(async () => {
         try {
+            setLoadError(null);
             const status = await getEcosystemStatus();
             if (status) {
                 setEcosystem(status);
                 settings.setEcosystemStatus(status);
             }
-        } catch { /* ignore */ }
-    }, []);
+        } catch {
+            if (!ecosystem) setLoadError('Could not load ecosystem status. Pull to refresh.');
+        }
+    }, [ecosystem]);
 
     useFocusEffect(
         useCallback(() => {
@@ -102,6 +106,12 @@ export default function EcosystemScreen() {
                         <View style={styles.loadingBox}>
                             <ActivityIndicator color={colors.accent} />
                             <Text style={styles.loadingText}>Loading ecosystem...</Text>
+                        </View>
+                    )}
+
+                    {loadError && !ecosystem && (
+                        <View style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: 12, borderRadius: 8, marginBottom: spacing.md }}>
+                            <Text style={{ ...typography.caption, color: '#f87171', textAlign: 'center' }}>{loadError}</Text>
                         </View>
                     )}
 

@@ -29,9 +29,16 @@ export default function AgentScreen() {
     const flyProduct = ecosystem?.products?.windy_fly;
     const eternitasProduct = ecosystem?.products?.eternitas;
 
+    const [loadError, setLoadError] = useState<string | null>(null);
+
     const loadData = useCallback(async () => {
-        const eco = await getEcosystemStatus();
-        if (eco) settings.setEcosystemStatus(eco);
+        try {
+            setLoadError(null);
+            const eco = await getEcosystemStatus();
+            if (eco) settings.setEcosystemStatus(eco);
+        } catch {
+            setLoadError('Could not load agent status. Pull to refresh.');
+        }
     }, []);
 
     useFocusEffect(useCallback(() => {
@@ -138,6 +145,11 @@ export default function AgentScreen() {
                     {loading && (
                         <View style={{ padding: 20, alignItems: 'center' }}>
                             <ActivityIndicator color={colors.accent} />
+                        </View>
+                    )}
+                    {loadError && (
+                        <View style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: 12, borderRadius: 8, margin: spacing.md }}>
+                            <Text style={{ ...typography.bodySmall, color: '#f87171', textAlign: 'center' }}>{loadError}</Text>
                         </View>
                     )}
                 </ScrollView>

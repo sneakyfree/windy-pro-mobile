@@ -50,11 +50,15 @@ export default function WindyMailScreen() {
                     <ActivityIndicator color={colors.accent} size="large" style={{ marginTop: 16 }} />
                     <Text style={styles.subtitle}>Opening your inbox...</Text>
 
-                    <Pressable style={styles.retryBtn} onPress={openMailInBrowser}>
+                    <Pressable style={styles.retryBtn} onPress={openMailInBrowser}
+                        accessibilityLabel="Open mail inbox" accessibilityRole="button"
+                    >
                         <Text style={styles.retryText}>Open Inbox</Text>
                     </Pressable>
 
-                    <Pressable style={styles.backBtn} onPress={() => router.back()}>
+                    <Pressable style={styles.backBtn} onPress={() => router.back()}
+                        accessibilityLabel="Go back" accessibilityRole="button"
+                    >
                         <Text style={styles.backText}>Back to Settings</Text>
                     </Pressable>
                 </View>
