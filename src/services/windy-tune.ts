@@ -209,7 +209,8 @@ export function getWindyTuneRecommendation(
  */
 
 /** Engine model CDN base URL */
-const ENGINE_CDN_BASE = 'https://windypro.thewindstorm.uk/models';
+import { WINDY_CDN_BASE } from '@/config/api';
+const ENGINE_CDN_BASE = WINDY_CDN_BASE;
 
 /** AsyncStorage key for downloaded engines */
 const STORAGE_KEY = 'windy_downloaded_engines';
@@ -313,10 +314,10 @@ class WindyTuneManager {
         // Cancel any existing download for this engine
         this.cancelDownload(engineId);
 
-        const modelDir = `${FileSystem.documentDirectory}models/`;
+        const modelDir = `${FileSystem.documentDirectory}windy/engines/`;
         await FileSystem.makeDirectoryAsync(modelDir, { intermediates: true }).catch(() => { });
 
-        const filePath = `${modelDir}${engineId}.bin`;
+        const filePath = `${modelDir}ggml-${engineId}.bin`;
         const downloadUrl = `${ENGINE_CDN_BASE}/${engineId}.bin`;
 
         const info: EngineDownloadInfo = {

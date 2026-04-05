@@ -3,7 +3,7 @@
  * Animated branded spinner for async operations.
  */
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
-import { colors, spacing } from '@/theme';
+import { colors, spacing, fontSizes } from '@/theme';
 
 interface Props {
     /** Optional label below the spinner */
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     },
     label: {
         color: colors.textSecondary,
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontFamily: 'Inter_400Regular',
         marginTop: spacing.xs,
     },

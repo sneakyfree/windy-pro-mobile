@@ -6,12 +6,13 @@
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from './logger';
+import { WINDY_CDN_BASE } from '@/config/api';
 
 const log = createLogger('OfflinePacks');
 
 const PACKS_DIR = (FileSystem.documentDirectory || '') + 'language-packs/';
 const PACKS_META_KEY = 'windy-offline-packs';
-const PACK_BASE_URL = 'https://windypro.thewindstorm.uk/models';
+const PACK_BASE_URL = WINDY_CDN_BASE;
 
 export interface LanguagePack {
     code: string;

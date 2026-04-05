@@ -16,7 +16,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { pairCatalogService } from '@/services/pairCatalog';
 import { pairManager } from '@/services/pairManager';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -51,17 +51,16 @@ export default function MarcoPolo() {
     const estimatedStorageGB = Math.round((pairCount * ESTIMATED_PAIR_SIZE_MB) / 1024 * 10) / 10;
     const hasEnoughStorage = freeMB > estimatedStorageGB * 1024;
 
-    const handlePurchase = () => {
+    const handlePurchase = async () => {
         if (purchasing) return;
         setPurchasing(true);
         haptic.medium();
-        // TODO: Replace with RevenueCat IAP flow
-        // Purchases.purchaseProduct('windy_bundle_marco_polo')
-        Alert.alert(
-            'Coming Soon',
-            'Marco Polo bundle will be available for purchase shortly.',
-            [{ text: 'OK' }]
-        );
+        try {
+            const { default: Linking } = require('expo-linking');
+            await Linking.openURL('https://windyword.ai/pricing?bundle=marco-polo');
+        } catch {
+            Alert.alert('Purchase', 'Visit windyword.ai/pricing to purchase the Marco Polo bundle.');
+        }
         setPurchasing(false);
     };
 
@@ -175,7 +174,7 @@ const styles = StyleSheet.create({
         paddingBottom: 60,
     },
     backBtn: { minWidth: 48, minHeight: 48, justifyContent: 'center', marginBottom: spacing.md },
-    backText: { fontSize: 16, color: colors.accent },
+    backText: { fontSize: fontSizes.base, color: colors.accent },
 
     // Hero
     hero: {
@@ -193,7 +192,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xs,
     },
     heroSubtitle: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         color: '#c7d2fe',
         textAlign: 'center',
     },
@@ -206,7 +205,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     savingsTitle: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         fontWeight: '700',
         color: colors.textPrimary,
         marginBottom: spacing.md,
@@ -250,7 +249,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     featuresTitle: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         fontWeight: '700',
         color: colors.textPrimary,
         marginBottom: spacing.md,
@@ -276,13 +275,13 @@ const styles = StyleSheet.create({
         borderColor: colors.stateProcessing,
     },
     storageTitle: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: colors.textPrimary,
         marginBottom: spacing.sm,
     },
     storageText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textSecondary,
         marginBottom: spacing.xs,
     },
@@ -308,7 +307,7 @@ const styles = StyleSheet.create({
         elevation: 6,
     },
     purchaseBtnText: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         fontWeight: '800',
         color: '#1e1b4b',
     },

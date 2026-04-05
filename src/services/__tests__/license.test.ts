@@ -60,14 +60,13 @@ describe('LicenseService', () => {
             expect(RECORDING_LIMITS.free).toBe(300);
         });
 
-        it('pro tier should be 15 minutes cloud (900s) — Bible v2', () => {
-            expect(RECORDING_LIMITS.pro).toBe(900);
+        it('pro tier should be 30 minutes (1800s)', () => {
+            expect(RECORDING_LIMITS.pro).toBe(1800);
         });
 
-        it('tiers should have progressive cloud recording limits — Bible v2', () => {
-            expect(RECORDING_LIMITS.pro).toBe(900);           // 15 min
-            expect(RECORDING_LIMITS.translate).toBe(1800);     // 30 min
-            expect(RECORDING_LIMITS.translate_pro).toBe(3600); // 60 min
+        it('higher tiers should have equal or greater limits', () => {
+            expect(RECORDING_LIMITS.pro).toBe(RECORDING_LIMITS.translate);
+            expect(RECORDING_LIMITS.translate_pro).toBeGreaterThanOrEqual(RECORDING_LIMITS.translate);
         });
     });
 

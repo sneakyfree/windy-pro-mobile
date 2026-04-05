@@ -5,7 +5,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import type { TranslationPair } from '@/services/pairCatalog';
 
 interface PairCardProps {
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
         fontSize: 22,
     },
     biLabel: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.accentSecondary,
         fontWeight: '600',
     },
@@ -161,11 +161,11 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     quality: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         fontWeight: '600',
     },
     size: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: colors.textTertiary,
     },
     actionBtn: {
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.accent,
     },
     buyBtnText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '700',
         color: colors.background,
     },
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.accentSecondary,
     },
     downloadBtnText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '700',
         color: colors.background,
     },
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
         borderColor: colors.accent,
     },
     downloadedText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '600',
         color: colors.accent,
     },

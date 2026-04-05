@@ -5,7 +5,7 @@
  */
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
-import { colors } from '@/theme';
+import { colors, fontSizes } from '@/theme';
 
 export default function TabLayout() {
   return (
@@ -36,7 +36,7 @@ export default function TabLayout() {
         headerTintColor: colors.textPrimary,
         headerTitleStyle: {
           fontWeight: '600',
-          fontSize: 18,
+          fontSize: fontSizes.lg,
         },
       }}
     >
@@ -74,9 +74,18 @@ export default function TabLayout() {
         options={{
           title: 'Clone Data',
           headerShown: false,
+          tabBarButton: () => null,
+          tabBarAccessibilityLabel: 'Voice clone data',
+        }}
+      />
+      <Tabs.Screen
+        name="ecosystem"
+        options={{
+          title: 'Ecosystem',
+          headerShown: false,
           tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '🧬 Clone',
-          tabBarAccessibilityLabel: 'Voice clone data tab',
+          tabBarLabel: '🌪️ Eco',
+          tabBarAccessibilityLabel: 'Ecosystem tab — all Windy products',
         }}
       />
       <Tabs.Screen

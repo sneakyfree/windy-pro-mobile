@@ -11,7 +11,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '@/theme';
+import { colors, fontSizes } from '@/theme';
 import { chatClient, type ChatMessage, type SyncState } from '@/services/chatClient';
 import { chatTranslateService, type TranslatedMessage } from '@/services/chatTranslate';
 import { subscriptionService } from '@/services/subscription';
@@ -19,6 +19,9 @@ import { pairManager } from '@/services/pairManager';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import EternitasBadge from '@/components/EternitasBadge';
+import VoiceChatButton, { type VoiceChatMode } from '@/components/VoiceChatButton';
+import { PAIR_CDN_BASE } from '@/config/api';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -45,6 +48,7 @@ export default function ConversationScreen() {
     const [typingUsers, setTypingUsers] = useState<string[]>([]);
     const [roomName, setRoomName] = useState('Chat');
     const [syncState, setSyncState] = useState<SyncState>(chatClient.getSyncState());
+    const [loadError, setLoadError] = useState<string | null>(null);
     const flatListRef = useRef<FlatList>(null);
     const savedInputRef = useRef('');
     const sendingRef = useRef(false); // RC-1: Synchronous guard against double-tap
@@ -52,6 +56,7 @@ export default function ConversationScreen() {
     const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null); // PC-4: Typing debounce
 
     const userLang = useSettingsStore(s => s.defaultLanguage);
+    const settings = useSettingsStore();
 
     useEffect(() => {
         chatTranslateService.setUserLanguage(userLang);
@@ -79,6 +84,13 @@ export default function ConversationScreen() {
     }, []);
 
     const isOffline = syncState === 'reconnecting' || syncState === 'error' || syncState === 'stopped';
+
+    // Detect if this room is an agent DM
+    const ecosystem = useSettingsStore(s => s.ecosystemStatus);
+    const flyProduct = ecosystem?.products?.windy_fly;
+    const isAgentRoom = flyProduct?.room_id === roomId ||
+        messages.some(m => /^@windy_[^:]+:chat\.windypro\.com$/.test((m as any).sender || (m as any).senderName || ''));
+    const agentPassportId = flyProduct?.passport_id || ecosystem?.products?.eternitas?.passport_id;
 
     // ─── Load + Real-time Listeners (RC-2: sequenced) ───────────
 
@@ -109,8 +121,8 @@ export default function ConversationScreen() {
                 }));
 
                 setMessages([...translated, ...pending]);
-            } catch (err) {
-                console.warn('[ChatRoom] loadMessages error:', err);
+            } catch {
+                if (isMounted.current) setLoadError('Could not load messages. Pull down to retry.');
             } finally {
                 if (isMounted.current) setLoading(false);
             }
@@ -179,8 +191,11 @@ export default function ConversationScreen() {
             } else {
                 // Real failure — restore input text and show error
                 if (isMounted.current) setInputText(savedInputRef.current);
-                if (isMounted.current) setSendError(result.error || 'Failed to send message');
+                if (isMounted.current) setSendError('Message could not be sent. Tap Retry to try again.');
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             }
+        } else {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
     };
 
@@ -221,70 +236,7 @@ export default function ConversationScreen() {
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    // ─── Loading ────────────────────────────────────────────────
-
-    if (loading) {
-        return (
-            <SafeAreaView style={styles.container}>
-                <View style={styles.loadingContainer}
-                    accessibilityLabel="Loading conversation" accessibilityRole="none"
-                >
-                    <ActivityIndicator size="large" color={colors.accent} />
-                </View>
-            </SafeAreaView>
-        );
-    }
-
-    // ─── Render ─────────────────────────────────────────────────
-
-    return (
-        <ScreenErrorBoundary screenName="Conversation">
-        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}
-                    accessibilityLabel="Go back" accessibilityRole="button"
-                >
-                    <Text style={styles.backText}>←</Text>
-                </TouchableOpacity>
-                <View style={styles.headerInfo}>
-                    <Text style={styles.headerName} numberOfLines={1}>{roomName}</Text>
-                    {typingUsers.length > 0 && (
-                        <Text style={styles.typingText}
-                            accessibilityLabel={`${typingUsers.length === 1 ? 'Someone is' : `${typingUsers.length} people are`} typing`}
-                            accessibilityRole="text"
-                        >typing...</Text>
-                    )}
-                </View>
-            </View>
-
-            {/* Offline Banner */}
-            {isOffline && (
-                <View style={styles.offlineBanner}
-                    accessibilityLabel="You are offline. Messages will send when connected."
-                    accessibilityRole="alert"
-                >
-                    <Text style={styles.offlineBannerText}>
-                        {syncState === 'reconnecting' ? '⏳ Reconnecting...' : '📡 Offline — messages will send when connected'}
-                    </Text>
-                </View>
-            )}
-
-            {/* Messages */}
-            <KeyboardAvoidingView
-                style={styles.flex}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={0}
-            >
-                <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    keyExtractor={item => item.eventId}
-                    contentContainerStyle={styles.messageList}
-                    onContentSizeChange={() => {
-                        flatListRef.current?.scrollToEnd({ animated: false });
-                    }}
-                    renderItem={({ item }) => (
+    const renderMessage = useCallback(({ item }: any) => (
                         <View
                             style={[
                                 styles.bubbleRow,
@@ -354,7 +306,7 @@ export default function ConversationScreen() {
                                                                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                                                 await pairManager.downloadPair(
                                                                     item.pairNeeded!,
-                                                                    `https://windypro.thewindstorm.uk/pairs/${item.pairNeeded}.bin`,
+                                                                    `${PAIR_CDN_BASE}/${item.pairNeeded}.bin`,
                                                                 );
                                                                 // Re-translate the message in place
                                                                 const retranslated = await chatTranslateService.translateMessage(item);
@@ -406,7 +358,96 @@ export default function ConversationScreen() {
                                 </Text>
                             </View>
                         </View>
+    ), [setMessages]);
+
+    // ─── Loading ────────────────────────────────────────────────
+
+    if (loading) {
+        return (
+            <ScreenErrorBoundary screenName="Conversation">
+            <SafeAreaView style={styles.container}>
+                <View style={styles.loadingContainer}
+                    accessibilityLabel="Loading conversation" accessibilityRole="none"
+                >
+                    <ActivityIndicator size="large" color={colors.accent} />
+                </View>
+            </SafeAreaView>
+            </ScreenErrorBoundary>
+        );
+    }
+
+    // ─── Render ─────────────────────────────────────────────────
+
+    return (
+        <ScreenErrorBoundary screenName="Conversation">
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}
+                    accessibilityLabel="Go back" accessibilityRole="button"
+                >
+                    <Text style={styles.backText}>←</Text>
+                </TouchableOpacity>
+                <View style={styles.headerInfo}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.headerName} numberOfLines={1}
+                            accessibilityRole="header"
+                        >{roomName}</Text>
+                        {isAgentRoom && agentPassportId && (
+                            <EternitasBadge passportId={agentPassportId} size={10} />
+                        )}
+                        {isAgentRoom && !agentPassportId && (
+                            <View style={{ backgroundColor: 'rgba(163,230,53,0.2)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3 }}>
+                                <Text style={{ fontSize: 9, fontWeight: '700', color: '#a3e635' }}>AI</Text>
+                            </View>
+                        )}
+                    </View>
+                    {typingUsers.length > 0 && (
+                        <Text style={styles.typingText}
+                            accessibilityLabel={`${typingUsers.length === 1 ? 'Someone is' : `${typingUsers.length} people are`} typing`}
+                            accessibilityRole="text"
+                        >typing...</Text>
                     )}
+                </View>
+            </View>
+
+            {/* Offline Banner */}
+            {isOffline && (
+                <View style={styles.offlineBanner}
+                    accessibilityLabel="You are offline. Messages will send when connected."
+                    accessibilityRole="alert"
+                >
+                    <Text style={styles.offlineBannerText}>
+                        {syncState === 'reconnecting' ? '⏳ Reconnecting...' : '📡 Offline — messages will send when connected'}
+                    </Text>
+                </View>
+            )}
+
+            {/* Load Error Banner */}
+            {loadError && (
+                <View style={styles.sendErrorBar}
+                    accessibilityLabel={loadError}
+                    accessibilityRole="alert"
+                >
+                    <Text style={styles.sendErrorText}>{loadError}</Text>
+                </View>
+            )}
+
+            {/* Messages */}
+            <KeyboardAvoidingView
+                style={styles.flex}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={0}
+            >
+                <FlatList
+                    ref={flatListRef}
+                    data={messages}
+                    keyExtractor={item => item.eventId}
+                    contentContainerStyle={styles.messageList}
+                    onContentSizeChange={() => {
+                        flatListRef.current?.scrollToEnd({ animated: false });
+                    }}
+                    renderItem={renderMessage}
                 />
 
                 {/* Typing indicator */}
@@ -423,7 +464,9 @@ export default function ConversationScreen() {
 
                 {/* Send Error */}
                 {sendError && (
-                    <View style={styles.sendErrorBar}>
+                    <View style={styles.sendErrorBar}
+                        accessibilityRole="alert"
+                    >
                         <Text style={styles.sendErrorText}>⚠️ {sendError}</Text>
                         <TouchableOpacity onPress={handleRetrySend} style={styles.retryBtn}
                             accessibilityLabel="Retry sending message" accessibilityRole="button"
@@ -439,13 +482,37 @@ export default function ConversationScreen() {
                         style={styles.textInput}
                         value={inputText}
                         onChangeText={handleTextChange}
-                        placeholder="Type a message..."
+                        placeholder="Type or tap 🎙️..."
                         placeholderTextColor={colors.textTertiary}
                         multiline
                         maxLength={10000}
                         returnKeyType="default"
                         accessibilityLabel="Type a message"
-                        accessibilityHint="Type and send a message in this conversation"
+                        accessibilityHint="Type and send a message, or use the mic button for voice input"
+                    />
+                    <VoiceChatButton
+                        mode={(settings.voiceChatMode as VoiceChatMode) || 'dictate'}
+                        onTranscription={(text) => {
+                            if ((settings.voiceChatMode as VoiceChatMode) === 'autosend') {
+                                // Auto-send: transcribe and send immediately
+                                setInputText(text);
+                                setTimeout(() => handleSend(), 50);
+                            } else {
+                                // Dictate: fill compose box for review
+                                setInputText(prev => prev ? `${prev} ${text}` : text);
+                            }
+                        }}
+                        onVoiceNote={async (uri, durationSec) => {
+                            // Send voice note as m.audio Matrix event
+                            try {
+                                const formatted = `${Math.floor(durationSec / 60)}:${Math.floor(durationSec % 60).toString().padStart(2, '0')}`;
+                                await chatClient.sendMessage(roomId, `🎵 Voice note (${formatted})`);
+                            } catch {
+                                Alert.alert('Voice Note', 'Could not send voice note.');
+                            }
+                        }}
+                        onError={(err) => Alert.alert('Voice Input', err)}
+                        disabled={sending}
                     />
                     <TouchableOpacity
                         style={[
@@ -488,7 +555,7 @@ const styles = StyleSheet.create({
     backText: { fontSize: 22, color: colors.accent, fontWeight: '600' },
     headerInfo: { flex: 1, marginLeft: 4 },
     headerName: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
-    typingText: { fontSize: 12, color: colors.accent, marginTop: 1 },
+    typingText: { fontSize: fontSizes.xs, color: colors.accent, marginTop: 1 },
 
     // Offline banner
     offlineBanner: {
@@ -497,7 +564,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         alignItems: 'center',
     },
-    offlineBannerText: { fontSize: 12, fontWeight: '600', color: '#1a1a1a' },
+    offlineBannerText: { fontSize: fontSizes.xs, fontWeight: '600', color: '#1a1a1a' },
 
     // Messages
     messageList: { paddingHorizontal: 12, paddingVertical: 8 },
@@ -524,7 +591,7 @@ const styles = StyleSheet.create({
     },
 
     senderName: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         fontWeight: '600',
         color: colors.accent,
         marginBottom: 2,
@@ -546,7 +613,7 @@ const styles = StyleSheet.create({
         marginBottom: 3,
     },
     translationText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: 'rgba(255,255,255,0.9)',
         fontStyle: 'italic',
     },
@@ -564,7 +631,7 @@ const styles = StyleSheet.create({
 
     // Typing
     typingBar: { paddingHorizontal: 16, paddingVertical: 4 },
-    typingBarText: { fontSize: 12, color: colors.textTertiary, fontStyle: 'italic' },
+    typingBarText: { fontSize: fontSizes.xs, color: colors.textTertiary, fontStyle: 'italic' },
 
     // Send error
     sendErrorBar: {
@@ -575,7 +642,7 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         backgroundColor: 'rgba(239,68,68,0.15)',
     },
-    sendErrorText: { fontSize: 12, color: colors.stateError, flex: 1 },
+    sendErrorText: { fontSize: fontSizes.xs, color: colors.stateError, flex: 1 },
     retryBtn: { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12 },
     retryText: { fontSize: 13, fontWeight: '600', color: colors.accent },
 
@@ -611,7 +678,7 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     sendButtonDisabled: { opacity: 0.4 },
-    sendIcon: { fontSize: 18, fontWeight: '700', color: colors.background },
+    sendIcon: { fontSize: fontSizes.lg, fontWeight: '700', color: colors.background },
 
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
@@ -623,7 +690,7 @@ const styles = StyleSheet.create({
         borderTopColor: 'rgba(255,255,255,0.2)',
     },
     pairBannerText: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: 'rgba(255,255,255,0.85)',
         marginBottom: 6,
         lineHeight: 17,
@@ -639,7 +706,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
     },
     pairBannerBuyText: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         fontWeight: '700',
         color: '#fff',
     },
@@ -650,7 +717,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
     },
     pairBannerCloudText: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: 'rgba(255,255,255,0.8)',
     },
 });

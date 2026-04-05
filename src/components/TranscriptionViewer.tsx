@@ -8,7 +8,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { feedbackService } from '@/services/feedback';
 import type { TranscriptSegment } from '@/types';
 
@@ -209,6 +209,59 @@ export default function TranscriptionViewer({
         );
     }
 
+    const renderSegment = useCallback(({ item: seg }: any) => {
+        const isActive = currentTime >= seg.startTime && currentTime <= seg.endTime;
+        return (
+            <View
+                style={[
+                    styles.segmentRow,
+                    seg.isPartial && styles.segmentPartial,
+                    isActive && styles.segmentActive,
+                ]}
+            >
+                {/* Speaker label */}
+                {showSpeakers && seg.speakerId && (
+                    <View style={[styles.speakerBadge, { backgroundColor: speakerColor(seg.speakerId) + '20', borderColor: speakerColor(seg.speakerId) + '40' }]}>
+                        <Text style={[styles.speakerText, { color: speakerColor(seg.speakerId) }]}>
+                            {speakerLabel(seg.speakerId)}
+                        </Text>
+                    </View>
+                )}
+
+                {/* Timestamp */}
+                <Text style={styles.segmentTime}>
+                    {formatTime(seg.startTime).slice(0, 5)}
+                </Text>
+
+                {/* Text with confidence highlighting */}
+                <View style={styles.segmentTextContainer}>
+                    <Text
+                        style={[
+                            styles.segmentText,
+                            seg.isPartial && styles.segmentTextPartial,
+                            showConfidence && {
+                                color: confidenceColor(seg.confidence),
+                            },
+                        ]}
+                        selectable
+                    >
+                        {seg.text}
+                    </Text>
+
+                    {/* Confidence indicator */}
+                    {showConfidence && (
+                        <View style={styles.confidenceRow}>
+                            <View style={[styles.confidenceDot, { backgroundColor: confidenceColor(seg.confidence) }]} />
+                            <Text style={styles.confidenceText}>
+                                {Math.round(seg.confidence * 100)}% {confidenceLabel(seg.confidence)}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+        );
+    }, [currentTime, showSpeakers, showConfidence]);
+
     return (
         <View style={styles.container}>
             {/* Progress indicator */}
@@ -263,58 +316,7 @@ export default function TranscriptionViewer({
                 contentContainerStyle={styles.segmentsContent}
                 data={segments}
                 keyExtractor={segmentKeyExtractor}
-                renderItem={({ item: seg }) => {
-                    const isActive = currentTime >= seg.startTime && currentTime <= seg.endTime;
-                    return (
-                        <View
-                            style={[
-                                styles.segmentRow,
-                                seg.isPartial && styles.segmentPartial,
-                                isActive && styles.segmentActive,
-                            ]}
-                        >
-                            {/* Speaker label */}
-                            {showSpeakers && seg.speakerId && (
-                                <View style={[styles.speakerBadge, { backgroundColor: speakerColor(seg.speakerId) + '20', borderColor: speakerColor(seg.speakerId) + '40' }]}>
-                                    <Text style={[styles.speakerText, { color: speakerColor(seg.speakerId) }]}>
-                                        {speakerLabel(seg.speakerId)}
-                                    </Text>
-                                </View>
-                            )}
-
-                            {/* Timestamp */}
-                            <Text style={styles.segmentTime}>
-                                {formatTime(seg.startTime).slice(0, 5)}
-                            </Text>
-
-                            {/* Text with confidence highlighting */}
-                            <View style={styles.segmentTextContainer}>
-                                <Text
-                                    style={[
-                                        styles.segmentText,
-                                        seg.isPartial && styles.segmentTextPartial,
-                                        showConfidence && {
-                                            color: confidenceColor(seg.confidence),
-                                        },
-                                    ]}
-                                    selectable
-                                >
-                                    {seg.text}
-                                </Text>
-
-                                {/* Confidence indicator */}
-                                {showConfidence && (
-                                    <View style={styles.confidenceRow}>
-                                        <View style={[styles.confidenceDot, { backgroundColor: confidenceColor(seg.confidence) }]} />
-                                        <Text style={styles.confidenceText}>
-                                            {Math.round(seg.confidence * 100)}% {confidenceLabel(seg.confidence)}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                    );
-                }}
+                renderItem={renderSegment}
                 maxToRenderPerBatch={15}
                 windowSize={7}
                 initialNumToRender={20}
@@ -379,8 +381,8 @@ export default function TranscriptionViewer({
 const styles = StyleSheet.create({
     container: { flex: 1 },
     emptyContainer: { alignItems: 'center', paddingVertical: spacing.xl },
-    emptyEmoji: { fontSize: 36, marginBottom: spacing.sm },
-    emptyText: { fontSize: 14, color: colors.textTertiary },
+    emptyEmoji: { fontSize: fontSizes['4xl'], marginBottom: spacing.sm },
+    emptyText: { fontSize: fontSizes.sm, color: colors.textTertiary },
 
     // Progress
     progressRow: {
@@ -407,7 +409,7 @@ const styles = StyleSheet.create({
         width: 8, height: 8, borderRadius: 4,
         backgroundColor: colors.stateRecording,
     },
-    streamingText: { fontSize: 12, fontWeight: '600', color: colors.stateRecording },
+    streamingText: { fontSize: fontSizes.xs, fontWeight: '600', color: colors.stateRecording },
     streamingCount: { fontSize: 11, color: colors.textTertiary, marginLeft: 'auto' },
 
     // Toggles
@@ -421,7 +423,7 @@ const styles = StyleSheet.create({
         borderColor: colors.borderLight,
     },
     toggleBtnActive: { borderColor: colors.accent, backgroundColor: colors.accentTransparent },
-    toggleText: { fontSize: 12, color: colors.textTertiary },
+    toggleText: { fontSize: fontSizes.xs, color: colors.textTertiary },
     toggleTextActive: { color: colors.accent },
 
     // Segments
@@ -478,7 +480,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.surface,
     },
     analyticsStat: { alignItems: 'center' },
-    analyticsValue: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+    analyticsValue: { fontSize: fontSizes.base, fontWeight: '600', color: colors.textPrimary },
     analyticsLabel: { fontSize: 10, color: colors.textTertiary, marginTop: 1 },
     analyticsDivider: { width: 1, height: 20, backgroundColor: colors.borderLight },
 
@@ -494,6 +496,6 @@ const styles = StyleSheet.create({
         borderColor: colors.borderLight, alignItems: 'center',
     },
     exportBtnPrimary: { backgroundColor: colors.accent, borderColor: colors.accent },
-    exportBtnText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+    exportBtnText: { fontSize: fontSizes.xs, fontWeight: '600', color: colors.textSecondary },
     exportBtnTextPrimary: { color: colors.background },
 });

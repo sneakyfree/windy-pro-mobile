@@ -9,14 +9,17 @@ import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { cloneTracker, CloneProgress } from '@/services/clone-tracker';
 import { feedbackService } from '@/services/feedback';
 import { localStorageService } from '@/services/storage-local';
 import type { SessionSummary } from '@/types';
 
 import { apiUrl, ENDPOINTS } from '@/config/api';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
+import { networkMonitor } from '@/services/network-monitor';
 
 const CLONE_API = apiUrl('/api/voice-clone');
 const CLONE_VOICE_KEY = 'windy-clone-voice-id';
@@ -198,6 +201,15 @@ export default function CloneDashboardScreen() {
     };
 
     const uploadCloneSample = async (audioUri: string) => {
+        // Check connectivity before attempting upload
+        if (!networkMonitor.isOnline) {
+            const isOnline = await networkMonitor.checkConnectivity();
+            if (!isOnline) {
+                Alert.alert('No Connection', 'You appear to be offline. Please check your internet connection and try again.');
+                return;
+            }
+        }
+
         setCloneUploading(true);
         setCloneUploadProgress(0);
 
@@ -252,8 +264,9 @@ export default function CloneDashboardScreen() {
         const poll = setInterval(async () => {
             polls++;
             try {
-                const token = (() => { try { return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || ''; } catch { return ''; } })();
-                const res = await fetch(`${CLONE_API}/status/${jobId}`, {
+                let token = '';
+                try { token = await SecureStore.getItemAsync('windy_jwt_token') || ''; } catch { /* SecureStore unavailable */ }
+                const res = await fetchWithTimeout(`${CLONE_API}/status/${jobId}`, {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });
                 const data = await res.json();
@@ -694,8 +707,8 @@ function QualityRow({ label, emoji, hours, color, total, weight }: {
 
 const qStyles = StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs },
-    emoji: { fontSize: 12 },
-    label: { width: 60, fontSize: 12, color: colors.textSecondary },
+    emoji: { fontSize: fontSizes.xs },
+    label: { width: 60, fontSize: fontSizes.xs, color: colors.textSecondary },
     barContainer: { flex: 1, height: 8, borderRadius: 4, backgroundColor: colors.surfaceLight, overflow: 'hidden' },
     bar: { height: '100%', borderRadius: 4 },
     hours: { width: 36, fontSize: 11, color: colors.textTertiary, textAlign: 'right', fontVariant: ['tabular-nums'] },
@@ -708,14 +721,14 @@ const styles = StyleSheet.create({
 
     // Loading
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    loadingEmoji: { fontSize: 48, marginBottom: spacing.md },
-    loadingText: { color: colors.textSecondary, fontSize: 16 },
+    loadingEmoji: { fontSize: fontSizes['5xl'], marginBottom: spacing.md },
+    loadingText: { color: colors.textSecondary, fontSize: fontSizes.base },
 
     // Header
     header: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg },
     backBtn: { marginRight: spacing.md },
-    backText: { fontSize: 16, color: colors.accent },
-    title: { fontSize: 20, fontWeight: '600', color: colors.textPrimary, flex: 1 },
+    backText: { fontSize: fontSizes.base, color: colors.accent },
+    title: { fontSize: fontSizes.xl, fontWeight: '600', color: colors.textPrimary, flex: 1 },
     headerRight: {},
     headerStat: { fontSize: 13, color: colors.textTertiary },
 
@@ -733,8 +746,8 @@ const styles = StyleSheet.create({
     },
     statusEmoji: { fontSize: 28 },
     statusContent: { flex: 1 },
-    statusLabel: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
-    statusSubtext: { fontSize: 12, color: colors.textSecondary },
+    statusLabel: { fontSize: fontSizes.base, fontWeight: '700', marginBottom: 2 },
+    statusSubtext: { fontSize: fontSizes.xs, color: colors.textSecondary },
 
     // Progress Ring
     circleContainer: { alignItems: 'center', marginBottom: spacing.xl },
@@ -745,27 +758,27 @@ const styles = StyleSheet.create({
     },
     circleOuterReady: { borderColor: '#10B981', borderWidth: 10 },
     circleInner: { alignItems: 'center' },
-    circlePercent: { fontSize: 36, fontWeight: '700', color: colors.textPrimary },
+    circlePercent: { fontSize: fontSizes['4xl'], fontWeight: '700', color: colors.textPrimary },
     circlePercentReady: { color: '#10B981' },
     circleLabel: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
 
     hoursRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm },
     hoursStat: { alignItems: 'center' },
-    hoursValue: { fontSize: 18, fontWeight: '600', color: colors.textPrimary },
+    hoursValue: { fontSize: fontSizes.lg, fontWeight: '600', color: colors.textPrimary },
     hoursLabel: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
     hoursDivider: { width: 1, height: 24, backgroundColor: colors.borderLight },
 
     // Sections
     section: { marginBottom: spacing.xl },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-    sectionTitle: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm },
-    sectionCount: { fontSize: 12, color: colors.textTertiary },
+    sectionTitle: { fontSize: fontSizes.xs, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm },
+    sectionCount: { fontSize: fontSizes.xs, color: colors.textTertiary },
 
     // Quality Score
     qualityCard: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.md },
     qualityScoreRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', marginBottom: spacing.md },
-    qualityScoreBig: { fontSize: 48, fontWeight: '700', color: colors.accent },
-    qualityScoreMax: { fontSize: 20, fontWeight: '400', color: colors.textTertiary, marginLeft: 4 },
+    qualityScoreBig: { fontSize: fontSizes['5xl'], fontWeight: '700', color: colors.accent },
+    qualityScoreMax: { fontSize: fontSizes.xl, fontWeight: '400', color: colors.textTertiary, marginLeft: 4 },
 
     // Milestones
     milestonesRow: { flexDirection: 'row', gap: spacing.xs },
@@ -788,7 +801,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1, borderBottomColor: colors.borderLight,
     },
     sampleQualityBadge: { width: 28, alignItems: 'center' },
-    sampleQualityEmoji: { fontSize: 14 },
+    sampleQualityEmoji: { fontSize: fontSizes.sm },
     sampleInfo: { flex: 1 },
     samplePreview: { fontSize: 13, color: colors.textPrimary, marginBottom: 2 },
     sampleMeta: { fontSize: 11, color: colors.textTertiary, fontVariant: ['tabular-nums'] },
@@ -797,19 +810,19 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         alignItems: 'center', justifyContent: 'center',
     },
-    sampleDeleteText: { fontSize: 14, color: colors.stateError, fontWeight: '600' },
+    sampleDeleteText: { fontSize: fontSizes.sm, color: colors.stateError, fontWeight: '600' },
 
     // Empty state
     emptyCard: {
         backgroundColor: colors.surface, borderRadius: borderRadius.lg,
         padding: spacing.xl, alignItems: 'center',
     },
-    emptyEmoji: { fontSize: 36, marginBottom: spacing.sm },
-    emptyText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+    emptyEmoji: { fontSize: fontSizes['4xl'], marginBottom: spacing.sm },
+    emptyText: { fontSize: fontSizes.sm, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 
     // Tips
     tipsCard: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.md, gap: spacing.sm },
-    tipText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+    tipText: { fontSize: fontSizes.sm, color: colors.textSecondary, lineHeight: 20 },
 
     // CTA
     cloneCta: {
@@ -822,15 +835,15 @@ const styles = StyleSheet.create({
     },
     cloneCtaEmoji: { fontSize: 28 },
     cloneCtaContent: { flex: 1 },
-    cloneCtaText: { fontSize: 18, fontWeight: '700', color: '#fff' },
-    cloneCtaSubtext: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+    cloneCtaText: { fontSize: fontSizes.lg, fontWeight: '700', color: '#fff' },
+    cloneCtaSubtext: { fontSize: fontSizes.xs, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
 
     // Info
     infoCard: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.md, gap: spacing.md },
     infoStep: { flexDirection: 'row', gap: spacing.sm },
     infoStepEmoji: { fontSize: 22, width: 30, textAlign: 'center' },
     infoStepContent: { flex: 1 },
-    infoStepTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 2 },
+    infoStepTitle: { fontSize: fontSizes.sm, fontWeight: '600', color: colors.textPrimary, marginBottom: 2 },
     infoText: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
 
     // Modal
@@ -849,9 +862,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row', alignItems: 'center',
         justifyContent: 'space-between', marginBottom: spacing.md,
     },
-    modalTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
-    modalClose: { fontSize: 20, color: colors.textTertiary, padding: spacing.xs },
-    modalSubtext: { fontSize: 14, color: colors.textSecondary, marginBottom: spacing.md, lineHeight: 20 },
+    modalTitle: { fontSize: fontSizes.xl, fontWeight: '700', color: colors.textPrimary },
+    modalClose: { fontSize: fontSizes.xl, color: colors.textTertiary, padding: spacing.xs },
+    modalSubtext: { fontSize: fontSizes.sm, color: colors.textSecondary, marginBottom: spacing.md, lineHeight: 20 },
     modalInput: {
         backgroundColor: colors.background,
         borderRadius: borderRadius.md,
@@ -877,8 +890,8 @@ const styles = StyleSheet.create({
     modalPlayBtnActive: {
         backgroundColor: colors.stateProcessing,
     },
-    modalPlayEmoji: { fontSize: 20 },
-    modalPlayText: { fontSize: 16, fontWeight: '600', color: colors.background },
+    modalPlayEmoji: { fontSize: fontSizes.xl },
+    modalPlayText: { fontSize: fontSizes.base, fontWeight: '600', color: colors.background },
     modalDisclaimer: {
         fontSize: 11, color: colors.textTertiary, textAlign: 'center', marginTop: spacing.xs,
     },
@@ -888,21 +901,21 @@ const styles = StyleSheet.create({
     cloneReadyBadgeText: { fontSize: 11, fontWeight: '700', color: '#2dd4bf' },
     recordCard: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.lg, alignItems: 'center' },
     recordReady: { alignItems: 'center', gap: spacing.sm },
-    recordReadyEmoji: { fontSize: 48 },
-    recordReadyTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+    recordReadyEmoji: { fontSize: fontSizes['5xl'] },
+    recordReadyTitle: { fontSize: fontSizes.lg, fontWeight: '700', color: colors.textPrimary },
     recordReadyDesc: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 18 },
     recordStartBtn: { backgroundColor: colors.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: borderRadius.md, marginTop: spacing.xs },
-    recordStartText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    recordStartText: { fontSize: fontSizes.base, fontWeight: '700', color: colors.background },
     recordActive: { alignItems: 'center', gap: spacing.sm },
     countdownRing: { width: 120, height: 8, borderRadius: 4, backgroundColor: colors.surfaceLight, overflow: 'hidden' },
     countdownFill: { height: '100%', backgroundColor: '#ef4444', borderRadius: 4, width: '100%', transformOrigin: 'left' },
-    countdownText: { fontSize: 48, fontWeight: '700', color: colors.textPrimary, fontVariant: ['tabular-nums'] },
-    recordHint: { fontSize: 14, color: colors.stateRecording },
+    countdownText: { fontSize: fontSizes['5xl'], fontWeight: '700', color: colors.textPrimary, fontVariant: ['tabular-nums'] },
+    recordHint: { fontSize: fontSizes.sm, color: colors.stateRecording },
     recordStopBtn: { backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: borderRadius.md },
-    recordStopText: { fontSize: 14, fontWeight: '600', color: '#ef4444' },
+    recordStopText: { fontSize: fontSizes.sm, fontWeight: '600', color: '#ef4444' },
     uploadActive: { alignItems: 'center', gap: spacing.sm },
-    uploadEmoji: { fontSize: 36 },
-    uploadText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+    uploadEmoji: { fontSize: fontSizes['4xl'] },
+    uploadText: { fontSize: fontSizes.base, fontWeight: '600', color: colors.textPrimary },
     uploadBarBg: { width: 200, height: 6, borderRadius: 3, backgroundColor: colors.surfaceLight },
     uploadBarFill: { height: '100%', borderRadius: 3, backgroundColor: colors.accent },
     uploadPercent: { fontSize: 13, color: colors.textTertiary, fontVariant: ['tabular-nums'] },

@@ -45,7 +45,13 @@ const AUTH_TAG_SIZE = 16;
 
 const LICENSE_TOKEN_KEY = 'windy_jwt_token';
 const DERIVED_KEY_HASH_PREFIX = 'windy-dkey-hash-';
-const APP_SECRET_PEPPER = 'windy-model-v1-L6-protection';
+// Pepper loaded from app.json extra config (falls back to bundled default)
+let _expoExtra: Record<string, unknown> = {};
+try {
+    const Constants = require('expo-constants').default;
+    _expoExtra = Constants?.expoConfig?.extra || {};
+} catch { /* test environment */ }
+const APP_SECRET_PEPPER: string = (_expoExtra.modelSecretPepper as string) || 'windy-model-v1-L6-protection';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -480,7 +486,18 @@ function hexToUint8Array(hex: string): Uint8Array {
 }
 
 function generateRandomBytes(length: number): Uint8Array {
+    if (Crypto?.getRandomBytes) {
+        return Crypto.getRandomBytes(length);
+    }
+    // Fallback: use expo-crypto async if sync not available
+    // This is synchronous fallback only — prefer native crypto
     const bytes = new Uint8Array(length);
+    // Use crypto.getRandomValues if available (web/modern RN)
+    if (typeof globalThis.crypto?.getRandomValues === 'function') {
+        globalThis.crypto.getRandomValues(bytes);
+        return bytes;
+    }
+    // Last resort — should not happen in production builds with expo-crypto
     for (let i = 0; i < length; i++) {
         bytes[i] = Math.floor(Math.random() * 256);
     }

@@ -16,11 +16,14 @@
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, AppState, type AppStateStatus } from 'react-native';
+import Constants from 'expo-constants';
 import { fetchWithTimeout } from '@/utils/fetch-timeout';
 import { apiUrl, ENDPOINTS } from '@/config/api';
 import { licenseService } from './license';
 import { createLogger } from './logger';
 import type { LicenseTier } from '@/types';
+
+const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
 
 const log = createLogger('Heartbeat');
 
@@ -324,7 +327,7 @@ class HeartbeatService {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
             'X-Platform': `mobile-${Platform.OS}`,
-            'X-App-Version': '1.0.0',
+            'X-App-Version': APP_VERSION,
         };
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;

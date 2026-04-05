@@ -13,7 +13,7 @@ import {
 import { INPUT_LIMITS } from '@/utils/validation';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '@/theme';
+import { colors, fontSizes } from '@/theme';
 import { chatClient, validateHomeserverUrl } from '@/services/chatClient';
 import { chatOnboarding } from '@/services/chatOnboarding';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -39,7 +39,12 @@ export default function ChatProfileScreen() {
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [homeserver, setHomeserver] = useState('https://matrix.org');
+    const [homeserver, setHomeserver] = useState(() => {
+        try {
+            const { getChatHomeserver } = require('@/config/api');
+            return getChatHomeserver();
+        } catch { return 'https://chat.windypro.com'; }
+    });
     const [isRegister, setIsRegister] = useState(false);
     const [authLoading, setAuthLoading] = useState(false);
     const [authError, setAuthError] = useState('');
@@ -489,7 +494,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     chipText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textPrimary,
         fontWeight: '500',
     },
@@ -527,13 +532,13 @@ const styles = StyleSheet.create({
     },
     advancedHeader: { marginBottom: 12 },
     advancedTitle: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '600',
         color: colors.textPrimary,
         marginBottom: 4,
     },
     advancedHint: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: colors.textTertiary,
         lineHeight: 17,
     },
@@ -563,7 +568,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
-        fontSize: 16,
+        fontSize: fontSizes.base,
         color: colors.textPrimary,
         borderWidth: 1,
         borderColor: colors.borderLight,
@@ -579,7 +584,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     authButtonDisabled: { opacity: 0.6 },
-    authButtonText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    authButtonText: { fontSize: fontSizes.base, fontWeight: '700', color: colors.background },
 
     errorBox: {
         backgroundColor: 'rgba(239,68,68,0.15)',
@@ -587,10 +592,10 @@ const styles = StyleSheet.create({
         padding: 12,
         marginBottom: 8,
     },
-    errorText: { color: colors.stateError, fontSize: 14, textAlign: 'center' },
+    errorText: { color: colors.stateError, fontSize: fontSizes.sm, textAlign: 'center' },
 
     switchAuth: { alignItems: 'center', paddingVertical: 12, minHeight: 44, justifyContent: 'center' },
-    switchText: { fontSize: 14, color: colors.textSecondary },
+    switchText: { fontSize: fontSizes.sm, color: colors.textSecondary },
     switchAccent: { color: colors.accent, fontWeight: '600' },
 
     // ─── Profile (logged in) ────────────────────────────────────
@@ -605,9 +610,9 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     avatarLargeText: { fontSize: 32, fontWeight: '700', color: colors.accent },
-    profileName: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
+    profileName: { fontSize: fontSizes.xl, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
     profileServer: { fontSize: 13, color: colors.textTertiary },
-    cryptoBadge: { fontSize: 12, color: '#22c55e', fontWeight: '600', marginTop: 8 },
+    cryptoBadge: { fontSize: fontSizes.xs, color: '#22c55e', fontWeight: '600', marginTop: 8 },
 
     // Sections
     section: {
@@ -617,7 +622,7 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     sectionTitle: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '600',
         color: colors.textSecondary,
         marginBottom: 12,
@@ -633,7 +638,7 @@ const styles = StyleSheet.create({
     },
     settingInfo: { flex: 1, marginRight: 12 },
     settingLabel: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
-    settingHint: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
+    settingHint: { fontSize: fontSizes.xs, color: colors.textTertiary, marginTop: 2 },
 
     infoRow: {
         flexDirection: 'row',
@@ -644,8 +649,8 @@ const styles = StyleSheet.create({
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: colors.borderLight,
     },
-    infoLabel: { fontSize: 14, color: colors.textSecondary },
-    infoValue: { fontSize: 14, color: colors.textPrimary, fontWeight: '500' },
+    infoLabel: { fontSize: fontSizes.sm, color: colors.textSecondary },
+    infoValue: { fontSize: fontSizes.sm, color: colors.textPrimary, fontWeight: '500' },
 
     logoutButton: {
         backgroundColor: 'rgba(239,68,68,0.15)',

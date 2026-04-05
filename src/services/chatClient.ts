@@ -28,7 +28,14 @@ const MATRIX_SERVER_KEY = 'windy_matrix_server';
 const MATRIX_DEVICE_KEY = 'windy_matrix_device';
 
 // ─── Default Homeserver ─────────────────────────────────────────
-const DEFAULT_HOMESERVER = 'https://matrix.org';
+import { getChatHomeserver, DEFAULT_CHAT_HOMESERVER } from '@/config/api';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
+/** Reads from settings store at runtime, falls back to default */
+function getDefaultHomeserver(): string {
+    return getChatHomeserver();
+}
+/** Static fallback for imports that need a constant */
+const DEFAULT_HOMESERVER = DEFAULT_CHAT_HOMESERVER;
 
 // ─── Constants ──────────────────────────────────────────────────
 const MAX_MESSAGE_LENGTH = 10_000;
@@ -249,7 +256,9 @@ class ChatClient {
     // ─── SDK Loading ────────────────────────────────────────────
 
     /**
-     * Load matrix-js-sdk (handles ESM/CJS via require).
+     * Load matrix-js-sdk lazily on first use (handles ESM/CJS via require).
+     * The SDK is NOT imported at the top level — this avoids loading ~200KB+
+     * of Matrix code at app startup for users who haven't enabled chat.
      */
     private async loadSdk(): Promise<any> {
         if (this.sdk) return this.sdk;
@@ -271,7 +280,7 @@ class ChatClient {
     async login(
         username: string,
         password: string,
-        homeserverUrl: string = DEFAULT_HOMESERVER,
+        homeserverUrl: string = getDefaultHomeserver(),
     ): Promise<AuthResult> {
         // Validate homeserver URL
         const urlError = validateHomeserverUrl(homeserverUrl);
@@ -313,7 +322,7 @@ class ChatClient {
     async register(
         username: string,
         password: string,
-        homeserverUrl: string = DEFAULT_HOMESERVER,
+        homeserverUrl: string = getDefaultHomeserver(),
     ): Promise<AuthResult> {
         // Validate homeserver URL
         const urlError = validateHomeserverUrl(homeserverUrl);
@@ -431,7 +440,7 @@ class ChatClient {
     }
 
     getHomeserver(): string {
-        return this.session?.homeserverUrl || DEFAULT_HOMESERVER;
+        return this.session?.homeserverUrl || getDefaultHomeserver();
     }
 
     getSyncState(): SyncState {
@@ -501,7 +510,7 @@ class ChatClient {
         }
         try {
             // ERR-AUDIT: Check fetch response before using blob
-            const response = await fetch(uri);
+            const response = await fetchWithTimeout(uri);
             if (!response.ok) {
                 return { success: false, error: 'Could not load avatar image' };
             }
@@ -557,15 +566,29 @@ class ChatClient {
         });
 
         // ── Attempt E2E encryption initialization ───────────────
+        // @matrix-org/olm is installed — runtime check ensures graceful fallback
+        // if the native module fails to load on a specific platform.
         try {
-            if (typeof this.client.initCrypto === 'function') {
+            // Check if Olm is available at runtime before attempting crypto init
+            let olmAvailable = false;
+            try {
+                require('@matrix-org/olm');
+                olmAvailable = true;
+            } catch {
+                // Olm not installed/bundled
+            }
+
+            if (olmAvailable && typeof this.client.initCrypto === 'function') {
                 await this.client.initCrypto();
                 this.client.setCryptoTrustCrossSignedDevices?.(true);
                 this.cryptoEnabled = true;
                 log.info('E2E_encryption_enabled', 'E2E encryption enabled');
+            } else {
+                log.warn('E2E_disabled_olm_not_bundled', 'E2E encryption disabled — @matrix-org/olm is not bundled. Messages will be sent unencrypted.');
+                this.cryptoEnabled = false;
             }
         } catch (e) {
-            log.warn('Crypto_init_not_available_Olm_', 'Crypto init not available (Olm not bundled)', { error: sanitizeError(e) });
+            log.warn('Crypto_init_failed', 'E2E crypto initialization failed — falling back to unencrypted', { error: sanitizeError(e) });
             this.cryptoEnabled = false;
         }
 
@@ -1155,3 +1178,15 @@ class ChatClient {
 }
 
 export const chatClient = new ChatClient();
+
+/** Pattern for Windy agent Matrix user IDs */
+const AGENT_USER_PATTERN = /^@windy_[^:]+:chat\.windypro\.com$/;
+
+/**
+ * Check if a chat room is an agent DM (Windy Fly bot).
+ * Detects rooms with exactly 2 members where one matches @windy_*:chat.windypro.com.
+ */
+export function isAgentRoom(room: ChatRoom): boolean {
+    if (!room.members || room.members.length !== 2) return false;
+    return room.members.some(m => AGENT_USER_PATTERN.test(m));
+}

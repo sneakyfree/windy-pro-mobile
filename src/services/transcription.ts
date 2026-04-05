@@ -12,6 +12,7 @@ import type {
 import { ENGINE_REGISTRY } from './windy-tune';
 import { API_BASE_URL, ENDPOINTS, apiUrl, wsUrl } from '@/config/api';
 import { parseUploadError, isAuthError, isRateLimited } from '@/utils/api-error';
+import * as SecureStore from 'expo-secure-store';
 import { createLogger } from './logger';
 
 const log = createLogger('Transcription');
@@ -78,7 +79,9 @@ class TranscriptionService {
 
     /**
      * Local transcription via whisper.rn
-     * Will be fully functional once whisper.rn is installed
+     * Will be fully functional once whisper.rn is installed.
+     * When unavailable: auto-falls back to cloud if network is available,
+     * otherwise queues the audio for transcription when connectivity returns.
      */
     private async localTranscribe(
         uri: string,
@@ -86,24 +89,61 @@ class TranscriptionService {
     ): Promise<TranscriptSegment[]> {
         try {
             const { whisperManager } = require('./whisper-manager');
-            await whisperManager.loadModel(engine);
+            // Map engine ID to GGML model filename (matches whisper-manager's static map)
+            const MODEL_MAP: Record<string, string> = {
+                'tiny': 'ggml-tiny.bin', 'base': 'ggml-base.bin',
+                'small': 'ggml-small.bin', 'medium': 'ggml-medium.bin',
+                'large-v3': 'ggml-large-v3.bin', 'large-v3-turbo': 'ggml-large-v3-turbo.bin',
+            };
+            await whisperManager.loadModel(MODEL_MAP[engine] || `ggml-${engine}.bin`);
 
-            const segments = await whisperManager.transcribe(uri, {
-                onSegment: (segment: TranscriptSegment) => {
-                    this.onSegment?.(segment);
-                },
+            const result = await whisperManager.transcribe(uri, 'auto', (segment: TranscriptSegment) => {
+                this.onSegment?.(segment);
             });
 
             await whisperManager.release();
-            return segments;
+            return result.segments;
         } catch (err: unknown) {
-            // Only fall back to cloud if user has explicitly enabled cloud fallback
-            // AND has an active subscription (not lifetime)
+            log.warn('Local_unavailable', 'On-device transcription not available', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
+
+            // Check if cloud fallback is possible
             const { cloudFallbackEnabled } = require('../stores/useSettingsStore').useSettingsStore.getState();
-            if (cloudFallbackEnabled && licenseService.isCloudSttEnabled()) {
-                log.warn('Local_failed_falling_back_to_c', 'Local failed, falling back to cloud (user-enabled)', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
-                return this.cloudTranscribe(uri, 'cloud-standard');
+            const { licenseService: licSvc } = require('./license');
+
+            if (cloudFallbackEnabled && licSvc.isCloudSttEnabled()) {
+                // Check network availability before attempting cloud
+                const { networkMonitor } = require('./network-monitor');
+                if (networkMonitor.isOnline) {
+                    log.info('Local_fallback_cloud', 'On-device transcription coming soon. Using cloud transcription.');
+                    return this.cloudTranscribe(uri, 'cloud-standard');
+                }
+
+                // No network — queue audio for transcription when connectivity returns
+                log.info('Local_queued_offline', 'No network available. Audio queued for transcription when connection returns.');
+                const { syncManager } = require('./sync-manager');
+                const bundleId = `pending-transcription-${Date.now()}`;
+                await syncManager.addToQueue({
+                    bundleId,
+                    filePath: uri,
+                    fileType: 'audio',
+                    metadata: { status: 'pending_transcription', engine: 'cloud-standard' },
+                });
+
+                // Return a placeholder segment so the UI shows a message
+                const placeholder: TranscriptSegment = {
+                    id: `seg-queued-${Date.now()}`,
+                    text: '[Queued for transcription — will process when online]',
+                    startTime: 0,
+                    endTime: 0,
+                    confidence: 0,
+                    isPartial: true,
+                    speakerId: null,
+                    language: 'en',
+                };
+                this.onSegment?.(placeholder);
+                return [placeholder];
             }
+
             log.warn('Local_failed_no_cloud_fallback', 'Local transcription failed. Cloud fallback is off — staying local.', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
             throw err;
         }
@@ -146,12 +186,11 @@ class TranscriptionService {
     ): Promise<TranscriptSegment[]> {
         const endpoint = apiUrl(ENDPOINTS.TRANSCRIBE, SERVER_URL);
 
-        // Get auth token
-        const token = (() => {
-            try {
-                return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || '';
-            } catch (err) { log.warn('httpTranscribe', 'token retrieval failed'); return ''; }
-        })();
+        // Get auth token from SecureStore
+        let token = '';
+        try {
+            token = await SecureStore.getItemAsync('windy_jwt_token') || '';
+        } catch { /* SecureStore unavailable */ }
 
         const response = await FileSystem.uploadAsync(endpoint, uri, {
             httpMethod: 'POST',
@@ -226,7 +265,7 @@ class TranscriptionService {
     ): Promise<TranscriptSegment[]> {
         const wsEndpoint = wsUrl(ENDPOINTS.WS_TRANSCRIBE, SERVER_URL);
 
-        return new Promise<TranscriptSegment[]>(async (resolve, reject) => {
+        return new Promise<TranscriptSegment[]>((resolve, reject) => {
             const segments: TranscriptSegment[] = [];
             let resolved = false;
 
@@ -246,7 +285,7 @@ class TranscriptionService {
                         // Send auth
                         this.ws?.send(JSON.stringify({
                             type: 'auth',
-                            token: (() => { try { return require('@/stores/useSettingsStore').useSettingsStore.getState().licenseKey || 'anonymous'; } catch (err) { return 'anonymous'; } })(),
+                            token: await (async () => { try { return await SecureStore.getItemAsync('windy_jwt_token') || 'anonymous'; } catch { return 'anonymous'; } })(),
                         }));
 
                         // Send config

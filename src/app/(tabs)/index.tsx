@@ -16,7 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import { CameraView } from 'expo-camera';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
+import { typography } from '@/theme/typography';
 import { useRecordingStore } from '@/stores/useRecordingStore';
 import { useTranscriptStore } from '@/stores/useTranscriptStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -410,6 +411,30 @@ export default function RecordScreen() {
     };
 
     /**
+     * Retry transcription on the last recorded file
+     */
+    const handleRetryTranscription = useCallback(async () => {
+        if (!playbackUri) return;
+        setTranscriptionError(null);
+        clearTranscript();
+        transcriptionService.onSegment = (segment) => { addSegment(segment); };
+        try {
+            const segments = await transcriptionService.transcribeFile(playbackUri);
+            if (segments.length > 0 && useTranscriptStore.getState().segments.length === 0) {
+                setSegments(segments);
+            }
+            const transcriptText = useTranscriptStore.getState().segments.map(s => s.text).join(' ').trim();
+            if (transcriptText.length > 0) {
+                await Clipboard.setStringAsync(transcriptText);
+                feedbackService.success().catch(() => {});
+                announce('Transcript ready, copied to clipboard');
+            }
+        } catch (err: unknown) {
+            setTranscriptionError((err instanceof Error ? err.message : String(err)) || 'Transcription failed');
+        }
+    }, [playbackUri, addSegment, setSegments, clearTranscript, announce]);
+
+    /**
      * Playback controls
      */
     const handlePlayPause = async () => {
@@ -779,6 +804,16 @@ export default function RecordScreen() {
                                     ? "You're offline — recording saved locally. Transcription will run when connected."
                                     : 'Check Settings → Server URL is reachable'}
                             </Text>
+                            {playbackUri && (
+                                <Pressable
+                                    style={styles.retryButton}
+                                    onPress={handleRetryTranscription}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Retry transcription"
+                                >
+                                    <Text style={styles.retryButtonText}>Retry Transcription</Text>
+                                </Pressable>
+                            )}
                         </View>
                     ) : fullText ? (
                         <Text style={styles.transcriptText} selectable>{fullText}</Text>
@@ -837,12 +872,11 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
     },
     title: {
-        fontSize: 28,
-        fontWeight: '700',
+        ...typography.h1,
         color: colors.textPrimary,
     },
     subtitle: {
-        fontSize: 14,
+        ...typography.bodySmall,
         color: colors.textSecondary,
         marginTop: spacing.xs,
     },
@@ -868,12 +902,12 @@ const styles = StyleSheet.create({
         backgroundColor: colors.accentTransparent,
     },
     toggleEmoji: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
     },
     toggleLabel: {
-        fontSize: 13,
-        color: colors.textSecondary,
+        ...typography.bodySmall,
         fontWeight: '500',
+        color: colors.textSecondary,
     },
     toggleLabelActive: {
         color: colors.accent,
@@ -939,7 +973,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.stateRecording,
     },
     buttonEmoji: {
-        fontSize: 48,
+        fontSize: fontSizes['5xl'],
     },
 
     // Duration row with pulsing dot
@@ -970,18 +1004,18 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xs,
     },
     fileSizeText: {
-        fontSize: 12,
+        ...typography.caption,
         color: colors.textTertiary,
         fontVariant: ['tabular-nums'],
     },
     fileSizeSeparator: {
-        fontSize: 12,
+        ...typography.caption,
         color: colors.textTertiary,
     },
 
     // Status
     statusText: {
-        fontSize: 14,
+        ...typography.bodySmall,
         fontWeight: '500',
         marginTop: spacing.xs,
         marginBottom: spacing.md,
@@ -1007,7 +1041,7 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
     },
     playPauseEmoji: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
     },
     playbackBarOuter: {
         flex: 1,
@@ -1040,7 +1074,7 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     playbackTime: {
-        fontSize: 12,
+        ...typography.caption,
         color: colors.textTertiary,
         fontVariant: ['tabular-nums'],
         width: 40,
@@ -1060,12 +1094,11 @@ const styles = StyleSheet.create({
         minHeight: 100,
     },
     transcriptText: {
-        fontSize: 16,
-        lineHeight: 24,
+        ...typography.body,
         color: colors.textPrimary,
     },
     transcriptPlaceholder: {
-        fontSize: 15,
+        ...typography.body,
         color: colors.textTertiary,
         textAlign: 'center',
         paddingTop: spacing.xl,
@@ -1078,15 +1111,27 @@ const styles = StyleSheet.create({
     },
     transcriptErrorEmoji: { fontSize: 32 },
     transcriptErrorText: {
-        fontSize: 14,
+        ...typography.bodySmall,
         color: '#ef4444',
         textAlign: 'center',
-        lineHeight: 20,
     },
     transcriptErrorHint: {
-        fontSize: 12,
+        ...typography.caption,
         color: colors.textTertiary,
         textAlign: 'center',
+    },
+    retryButton: {
+        marginTop: spacing.sm,
+        paddingVertical: spacing.xs,
+        paddingHorizontal: spacing.md,
+        backgroundColor: colors.accent,
+        borderRadius: borderRadius.md,
+        alignSelf: 'center',
+    },
+    retryButtonText: {
+        ...typography.caption,
+        color: '#ffffff',
+        fontWeight: '600',
     },
 
     // Action buttons
@@ -1110,7 +1155,7 @@ const styles = StyleSheet.create({
         borderColor: colors.accent,
     },
     actionButtonText: {
-        fontSize: 14,
+        ...typography.bodySmall,
         fontWeight: '500',
         color: colors.textSecondary,
     },
@@ -1135,8 +1180,8 @@ const styles = StyleSheet.create({
         position: 'absolute' as const,
         bottom: 8,
         alignSelf: 'center' as const,
+        ...typography.caption,
         color: colors.textSecondary,
-        fontSize: 12,
     },
 
     // Processing banner
@@ -1150,8 +1195,8 @@ const styles = StyleSheet.create({
         alignItems: 'center' as const,
     },
     processingText: {
-        color: colors.stateProcessing,
-        fontSize: 14,
+        ...typography.bodySmall,
         fontWeight: '500' as const,
+        color: colors.stateProcessing,
     },
 });

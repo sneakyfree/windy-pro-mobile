@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Windy Pro",
+    "name": "Windy Word",
     "slug": "windy-pro-mobile",
-    "description": "The world's most potent voice-to-text tool. Record, transcribe, translate, and clone your voice — all from your phone.",
+    "description": "Your voice, unlimited. Record, transcribe, translate, and clone your voice — all from your phone.",
     "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
-    "scheme": "windypro",
+    "scheme": ["windypro", "windyword", "windychat", "windymail", "windyfly"],
     "userInterfaceStyle": "dark",
     "splash": {
       "image": "./src/assets/splash.png",
@@ -18,12 +18,12 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "uk.thewindstorm.windypro",
-      "privacyPolicyUrl": "https://windypro.thewindstorm.uk/privacy",
+      "bundleIdentifier": "ai.windyword.app",
+      "privacyPolicyUrl": "https://windyword.ai/privacy",
       "buildNumber": "10",
       "associatedDomains": [
-        "applinks:windypro.thewindstorm.uk",
-        "appclips:windypro.thewindstorm.uk"
+        "applinks:windyword.ai",
+        "appclips:windyword.ai"
       ],
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Windy Pro uses your microphone to convert speech to text. Audio is processed on your device and never sent to our servers.",
@@ -45,7 +45,7 @@
         "foregroundImage": "./src/assets/adaptive-icon.png",
         "backgroundColor": "#0f172a"
       },
-      "package": "uk.thewindstorm.windypro",
+      "package": "ai.windyword.app",
       "versionCode": 10,
       "permissions": [
         "RECORD_AUDIO",
@@ -113,6 +113,7 @@
     "extra": {
       "revenueCatIosKey": "PRODUCTION_KEY_REQUIRED_CONTACT_GRANT",
       "revenueCatAndroidKey": "PRODUCTION_KEY_REQUIRED_CONTACT_GRANT",
+      "googleVisionApiKey": "PRODUCTION_KEY_REQUIRED",
       "router": {
         "origin": false
       },

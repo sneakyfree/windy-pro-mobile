@@ -3,7 +3,7 @@
  * Friendly empty-state placeholder with icon, title, and optional CTA.
  */
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 
 interface Props {
     /** Large emoji or icon */
@@ -46,13 +46,13 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     title: {
-        fontSize: 20,
+        fontSize: fontSizes.xl,
         fontFamily: 'Inter_600SemiBold',
         color: colors.textPrimary,
         textAlign: 'center',
     },
     subtitle: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontFamily: 'Inter_400Regular',
         color: colors.textSecondary,
         textAlign: 'center',
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
         borderRadius: borderRadius.md,
     },
     actionText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontFamily: 'Inter_600SemiBold',
         color: colors.background,
     },

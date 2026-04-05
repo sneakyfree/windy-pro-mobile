@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 import { Audio } from 'expo-av';
 import { Share } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { localStorageService } from '@/services/storage-local';
 import { feedbackService } from '@/services/feedback';
@@ -273,16 +273,16 @@ const styles = StyleSheet.create({
 
     header: { alignItems: 'center', marginBottom: spacing.lg },
     closeButton: { position: 'absolute', right: 0, top: -4, padding: spacing.sm },
-    closeText: { fontSize: 20, color: colors.textSecondary },
-    headerDate: { fontSize: 20, fontWeight: '600', color: colors.textPrimary },
-    headerTime: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
+    closeText: { fontSize: fontSizes.xl, color: colors.textSecondary },
+    headerDate: { fontSize: fontSizes.xl, fontWeight: '600', color: colors.textPrimary },
+    headerTime: { fontSize: fontSizes.sm, color: colors.textSecondary, marginTop: 4 },
 
     statsRow: {
         flexDirection: 'row', justifyContent: 'space-around', marginBottom: spacing.lg,
         backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.md
     },
     stat: { alignItems: 'center' },
-    statValue: { fontSize: 18, fontWeight: '600', color: colors.textPrimary },
+    statValue: { fontSize: fontSizes.lg, fontWeight: '600', color: colors.textPrimary },
     statLabel: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
 
     playerButton: {
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.surface, borderRadius: borderRadius.md, padding: spacing.md,
         marginBottom: spacing.lg, gap: spacing.sm, borderWidth: 1, borderColor: colors.accent
     },
-    playerIcon: { fontSize: 20 },
+    playerIcon: { fontSize: fontSizes.xl },
     playerText: { fontSize: 15, color: colors.accent, fontWeight: '500' },
 
     transcriptSection: { marginBottom: spacing.lg },
@@ -299,22 +299,22 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm
     },
     transcriptBox: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.md },
-    transcriptText: { fontSize: 16, lineHeight: 24, color: colors.textPrimary },
+    transcriptText: { fontSize: fontSizes.base, lineHeight: 24, color: colors.textPrimary },
 
     segmentsSection: { marginBottom: spacing.lg },
     segmentRow: {
         flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.xs,
         borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight
     },
-    segmentTime: { fontSize: 12, color: colors.accent, fontVariant: ['tabular-nums'], width: 40 },
-    segmentText: { fontSize: 14, color: colors.textPrimary, flex: 1 },
+    segmentTime: { fontSize: fontSizes.xs, color: colors.accent, fontVariant: ['tabular-nums'], width: 40 },
+    segmentText: { fontSize: fontSizes.sm, color: colors.textPrimary, flex: 1 },
 
     actionRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xxl },
     actionBtn: {
         flex: 1, paddingVertical: spacing.sm + 2, borderRadius: borderRadius.md,
         borderWidth: 1, borderColor: colors.border, alignItems: 'center'
     },
-    actionBtnText: { fontSize: 14, fontWeight: '500', color: colors.textSecondary },
+    actionBtnText: { fontSize: fontSizes.sm, fontWeight: '500', color: colors.textSecondary },
     deleteBtn: { borderColor: colors.stateError },
     deleteBtnText: { color: colors.stateError },
 });

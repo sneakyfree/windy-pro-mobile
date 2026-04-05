@@ -5,7 +5,7 @@
  */
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 
 interface Props {
     children: ReactNode;
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     },
     emoji: { fontSize: 56, marginBottom: spacing.md },
     title: {
-        fontSize: 20, fontWeight: '700',
+        fontSize: fontSizes.xl, fontWeight: '700',
         color: colors.textPrimary, marginBottom: spacing.sm,
     },
     subtitle: {
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
         textAlign: 'center', lineHeight: 22, marginBottom: spacing.md,
     },
     errorDetail: {
-        fontSize: 12, color: colors.textTertiary,
+        fontSize: fontSizes.xs, color: colors.textTertiary,
         textAlign: 'center', marginBottom: spacing.lg,
         fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
@@ -87,6 +87,6 @@ const styles = StyleSheet.create({
         borderRadius: borderRadius.lg,
     },
     retryText: {
-        fontSize: 16, fontWeight: '700', color: colors.background,
+        fontSize: fontSizes.base, fontWeight: '700', color: colors.background,
     },
 });

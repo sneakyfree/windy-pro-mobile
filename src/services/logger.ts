@@ -79,7 +79,15 @@ async function flushQueue(): Promise<void> {
     try {
         await ensureLogDir();
         await rotateIfNeeded();
-        await FileSystem.writeAsStringAsync(LOG_FILE, batch, {
+        // Append to existing log file (expo-file-system has no append mode)
+        let existing = '';
+        const info = await FileSystem.getInfoAsync(LOG_FILE);
+        if (info.exists) {
+            existing = await FileSystem.readAsStringAsync(LOG_FILE, {
+                encoding: FileSystem.EncodingType.UTF8,
+            });
+        }
+        await FileSystem.writeAsStringAsync(LOG_FILE, existing + batch, {
             encoding: FileSystem.EncodingType.UTF8,
         });
     } catch {

@@ -8,6 +8,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+
+// ─── Sentry Crash Reporting (no-op if DSN not set) ──────────────
+try {
+    const Sentry = require('@sentry/react-native');
+    const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+    if (dsn) {
+        Sentry.init({
+            dsn,
+            environment: __DEV__ ? 'development' : 'production',
+            tracesSampleRate: __DEV__ ? 1.0 : 0.2,
+        });
+    }
+} catch { /* Sentry not installed or native module unavailable */ }
 import { View, StyleSheet, Alert, Platform, BackHandler, AppState, AppStateStatus, InteractionManager } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
@@ -18,7 +31,7 @@ import { colors } from '@/theme';
 import { createLogger } from '@/services/logger';
 import { sanitizeText, INPUT_LIMITS } from '@/utils/validation';
 import { TIER_1_LANGUAGES } from '@/services/translation';
-import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useSettingsStore, setLicense } from '@/stores/useSettingsStore';
 import { localStorageService } from '@/services/storage-local';
 import { licenseService } from '@/services/license';
 import { pushNotificationService } from '@/services/push-notifications';
@@ -70,7 +83,6 @@ function sanitizeDeepLinkText(raw: unknown): string | null {
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
   const [splashDismissed, setSplashDismissed] = useState(false);
-  const { setLicense } = useSettingsStore();
 
   // RP-1.5: Load Inter font family
   const [fontsLoaded, fontError] = useFonts({
@@ -139,8 +151,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
-      // Let the router handle back first; only intercept at root
-      return false;
+      Alert.alert('Exit Windy?', undefined, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Exit', style: 'destructive', onPress: () => BackHandler.exitApp() },
+      ]);
+      return true;
     });
     return () => handler.remove();
   }, []);
@@ -159,11 +174,19 @@ export default function RootLayout() {
   useEffect(() => {
     const handleNotificationTap = (response: any) => {
       const data = response?.notification?.request?.content?.data;
-      if (!data?.type) return;
+      if (!data) return;
 
       setTimeout(() => {
         try {
           const { router } = require('expo-router');
+
+          // Chat message notification — route directly to the DM room
+          if (data.route) {
+            // data.route is like '/(tabs)/chat' or '/chat/!roomId:server'
+            router.push(data.route);
+            return;
+          }
+
           if (data.type === 'translation') {
             router.push('/translate');
           } else if (data.type === 'subscription') {
@@ -186,10 +209,30 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, []);
 
-  // Network monitor lifecycle
+  // Network monitor lifecycle + recovery
   useEffect(() => {
     networkMonitor.start();
-    return () => networkMonitor.stop();
+    let wasOffline = false;
+
+    const checkInterval = setInterval(() => {
+      const isOnline = networkMonitor.isOnline;
+      if (wasOffline && isOnline) {
+        // Just came back online — auto-sync everything
+        log.info('network', 'Back online — syncing');
+        syncManager.processQueue().catch(() => {});
+        // Refresh ecosystem status
+        try {
+          const { getEcosystemStatus } = require('@/services/ecosystem-status');
+          const { useSettingsStore: store } = require('@/stores/useSettingsStore');
+          getEcosystemStatus().then((eco: any) => {
+            if (eco) store.getState().setEcosystemStatus(eco);
+          }).catch(() => {});
+        } catch { /* ignore */ }
+      }
+      wasOffline = !isOnline;
+    }, 5000);
+
+    return () => { networkMonitor.stop(); clearInterval(checkInterval); };
   }, []);
 
   // RP-5.2: Deep link handler (windypro:// scheme)
@@ -198,7 +241,7 @@ export default function RootLayout() {
       try {
         const parsed = Linking.parse(url);
 
-        // License activation: windypro://license?key=XXX
+        /** Deep-link format: windypro://license?key=<LICENSE_KEY> */
         if (parsed.path === 'license' && parsed.queryParams?.key) {
           const rawKey = String(parsed.queryParams.key).trim().slice(0, INPUT_LIMITS.LICENSE_KEY);
           if (!rawKey || !SAFE_ID_RE.test(rawKey)) {
@@ -206,7 +249,7 @@ export default function RootLayout() {
             return;
           }
           const validation = await licenseService.validateLicense(rawKey);
-          setLicense(validation.tier, rawKey);
+          await setLicense(validation.tier, rawKey);
           Alert.alert(
             '🎉 License Activated',
             `Welcome to Windy Pro ${formatTier(validation.tier)}!`
@@ -231,14 +274,94 @@ export default function RootLayout() {
           return;
         }
 
+        // Handle dashboard deep links (from birth announcement SMS/email)
+        if (url.includes('/app/fly') || parsed.path === 'fly') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push('/(tabs)/chat');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 500);
+          return;
+        }
+
+        // Cross-product deep links: windychat://room/ROOM_ID, windyfly://hatch, etc.
+        // Handle scheme-based routing (windychat://, windymail://, windyfly://)
+        const scheme = url.split('://')[0];
+        if (scheme === 'windychat') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              if (parsed.path?.startsWith('room/')) {
+                const roomId = parsed.path.replace('room/', '');
+                router.push(`/chat/${roomId}`);
+              } else {
+                router.push('/(tabs)/chat');
+              }
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+        if (scheme === 'windymail') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push('/mail');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+        if (scheme === 'windyfly') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              if (parsed.path === 'hatch') router.push('/hatch');
+              else router.push('/agent');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+
+        // App shortcuts: windypro://record, windypro://chat, windyword://record
+        if (parsed.path === 'record') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push('/(tabs)');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+        if (parsed.path === 'chat') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push('/(tabs)/chat');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+        if (parsed.path === 'hatch') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push('/hatch');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+
         // Route deep links: windypro://translate, windypro://clone, etc.
         const routeMap: Record<string, string> = {
           'cloud': '/cloud',
+          'files': '/cloud/files',
           'clone': '/clone',
           'subscribe': '/subscription',
           'subscription': '/subscription',
           'video': '/video',
           'settings': '/(tabs)/settings',
+          'ecosystem': '/(tabs)/ecosystem',
+          'agent': '/agent',
         };
 
         // Handle translate deep link specially — with params goes to quick-translate
@@ -289,10 +412,10 @@ export default function RootLayout() {
     // Check if app was opened via deep link
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url });
-    });
+    }).catch(() => {});
 
     return () => sub.remove();
-  }, [setLicense]);
+  }, []);
 
   // Hide splash when both fonts and app are ready (or font error occurred)
   const canRender = appReady && (fontsLoaded || fontError);
@@ -394,6 +517,27 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="quick-translate"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="hatch/index"
+              options={{
+                presentation: 'fullScreenModal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="agent/index"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="cloud/files"
               options={{
                 presentation: 'modal',
                 animation: 'slide_from_bottom',

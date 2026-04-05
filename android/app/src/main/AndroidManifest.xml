@@ -39,8 +39,28 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="https" android:host="windypro.thewindstorm.uk" android:pathPrefix="/app"/>
+        <data android:scheme="https" android:host="windyword.ai" android:pathPrefix="/app"/>
       </intent-filter>
+      <!-- Share INTO Windy: receive text, images, files from other apps -->
+      <intent-filter>
+        <action android:name="android.intent.action.SEND"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="text/*"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.SEND"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="image/*"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.SEND"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="application/*"/>
+      </intent-filter>
+      <!-- App Shortcuts (long-press launcher icon) -->
+      <meta-data
+        android:name="android.app.shortcuts"
+        android:resource="@xml/shortcuts" />
     </activity>
     <!-- Windy floating overlay foreground service -->
     <service
@@ -58,6 +78,19 @@
       <meta-data
         android:name="android.accessibilityservice"
         android:resource="@xml/accessibility_service_config" />
+    </service>
+    <!-- Windy Word IME keyboard service -->
+    <service
+      android:name=".WindyKeyboardService"
+      android:exported="true"
+      android:label="Windy Word Voice"
+      android:permission="android.permission.BIND_INPUT_METHOD">
+      <intent-filter>
+        <action android:name="android.view.InputMethod" />
+      </intent-filter>
+      <meta-data
+        android:name="android.view.im"
+        android:resource="@xml/method" />
     </service>
   </application>
 </manifest>

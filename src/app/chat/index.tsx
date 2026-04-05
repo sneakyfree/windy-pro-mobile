@@ -11,11 +11,13 @@ import {
 import { INPUT_LIMITS } from '@/utils/validation';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '@/theme';
-import { chatClient, type ChatRoom, type ChatContact, type SyncState } from '@/services/chatClient';
+import { colors, fontSizes } from '@/theme';
+import { chatClient, isAgentRoom, type ChatRoom, type ChatContact, type SyncState } from '@/services/chatClient';
 import { chatTranslateService } from '@/services/chatTranslate';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import EternitasPassport from '@/components/EternitasPassport';
+import type { EcosystemStatus } from '@/services/ecosystem-status';
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -53,6 +55,8 @@ export default function ChatHomeScreen() {
     const [createError, setCreateError] = useState<string | null>(null);
     // PERF-AUDIT: Cache contacts outside render loop instead of calling per FlatList item
     const [contacts, setContacts] = useState<ChatContact[]>([]);
+    const [showHatchBanner, setShowHatchBanner] = useState(false);
+    const [showAgentTooltip, setShowAgentTooltip] = useState(false);
 
     const userLang = useSettingsStore(s => s.defaultLanguage);
 
@@ -83,6 +87,51 @@ export default function ChatHomeScreen() {
     }, []);
 
     const isOffline = syncState === 'reconnecting' || syncState === 'error';
+
+    // ─── Agent DM (Windy Fly) ──────────────────────────────────
+    const ecosystem: EcosystemStatus | null = useSettingsStore(s => s.ecosystemStatus);
+    const flyProduct = ecosystem?.products?.windy_fly;
+    const agentProvisioned = flyProduct?.status === 'active';
+    const agentName = flyProduct?.agent_name || 'Windy Fly';
+    const agentMatrixId = flyProduct?.matrix_user_id;
+    const passportId = flyProduct?.passport_id || ecosystem?.products?.eternitas?.passport_id;
+
+    // Detect agent room: from ecosystem response, or by scanning rooms with isAgentRoom()
+    const agentRoomId = flyProduct?.room_id ||
+        rooms.find(room => isAgentRoom(room) || room.members?.includes(agentMatrixId || ''))?.roomId || null;
+
+    // Sort agent rooms to top of the list
+    const sortedRooms = [...rooms].sort((a, b) => {
+        const aIsAgent = isAgentRoom(a);
+        const bIsAgent = isAgentRoom(b);
+        if (aIsAgent && !bIsAgent) return -1;
+        if (!aIsAgent && bIsAgent) return 1;
+        return (b.lastMessageTime || 0) - (a.lastMessageTime || 0);
+    });
+
+    // Detect newly hatched agent (show banner once)
+    const prevAgentRoomRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (agentRoomId && agentRoomId !== prevAgentRoomRef.current && prevAgentRoomRef.current !== null) {
+            setShowHatchBanner(true);
+            setTimeout(() => setShowHatchBanner(false), 8000);
+        }
+        prevAgentRoomRef.current = agentRoomId;
+    }, [agentRoomId]);
+
+    // Show first-time agent tooltip (once per device)
+    useEffect(() => {
+        if (agentProvisioned && agentRoomId) {
+            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+            AsyncStorage.getItem('windy_agent_tooltip_shown').then((shown: string | null) => {
+                if (!shown) {
+                    setShowAgentTooltip(true);
+                    AsyncStorage.setItem('windy_agent_tooltip_shown', '1');
+                    setTimeout(() => setShowAgentTooltip(false), 10000);
+                }
+            }).catch(() => {});
+        }
+    }, [agentProvisioned, agentRoomId]);
 
     // ─── Load ───────────────────────────────────────────────────
 
@@ -142,6 +191,11 @@ export default function ChatHomeScreen() {
             setSearching(false);
             return;
         }
+        if (isOffline) {
+            setSearchResults([]);
+            setSearching(false);
+            return;
+        }
         setSearching(true);
         searchDebounce.current = setTimeout(async () => {
             try {
@@ -151,7 +205,10 @@ export default function ChatHomeScreen() {
                     setSearching(false);
                 }
             } catch {
-                if (isMounted.current) setSearching(false);
+                if (isMounted.current) {
+                    setSearching(false);
+                    setSearchResults([]);
+                }
             }
         }, 300);
     };
@@ -164,8 +221,9 @@ export default function ChatHomeScreen() {
             setSearchResults([]);
             router.push(`/chat/${result.roomId}`);
         } else {
-            setCreateError(result.error || 'Failed to start conversation');
-            Alert.alert('Error', result.error || 'Failed to start conversation');
+            const friendlyMsg = 'Could not start conversation. Please check your connection and try again.';
+            setCreateError(friendlyMsg);
+            Alert.alert('Conversation Error', friendlyMsg);
         }
     };
 
@@ -200,6 +258,58 @@ export default function ChatHomeScreen() {
             </ScreenErrorBoundary>
         );
     }
+
+    // ─── Memoized renderItem for FlatList ─────────────────────────
+    const renderRoom = useCallback(({ item }: any) => (
+        <TouchableOpacity
+            style={styles.roomRow}
+            onPress={() => router.push(`/chat/${item.roomId}`)}
+            activeOpacity={0.6}
+            accessibilityLabel={
+                `${item.name}. ` +
+                (item.lastMessage ? `Last message: ${item.lastMessage}. ` : 'No messages. ') +
+                (item.unreadCount > 0 ? `${item.unreadCount} unread. ` : '') +
+                (item.lastMessageTime ? timeAgo(item.lastMessageTime) + ' ago' : '')
+            }
+            accessibilityRole="button"
+            accessibilityHint="Opens conversation"
+        >
+            <View style={styles.avatarContainer}>
+                <View style={styles.avatar} importantForAccessibility="no">
+                    <Text style={styles.avatarText}>{(item.name || '?')[0].toUpperCase()}</Text>
+                </View>
+                {(() => {
+                    const contact = contacts.find((c: any) => item.members.includes(c.userId));
+                    const memberPresence = contact?.presence || 'offline';
+                    return (
+                        <View
+                            style={[styles.presenceDot, { backgroundColor: presenceColor(memberPresence) }]}
+                            accessibilityLabel={memberPresence === 'online' ? 'Online' : memberPresence === 'unavailable' ? 'Away' : 'Offline'}
+                        />
+                    );
+                })()}
+            </View>
+            <View style={styles.roomInfo}>
+                <View style={styles.roomTop}>
+                    <Text style={styles.roomName} numberOfLines={1}>{item.name}</Text>
+                    {isAgentRoom(item) && (
+                        <View style={styles.agentTag}>
+                            <Text style={styles.agentTagText}>{'\uD83E\uDEB0'} AI Agent</Text>
+                        </View>
+                    )}
+                    {item.lastMessageTime && <Text style={styles.roomTime}>{timeAgo(item.lastMessageTime)}</Text>}
+                </View>
+                <View style={styles.roomBottom}>
+                    <Text style={styles.roomPreview} numberOfLines={1}>{item.lastMessage || 'No messages yet'}</Text>
+                    {item.unreadCount > 0 && (
+                        <View style={styles.badge} accessibilityLabel={`${item.unreadCount} unread messages`}>
+                            <Text style={styles.badgeText}>{item.unreadCount > 99 ? '99+' : item.unreadCount}</Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+        </TouchableOpacity>
+    ), [contacts]);
 
     // ─── Loading ────────────────────────────────────────────────
 
@@ -264,10 +374,24 @@ export default function ChatHomeScreen() {
                 />
             </View>
 
+            {/* Create Error Banner */}
+            {createError && (
+                <View style={styles.offlineBanner}
+                    accessibilityLabel={createError}
+                    accessibilityRole="alert"
+                >
+                    <Text style={styles.offlineBannerText}>{createError}</Text>
+                </View>
+            )}
+
             {/* Search Results */}
             {searchQuery.trim().length >= 2 && (
                 <View style={styles.searchResults}>
-                    {searching ? (
+                    {isOffline ? (
+                        <Text style={styles.noResults}
+                            accessibilityRole="text"
+                        >Search unavailable while offline</Text>
+                    ) : searching ? (
                         <ActivityIndicator color={colors.accent} style={{ padding: 12 }} />
                     ) : searchResults.length === 0 ? (
                         <Text style={styles.noResults}
@@ -297,9 +421,106 @@ export default function ChatHomeScreen() {
                 </View>
             )}
 
+            {/* Agent Hatch Banner */}
+            {showHatchBanner && (
+                <TouchableOpacity
+                    style={{
+                        backgroundColor: 'rgba(163,230,53,0.15)',
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+                    }}
+                    onPress={() => {
+                        setShowHatchBanner(false);
+                        if (agentRoomId) router.push(`/chat/${agentRoomId}`);
+                    }}
+                    accessibilityLabel={`${agentName} just hatched! Tap to chat.`}
+                    accessibilityRole="button"
+                >
+                    <Text style={{ fontSize: 24 }}>{'\uD83E\uDEB0'}</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.accent }}>{agentName} just hatched!</Text>
+                        <Text style={{ fontSize: 12, color: colors.textSecondary }}>Tap to start chatting with your AI agent</Text>
+                    </View>
+                    <Text style={{ fontSize: 18, color: colors.textTertiary }}>›</Text>
+                </TouchableOpacity>
+            )}
+
+            {/* Pinned Agent DM */}
+            {agentProvisioned && agentRoomId ? (
+                <TouchableOpacity
+                    style={styles.agentCard}
+                    onPress={() => router.push(`/chat/${agentRoomId}`)}
+                    activeOpacity={0.7}
+                    accessibilityLabel={`${agentName}, your AI agent. Tap to chat.`}
+                    accessibilityRole="button"
+                >
+                    <View style={styles.agentBadge}>
+                        <Text style={styles.agentEmoji}>🪰</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={styles.agentName}>{agentName}</Text>
+                            <View style={styles.agentTag}>
+                                <Text style={styles.agentTagText}>AI Agent</Text>
+                            </View>
+                        </View>
+                        <Text style={styles.agentSubtext}>
+                            {flyProduct?.agent_status || 'Your Windy Fly agent'}
+                            {flyProduct?.trust_score != null ? ` \u00B7 Trust: ${flyProduct.trust_score}%` : ''}
+                        </Text>
+                    </View>
+                    {passportId && <EternitasPassport passportId={passportId} compact />}
+                    <Text style={styles.agentChevron}>›</Text>
+                </TouchableOpacity>
+            ) : !agentProvisioned && isLoggedIn ? (
+                <TouchableOpacity
+                    style={styles.agentCtaCard}
+                    onPress={() => {
+                        const Linking = require('expo-linking');
+                        Linking.openURL('https://windyword.ai/app/fly').catch(() => {});
+                    }}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Hatch your Windy Fly AI agent"
+                    accessibilityRole="button"
+                >
+                    <Text style={styles.agentCtaEmoji}>🪰</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.agentCtaTitle}>Hatch your Windy Fly agent</Text>
+                        <Text style={styles.agentCtaSubtext}>Your own AI that lives in chat</Text>
+                    </View>
+                    <Text style={styles.agentChevron}>›</Text>
+                </TouchableOpacity>
+            ) : null}
+
+            {/* First-time agent tooltip */}
+            {showAgentTooltip && (
+                <TouchableOpacity
+                    style={{
+                        backgroundColor: 'rgba(163,230,53,0.1)',
+                        borderLeftWidth: 3,
+                        borderLeftColor: colors.accent,
+                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                        marginHorizontal: 12,
+                        marginBottom: 8,
+                        borderRadius: 8,
+                    }}
+                    onPress={() => setShowAgentTooltip(false)}
+                    accessibilityLabel="Agent introduction tooltip. Tap to dismiss."
+                >
+                    <Text style={{ fontSize: 13, color: colors.textPrimary, lineHeight: 18 }}>
+                        {'\uD83D\uDCA1'} This is your AI agent. It can help with emails, messages, translations, and more. Just ask!
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>Tap to dismiss</Text>
+                </TouchableOpacity>
+            )}
+
             {/* Room List */}
             <FlatList
-                data={rooms}
+                data={sortedRooms}
                 keyExtractor={item => item.roomId}
                 contentContainerStyle={rooms.length === 0 ? styles.emptyListContainer : undefined}
                 refreshControl={
@@ -318,69 +539,7 @@ export default function ChatHomeScreen() {
                         </Text>
                     </View>
                 }
-                renderItem={({ item }) => (
-                    <TouchableOpacity
-                        style={styles.roomRow}
-                        onPress={() => router.push(`/chat/${item.roomId}`)}
-                        activeOpacity={0.6}
-                        accessibilityLabel={
-                            `${item.name}. ` +
-                            (item.lastMessage ? `Last message: ${item.lastMessage}. ` : 'No messages. ') +
-                            (item.unreadCount > 0 ? `${item.unreadCount} unread. ` : '') +
-                            (item.lastMessageTime ? timeAgo(item.lastMessageTime) + ' ago' : '')
-                        }
-                        accessibilityRole="button"
-                        accessibilityHint="Opens conversation"
-                    >
-                        {/* Avatar */}
-                        <View style={styles.avatarContainer}>
-                            <View style={styles.avatar} importantForAccessibility="no">
-                                <Text style={styles.avatarText}>
-                                    {(item.name || '?')[0].toUpperCase()}
-                                </Text>
-                            </View>
-                            {/* Presence dot — RC-4: use cached contacts */}
-                            {(() => {
-                                const contact = contacts.find(c => item.members.includes(c.userId));
-                                const memberPresence = contact?.presence || 'offline';
-                                return (
-                                    <View
-                                        style={[styles.presenceDot, { backgroundColor: presenceColor(memberPresence) }]}
-                                        accessibilityLabel={memberPresence === 'online' ? 'Online' : memberPresence === 'unavailable' ? 'Away' : 'Offline'}
-                                    />
-                                );
-                            })()}
-                        </View>
-
-                        {/* Info */}
-                        <View style={styles.roomInfo}>
-                            <View style={styles.roomTop}>
-                                <Text style={styles.roomName} numberOfLines={1}>
-                                    {item.name}
-                                </Text>
-                                {item.lastMessageTime && (
-                                    <Text style={styles.roomTime}>
-                                        {timeAgo(item.lastMessageTime)}
-                                    </Text>
-                                )}
-                            </View>
-                            <View style={styles.roomBottom}>
-                                <Text style={styles.roomPreview} numberOfLines={1}>
-                                    {item.lastMessage || 'No messages yet'}
-                                </Text>
-                                {item.unreadCount > 0 && (
-                                    <View style={styles.badge}
-                                        accessibilityLabel={`${item.unreadCount} unread messages`}
-                                    >
-                                        <Text style={styles.badgeText}>
-                                            {item.unreadCount > 99 ? '99+' : item.unreadCount}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                    </TouchableOpacity>
-                )}
+                renderItem={renderRoom}
             />
         </SafeAreaView>
         </ScreenErrorBoundary>
@@ -412,7 +571,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         alignItems: 'center',
     },
-    offlineBannerText: { fontSize: 12, fontWeight: '600', color: '#1a1a1a' },
+    offlineBannerText: { fontSize: fontSizes.xs, fontWeight: '600', color: '#1a1a1a' },
 
     searchContainer: { paddingHorizontal: 16, paddingVertical: 8 },
     searchInput: {
@@ -444,7 +603,7 @@ const styles = StyleSheet.create({
     },
     searchResultInfo: { flex: 1 },
     searchResultName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
-    searchResultId: { fontSize: 12, color: colors.textTertiary, marginTop: 1 },
+    searchResultId: { fontSize: fontSizes.xs, color: colors.textTertiary, marginTop: 1 },
     noResults: { padding: 12, color: colors.textSecondary, textAlign: 'center' },
 
     roomRow: {
@@ -465,7 +624,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    avatarText: { fontSize: 20, fontWeight: '700', color: colors.accent },
+    avatarText: { fontSize: fontSizes.xl, fontWeight: '700', color: colors.accent },
     presenceDot: {
         width: 12,
         height: 12,
@@ -484,14 +643,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 4,
     },
-    roomName: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, flex: 1 },
-    roomTime: { fontSize: 12, color: colors.textTertiary, marginLeft: 8 },
+    roomName: { fontSize: fontSizes.base, fontWeight: '600', color: colors.textPrimary, flex: 1 },
+    roomTime: { fontSize: fontSizes.xs, color: colors.textTertiary, marginLeft: 8 },
     roomBottom: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    roomPreview: { fontSize: 14, color: colors.textSecondary, flex: 1 },
+    roomPreview: { fontSize: fontSizes.sm, color: colors.textSecondary, flex: 1 },
     badge: {
         backgroundColor: colors.accent,
         borderRadius: 10,
@@ -512,8 +671,8 @@ const styles = StyleSheet.create({
     },
     emptyListContainer: { flexGrow: 1 },
     emptyIcon: { fontSize: 56, marginBottom: 16 },
-    emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
-    emptySubtext: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+    emptyTitle: { fontSize: fontSizes.xl, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
+    emptySubtext: { fontSize: fontSizes.sm, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 
     loginButton: {
         backgroundColor: colors.accent,
@@ -524,8 +683,41 @@ const styles = StyleSheet.create({
         minHeight: 48,
         justifyContent: 'center',
     },
-    loginButtonText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    loginButtonText: { fontSize: fontSizes.base, fontWeight: '700', color: colors.background },
 
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { fontSize: 14, color: colors.textSecondary, marginTop: 12 },
+    loadingText: { fontSize: fontSizes.sm, color: colors.textSecondary, marginTop: 12 },
+
+    // Agent DM card
+    agentCard: {
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        paddingHorizontal: 20, paddingVertical: 14,
+        backgroundColor: 'rgba(163,230,53,0.06)',
+        borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+    },
+    agentBadge: {
+        width: 44, height: 44, borderRadius: 22,
+        backgroundColor: 'rgba(163,230,53,0.15)',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    agentEmoji: { fontSize: 22 },
+    agentName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+    agentTag: {
+        backgroundColor: 'rgba(163,230,53,0.2)',
+        paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
+    },
+    agentTagText: { fontSize: 10, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' },
+    agentSubtext: { fontSize: fontSizes.xs, color: colors.textTertiary, marginTop: 2 },
+    agentChevron: { fontSize: fontSizes.xl, color: colors.textTertiary },
+
+    // Agent CTA card (not provisioned)
+    agentCtaCard: {
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        paddingHorizontal: 20, paddingVertical: 14,
+        backgroundColor: colors.surface,
+        borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+    },
+    agentCtaEmoji: { fontSize: 28 },
+    agentCtaTitle: { fontSize: fontSizes.sm, fontWeight: '600', color: colors.accent },
+    agentCtaSubtext: { fontSize: fontSizes.xs, color: colors.textTertiary },
 });

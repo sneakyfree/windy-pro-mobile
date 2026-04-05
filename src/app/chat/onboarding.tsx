@@ -15,16 +15,17 @@ import {
     KeyboardAvoidingView, Platform, ScrollView, Alert,
     ActivityIndicator, Animated, Keyboard,
 } from 'react-native';
-import { INPUT_LIMITS, validatePhone, validateEmail } from '@/utils/validation';
-import { router } from 'expo-router';
+import { INPUT_LIMITS, validatePhone, validateEmail, validateDisplayName, validateOtp } from '@/utils/validation';
+import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/theme';
+import { colors, fontSizes } from '@/theme';
 import {
     chatOnboarding,
     type IdentifierType,
 } from '@/services/chatOnboarding';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { networkMonitor } from '@/services/network-monitor';
 
 // Common country codes for phone registration
 const COUNTRY_CODES = [
@@ -95,6 +96,13 @@ export default function ChatOnboardingScreen() {
         return () => { isMounted.current = false; };
     }, []);
 
+    // Clear stale error when screen regains focus (prevents persistent error from prior session)
+    useFocusEffect(
+        useCallback(() => {
+            setError('');
+        }, [])
+    );
+
     // ─── Step Transition ────────────────────────────────────────
 
     const animateToStep = useCallback((nextStep: OnboardingStep) => {
@@ -126,10 +134,29 @@ export default function ChatOnboardingScreen() {
     // ─── Step 1: Request Verification ───────────────────────────
 
     const handleRequestVerification = async () => {
-        if (!identifier.trim()) {
-            setError(identifierType === 'phone' ? 'Enter your phone number' : 'Enter your email');
-            return;
+        if (identifierType === 'phone') {
+            const fullPhone = countryCode.code + identifier.trim().replace(/\D/g, '');
+            const phoneResult = validatePhone(fullPhone);
+            if (!phoneResult.valid) {
+                setError(phoneResult.error || 'Enter a valid phone number');
+                return;
+            }
+        } else {
+            const emailResult = validateEmail(identifier);
+            if (!emailResult.valid) {
+                setError(emailResult.error || 'Enter a valid email address');
+                return;
+            }
         }
+        // Check connectivity before making network call
+        if (!networkMonitor.isOnline) {
+            const isOnline = await networkMonitor.checkConnectivity();
+            if (!isOnline) {
+                setError('You appear to be offline. Please check your internet connection and try again.');
+                return;
+            }
+        }
+
         setLoading(true);
         setError('');
 
@@ -150,7 +177,7 @@ export default function ChatOnboardingScreen() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             animateToStep(2);
         } else {
-            setError(result.error || 'Failed to send code');
+            setError(result.error || 'Could not send verification code. Please check your connection and try again.');
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         }
     };
@@ -199,6 +226,21 @@ export default function ChatOnboardingScreen() {
     };
 
     const submitOtp = async (code: string) => {
+        const otpResult = validateOtp(code);
+        if (!otpResult.valid) {
+            setError(otpResult.error || 'Enter all 6 digits');
+            return;
+        }
+
+        // Check connectivity before making network call
+        if (!networkMonitor.isOnline) {
+            const isOnline = await networkMonitor.checkConnectivity();
+            if (!isOnline) {
+                setError('You appear to be offline. Please check your internet connection and try again.');
+                return;
+            }
+        }
+
         setLoading(true);
         setError('');
 
@@ -211,7 +253,7 @@ export default function ChatOnboardingScreen() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             animateToStep(3);
         } else {
-            setError(result.error || 'Verification failed');
+            setError(result.error || 'Verification failed. Please check the code and try again.');
             setOtpDigits(['', '', '', '', '', '']);
             otpRefs.current[0]?.focus();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -221,13 +263,23 @@ export default function ChatOnboardingScreen() {
     // ─── Step 3: Set Profile ────────────────────────────────────
 
     const handleSetProfile = async () => {
-        if (!displayName.trim()) {
-            setError('Enter your name');
+        const nameResult = validateDisplayName(displayName);
+        if (!nameResult.valid) {
+            setError(nameResult.error || 'Enter your name');
             return;
         }
         if (!credentials) {
             setError('Session error — please restart');
             return;
+        }
+
+        // Check connectivity before making network call
+        if (!networkMonitor.isOnline) {
+            const isOnline = await networkMonitor.checkConnectivity();
+            if (!isOnline) {
+                setError('You appear to be offline. Please check your internet connection and try again.');
+                return;
+            }
         }
 
         setLoading(true);
@@ -266,6 +318,15 @@ export default function ChatOnboardingScreen() {
     const handleComplete = async () => {
         if (!credentials) return;
 
+        // Check connectivity before making network call
+        if (!networkMonitor.isOnline) {
+            const isOnline = await networkMonitor.checkConnectivity();
+            if (!isOnline) {
+                Alert.alert('No Connection', 'You appear to be offline. Please check your internet connection and try again.');
+                return;
+            }
+        }
+
         setLoading(true);
         const result = await chatOnboarding.completeOnboarding(credentials);
         if (!isMounted.current) return;
@@ -289,7 +350,10 @@ export default function ChatOnboardingScreen() {
     // ─── Step Indicator ─────────────────────────────────────────
 
     const renderStepIndicator = () => (
-        <View style={styles.stepIndicator}>
+        <View style={styles.stepIndicator}
+            accessibilityLabel={`Step ${step} of 5`}
+            accessibilityRole="progressbar"
+        >
             {[1, 2, 3, 4, 5].map((s) => (
                 <View
                     key={s}
@@ -386,7 +450,10 @@ export default function ChatOnboardingScreen() {
             {/* Country code picker modal */}
             {showCountryPicker && (
                 <View style={styles.countryPickerOverlay}>
-                    <Pressable style={styles.countryPickerBackdrop} onPress={() => setShowCountryPicker(false)} />
+                    <Pressable style={styles.countryPickerBackdrop} onPress={() => setShowCountryPicker(false)}
+                        accessibilityLabel="Close country code picker"
+                        accessibilityRole="button"
+                    />
                     <View style={styles.countryPickerModal}>
                         <Text style={styles.countryPickerTitle}>Select Country Code</Text>
                         <ScrollView style={styles.countryPickerScroll}>
@@ -417,7 +484,21 @@ export default function ChatOnboardingScreen() {
                 </View>
             )}
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? (
+                <View style={styles.errorBox} accessibilityRole="alert">
+                    <Text style={styles.errorText}>{error}</Text>
+                    {error.toLowerCase().includes('connection') || error.toLowerCase().includes('timed out') || error.toLowerCase().includes('network') ? (
+                        <Pressable
+                            style={styles.retryButton}
+                            onPress={handleRequestVerification}
+                            accessibilityLabel="Retry verification"
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.retryButtonText}>Retry</Text>
+                        </Pressable>
+                    ) : null}
+                </View>
+            ) : null}
 
             <TouchableOpacity
                 style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -470,7 +551,7 @@ export default function ChatOnboardingScreen() {
                 ))}
             </View>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? <Text style={styles.errorText} accessibilityRole="alert">{error}</Text> : null}
 
             {loading && (
                 <View style={styles.verifyingRow}>
@@ -521,7 +602,7 @@ export default function ChatOnboardingScreen() {
                 accessibilityLabel="Display name"
             />
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? <Text style={styles.errorText} accessibilityRole="alert">{error}</Text> : null}
 
             <TouchableOpacity
                 style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -645,11 +726,11 @@ export default function ChatOnboardingScreen() {
                     {step <= 3 && (
                         <TouchableOpacity
                             onPress={handleBack}
-                            style={{ paddingVertical: 8, paddingHorizontal: 4, minHeight: 44, justifyContent: 'center' }}
-                            accessibilityLabel={step === 1 ? 'Cancel' : 'Go back'}
+                            style={styles.backButton}
+                            accessibilityLabel={step === 1 ? 'Cancel onboarding' : 'Go back to previous step'}
                             accessibilityRole="button"
                         >
-                            <Text style={{ fontSize: 15, color: colors.accent, fontWeight: '600' }}>
+                            <Text style={styles.backButtonText}>
                                 {step === 1 ? '← Cancel' : '← Back'}
                             </Text>
                         </TouchableOpacity>
@@ -702,6 +783,19 @@ const styles = StyleSheet.create({
     },
     stepDotCompleted: {
         backgroundColor: colors.accentTransparent,
+    },
+
+    // Back button
+    backButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+        minHeight: 44,
+        justifyContent: 'center' as const,
+    },
+    backButtonText: {
+        fontSize: 15,
+        color: colors.accent,
+        fontWeight: '600' as const,
     },
 
     // Step content
@@ -799,7 +893,7 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: colors.borderLight,
         textAlign: 'center',
-        fontSize: 24,
+        fontSize: fontSizes['2xl'],
         fontWeight: '700',
         color: colors.textPrimary,
     },
@@ -814,7 +908,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     verifyingText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textSecondary,
     },
     resendButton: {
@@ -823,7 +917,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     resendText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.accent,
         fontWeight: '600',
     },
@@ -860,16 +954,36 @@ const styles = StyleSheet.create({
     },
 
     // Error
+    errorBox: {
+        backgroundColor: 'rgba(239,68,68,0.1)',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+        alignItems: 'center',
+        gap: 8,
+    },
     errorText: {
         color: colors.stateError,
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         textAlign: 'center',
-        marginBottom: 12,
+    },
+    retryButton: {
+        backgroundColor: colors.accent,
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        minHeight: 44,
+        justifyContent: 'center',
+    },
+    retryButtonText: {
+        fontSize: fontSizes.sm,
+        fontWeight: '600',
+        color: colors.background,
     },
 
     // Disclaimer
     disclaimer: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: colors.textTertiary,
         textAlign: 'center',
         marginTop: 20,
@@ -889,7 +1003,7 @@ const styles = StyleSheet.create({
         borderColor: colors.accent,
     },
     avatarPlaceholderText: {
-        fontSize: 36,
+        fontSize: fontSizes['4xl'],
         fontWeight: '700',
         color: colors.accent,
     },
@@ -904,7 +1018,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         alignItems: 'flex-start',
     },
-    privacyIcon: { fontSize: 20, marginTop: 2 },
+    privacyIcon: { fontSize: fontSizes.xl, marginTop: 2 },
     privacyText: {
         flex: 1,
         fontSize: 13,
@@ -926,7 +1040,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
     },
-    featureIcon: { fontSize: 20 },
+    featureIcon: { fontSize: fontSizes.xl },
     featureText: {
         fontSize: 15,
         color: colors.textPrimary,
@@ -988,7 +1102,7 @@ const styles = StyleSheet.create({
         zIndex: 101,
     },
     countryPickerTitle: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         fontWeight: '700',
         color: colors.textPrimary,
         textAlign: 'center',
@@ -1015,7 +1129,7 @@ const styles = StyleSheet.create({
         color: colors.textPrimary,
     },
     countryOptionCheck: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: colors.accent,
     },

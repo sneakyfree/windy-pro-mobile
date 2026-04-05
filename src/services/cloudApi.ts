@@ -1,6 +1,6 @@
 /**
  * 🧬 Cloud API Client
- * Typed client for windypro.thewindstorm.uk R2 cloud storage API.
+ * Typed client for windyword.ai R2 cloud storage API.
  *
  * Endpoints:
  *   POST /api/auth/register       → { email, password } → { token, userId }
@@ -20,17 +20,20 @@
  */
 import * as SecureStore from 'expo-secure-store';
 import * as FileSystem from 'expo-file-system';
-import { Platform } from 'react-native';
 import { API_BASE_URL, ENDPOINTS, apiUrl } from '@/config/api';
 import type { LicenseTier } from '@/types';
+import { normalizeBackendTier } from './license';
 import { createLogger } from './logger';
 
 const log = createLogger('CloudApi');
 
 // ─── Secure Store Keys ──────────────────────────────────────────
-const TOKEN_KEY = 'windy_cloud_jwt';
+// Unified token key — shared with heartbeat, license, pairManager, model-crypto
+const TOKEN_KEY = 'windy_jwt_token';
+const REFRESH_TOKEN_KEY = 'windy_cloud_refresh_token';
 const USER_ID_KEY = 'windy_cloud_user_id';
 const USER_EMAIL_KEY = 'windy_cloud_email';
+const IDENTITY_ID_KEY = 'windy_identity_id';
 
 // ─── Timeout ────────────────────────────────────────────────────
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -105,10 +108,13 @@ type AuthExpiredCallback = () => void;
 
 class CloudApiClient {
     private jwt: string | null = null;
+    private refreshTokenValue: string | null = null;
     private userId: string | null = null;
     private email: string | null = null;
+    private windyIdentityId: string | null = null;
     private uploadQueue: QueuedUpload[] = [];
     private onAuthExpired: AuthExpiredCallback | null = null;
+    private isRefreshing: Promise<boolean> | null = null;
 
     // ─── Auth ───────────────────────────────────────────────────
 
@@ -132,7 +138,7 @@ class CloudApiClient {
             }
 
             const data = await res.json();
-            await this.persistAuth(data.token, data.userId, email);
+            await this.persistAuth(data.token, data.userId, email, data.refreshToken);
             return { success: true, token: data.token, userId: data.userId };
         } catch (err: unknown) {
             return { success: false, error: err instanceof Error ? err.message : 'Network error' };
@@ -159,7 +165,7 @@ class CloudApiClient {
             }
 
             const data = await res.json();
-            await this.persistAuth(data.token, data.userId, email);
+            await this.persistAuth(data.token, data.userId, email, data.refreshToken);
             return { success: true, token: data.token, userId: data.userId };
         } catch (err: unknown) {
             return { success: false, error: err instanceof Error ? err.message : 'Network error' };
@@ -172,13 +178,24 @@ class CloudApiClient {
     async restoreSession(): Promise<boolean> {
         try {
             const token = await SecureStore.getItemAsync(TOKEN_KEY);
+            const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
             const userId = await SecureStore.getItemAsync(USER_ID_KEY);
             const email = await SecureStore.getItemAsync(USER_EMAIL_KEY);
+            const identityId = await SecureStore.getItemAsync(IDENTITY_ID_KEY);
 
             if (token) {
                 this.jwt = token;
+                this.refreshTokenValue = refreshToken;
                 this.userId = userId;
                 this.email = email;
+                this.windyIdentityId = identityId;
+                // Sync identity ID to Zustand store for app-wide access
+                try {
+                    const { useSettingsStore } = require('@/stores/useSettingsStore');
+                    useSettingsStore.getState().setWindyIdentityId(identityId);
+                } catch {
+                    // Store may not be ready during early init
+                }
                 return true;
             }
             return false;
@@ -192,11 +209,20 @@ class CloudApiClient {
      */
     async logout(): Promise<void> {
         this.jwt = null;
+        this.refreshTokenValue = null;
         this.userId = null;
         this.email = null;
+        this.windyIdentityId = null;
         await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+        await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(USER_ID_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(USER_EMAIL_KEY).catch(() => {});
+        await SecureStore.deleteItemAsync(IDENTITY_ID_KEY).catch(() => {});
+        // Clear identity from Zustand store
+        try {
+            const { useSettingsStore } = require('@/stores/useSettingsStore');
+            useSettingsStore.getState().setWindyIdentityId(null);
+        } catch {}
     }
 
     isAuthenticated(): boolean {
@@ -213,6 +239,10 @@ class CloudApiClient {
 
     getToken(): string | null {
         return this.jwt;
+    }
+
+    getWindyIdentityId(): string | null {
+        return this.windyIdentityId;
     }
 
     /**
@@ -252,18 +282,54 @@ class CloudApiClient {
                 parameters['metadata'] = JSON.stringify(metadata);
             }
 
+            const uploadHeaders: Record<string, string> = {
+                'Authorization': `Bearer ${this.jwt}`,
+            };
+            if (this.windyIdentityId) {
+                uploadHeaders['X-Windy-Identity-Id'] = this.windyIdentityId;
+            }
+
             const result = await FileSystem.uploadAsync(uploadUrl, fileUri, {
                 httpMethod: 'POST',
                 uploadType: FileSystem.FileSystemUploadType.MULTIPART,
                 fieldName: 'file',
                 mimeType: contentType,
-                headers: {
-                    'Authorization': `Bearer ${this.jwt}`,
-                },
+                headers: uploadHeaders,
                 parameters,
             });
 
             if (result.status === 401) {
+                // Attempt token refresh before giving up
+                const refreshed = await this.refreshAuth();
+                if (refreshed && this.jwt) {
+                    const retryUploadHeaders: Record<string, string> = {
+                        'Authorization': `Bearer ${this.jwt}`,
+                    };
+                    if (this.windyIdentityId) {
+                        retryUploadHeaders['X-Windy-Identity-Id'] = this.windyIdentityId;
+                    }
+                    // Retry the upload with the new token
+                    const retryResult = await FileSystem.uploadAsync(uploadUrl, fileUri, {
+                        httpMethod: 'POST',
+                        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+                        fieldName: 'file',
+                        mimeType: contentType,
+                        headers: retryUploadHeaders,
+                        parameters,
+                    });
+                    if (retryResult.status >= 200 && retryResult.status < 300) {
+                        let fileId: string | undefined;
+                        try {
+                            const body = JSON.parse(retryResult.body);
+                            fileId = body.fileId || body.id;
+                        } catch {}
+                        return { success: true, fileId };
+                    }
+                    if (retryResult.status === 401) {
+                        this.handleAuthExpired();
+                        return { success: false, error: 'Session expired — please log in again' };
+                    }
+                }
                 this.handleAuthExpired();
                 return { success: false, error: 'Session expired — please log in again' };
             }
@@ -497,24 +563,158 @@ class CloudApiClient {
 
     // ─── Internal Helpers ───────────────────────────────────────
 
-    private async persistAuth(token: string, userId: string, email: string): Promise<void> {
+    /**
+     * Decode a JWT payload without verification (the server already verified it).
+     * Returns null if the token is malformed.
+     */
+    private decodeJwtPayload(token: string): Record<string, unknown> | null {
+        try {
+            const parts = token.split('.');
+            if (parts.length !== 3) return null;
+            const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+            return JSON.parse(payload);
+        } catch {
+            return null;
+        }
+    }
+
+    private async persistAuth(token: string, userId: string, email: string, refreshToken?: string): Promise<void> {
         this.jwt = token;
         this.userId = userId;
         this.email = email;
+        if (refreshToken !== undefined) {
+            this.refreshTokenValue = refreshToken || null;
+        }
+
+        // Extract windy_identity_id and tier from JWT payload
+        const payload = this.decodeJwtPayload(token);
+        this.windyIdentityId = typeof payload?.windy_identity_id === 'string'
+            ? payload.windy_identity_id : null;
+
+        // Normalize backend tier (free/pro/ultra/max) to mobile tier
+        if (typeof payload?.tier === 'string') {
+            const normalizedTier = normalizeBackendTier(payload.tier as string);
+            try {
+                const { useSettingsStore } = require('@/stores/useSettingsStore');
+                useSettingsStore.getState().setTier?.(normalizedTier);
+            } catch {
+                // Store may not be ready during early init
+            }
+        }
 
         await SecureStore.setItemAsync(TOKEN_KEY, token).catch(() => {});
         if (userId) await SecureStore.setItemAsync(USER_ID_KEY, userId).catch(() => {});
         await SecureStore.setItemAsync(USER_EMAIL_KEY, email).catch(() => {});
+        if (this.refreshTokenValue) {
+            await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, this.refreshTokenValue).catch(() => {});
+        }
+        if (this.windyIdentityId) {
+            await SecureStore.setItemAsync(IDENTITY_ID_KEY, this.windyIdentityId).catch(() => {});
+        }
+
+        // Sync identity ID to Zustand store for app-wide access
+        try {
+            const { useSettingsStore } = require('@/stores/useSettingsStore');
+            useSettingsStore.getState().setWindyIdentityId(this.windyIdentityId);
+        } catch {
+            // Store may not be ready during early init
+        }
+
+        // Fetch ecosystem status after auth (non-blocking)
+        this.fetchEcosystemStatus();
+    }
+
+    /**
+     * Fetch ecosystem status and store in Zustand (non-blocking).
+     * Called after login, register, and token refresh.
+     */
+    private async fetchEcosystemStatus(): Promise<void> {
+        try {
+            const { getEcosystemStatus } = require('./ecosystem-status');
+            const status = await getEcosystemStatus();
+            if (status) {
+                const { useSettingsStore } = require('@/stores/useSettingsStore');
+                useSettingsStore.getState().setEcosystemStatus(status);
+            }
+        } catch {
+            // Non-critical — ecosystem status is supplementary
+        }
     }
 
     private handleAuthExpired(): void {
         this.jwt = null;
+        this.refreshTokenValue = null;
         SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+        SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => {});
         this.onAuthExpired?.();
     }
 
     /**
+     * Attempt to refresh the JWT using the stored refresh token.
+     * Uses a mutex so concurrent 401s only trigger one refresh.
+     * Returns true if refresh succeeded and new JWT is stored.
+     */
+    private async refreshAuth(): Promise<boolean> {
+        // If already refreshing, wait for that result
+        if (this.isRefreshing) {
+            return this.isRefreshing;
+        }
+
+        this.isRefreshing = this._doRefresh();
+        try {
+            return await this.isRefreshing;
+        } finally {
+            this.isRefreshing = null;
+        }
+    }
+
+    private async _doRefresh(): Promise<boolean> {
+        if (!this.refreshTokenValue) {
+            log.warn('refreshAuth', 'No refresh token available');
+            return false;
+        }
+
+        try {
+            const res = await this.fetchWithTimeout(
+                apiUrl(ENDPOINTS.AUTH_REFRESH_LIVE),
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refreshToken: this.refreshTokenValue }),
+                }
+            );
+
+            if (!res.ok) {
+                log.warn('refreshAuth', `Refresh failed with status ${res.status}`);
+                return false;
+            }
+
+            const data = await res.json();
+            const newToken = data.token || data.accessToken;
+            const newRefresh = data.refreshToken;
+
+            if (!newToken) {
+                log.warn('refreshAuth', 'No token in refresh response');
+                return false;
+            }
+
+            // Persist the new tokens
+            this.jwt = newToken;
+            if (newRefresh) this.refreshTokenValue = newRefresh;
+            await SecureStore.setItemAsync(TOKEN_KEY, newToken).catch(() => {});
+            if (newRefresh) await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefresh).catch(() => {});
+
+            log.info('refreshAuth', 'Token refreshed successfully');
+            return true;
+        } catch (err: unknown) {
+            log.warn('refreshAuth', 'Refresh error', err instanceof Error ? { message: err.message } : { error: String(err) });
+            return false;
+        }
+    }
+
+    /**
      * Fetch with auth header + 401 handling.
+     * On 401: attempts token refresh, retries once, then fires authExpired.
      * Returns null if not authenticated.
      */
     private async authedFetch(
@@ -526,15 +726,42 @@ class CloudApiClient {
             return null;
         }
 
+        const headers: Record<string, string> = {
+            ...init?.headers as Record<string, string>,
+            'Authorization': `Bearer ${this.jwt}`,
+        };
+        if (this.windyIdentityId) {
+            headers['X-Windy-Identity-Id'] = this.windyIdentityId;
+        }
+
         const res = await this.fetchWithTimeout(url, {
             ...init,
-            headers: {
-                ...init?.headers,
-                'Authorization': `Bearer ${this.jwt}`,
-            },
+            headers,
         });
 
         if (res.status === 401) {
+            // Attempt token refresh before giving up
+            const refreshed = await this.refreshAuth();
+            if (refreshed && this.jwt) {
+                // Retry the original request with the new token
+                const retryHeaders: Record<string, string> = {
+                    ...init?.headers as Record<string, string>,
+                    'Authorization': `Bearer ${this.jwt}`,
+                };
+                if (this.windyIdentityId) {
+                    retryHeaders['X-Windy-Identity-Id'] = this.windyIdentityId;
+                }
+                const retryRes = await this.fetchWithTimeout(url, {
+                    ...init,
+                    headers: retryHeaders,
+                });
+                if (retryRes.status === 401) {
+                    // Refresh succeeded but still 401 — token is truly invalid
+                    this.handleAuthExpired();
+                }
+                return retryRes;
+            }
+            // Refresh failed — session is over
             this.handleAuthExpired();
         }
 

@@ -12,7 +12,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -232,9 +232,9 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.md,
     },
     backBtn: { minWidth: 48, minHeight: 48, justifyContent: 'center' },
-    backText: { fontSize: 16, color: colors.accent },
+    backText: { fontSize: fontSizes.base, color: colors.accent },
     title: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         fontWeight: '700',
         color: colors.textPrimary,
     },
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
         borderColor: colors.borderLight,
     },
     langPillText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '600',
         color: colors.textPrimary,
     },
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     swapText: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         color: colors.accent,
     },
 
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
         borderColor: colors.borderLight,
     },
     input: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         color: colors.textPrimary,
         minHeight: 80,
         maxHeight: 160,
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     translateBtnText: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: colors.background,
     },
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     resultText: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         color: colors.textPrimary,
         lineHeight: 26,
         marginBottom: spacing.md,
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
         borderRadius: borderRadius.md,
     },
     speakBtnText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '600',
         color: colors.accent,
     },
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.lg,
     },
     footerText: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: colors.textTertiary,
     },
 });

@@ -27,6 +27,10 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     },
 }));
 
+jest.mock('../ecosystem-status', () => ({
+    getEcosystemStatus: jest.fn().mockResolvedValue(null),
+}));
+
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
@@ -60,7 +64,7 @@ describe('CloudApiClient', () => {
             expect(result.success).toBe(true);
             expect(result.token).toBe('jwt123');
             expect(result.userId).toBe('user1');
-            expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_cloud_jwt', 'jwt123');
+            expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_jwt_token', 'jwt123');
         });
 
         it('should handle registration failure with error message', async () => {
@@ -152,7 +156,7 @@ describe('CloudApiClient', () => {
             await cloudApi.logout();
 
             expect(cloudApi.isAuthenticated()).toBe(false);
-            expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('windy_cloud_jwt');
+            expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('windy_jwt_token');
         });
     });
 

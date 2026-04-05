@@ -23,13 +23,13 @@ const log = createLogger('Subscription');
 const REVENUECAT_IOS_KEY = Constants.expoConfig?.extra?.revenueCatIosKey || '';
 const REVENUECAT_ANDROID_KEY = Constants.expoConfig?.extra?.revenueCatAndroidKey || '';
 
-// Fail-loud guard: crash early if placeholder keys are still in place
-if (REVENUECAT_IOS_KEY.includes('PRODUCTION_KEY_REQUIRED') || REVENUECAT_ANDROID_KEY.includes('PRODUCTION_KEY_REQUIRED')) {
-    console.error(
-        '🚨 FATAL: RevenueCat API keys are placeholder values!\n' +
-        '   Replace revenueCatIosKey and revenueCatAndroidKey in app.json with real production keys.\n' +
-        '   Contact Grant for production RevenueCat API keys.'
-    );
+// Guard: warn if placeholder keys are still in place (don't crash — degrade gracefully)
+const REVENUECAT_KEYS_ARE_PLACEHOLDER =
+    REVENUECAT_IOS_KEY.includes('PRODUCTION_KEY_REQUIRED') ||
+    REVENUECAT_ANDROID_KEY.includes('PRODUCTION_KEY_REQUIRED');
+
+if (REVENUECAT_KEYS_ARE_PLACEHOLDER) {
+    log.warn('init', 'RevenueCat API keys are placeholder values — in-app purchases disabled in development mode');
 }
 
 /** Entitlement → LicenseTier mapping */
@@ -91,6 +91,11 @@ class SubscriptionService {
         log.entry('initialize', { platform: Platform.OS });
 
         try {
+            if (REVENUECAT_KEYS_ARE_PLACEHOLDER) {
+                log.warn('initialize', 'In-app purchases not available in development mode (placeholder API keys)');
+                return false;
+            }
+
             const apiKey = Platform.OS === 'ios' ? REVENUECAT_IOS_KEY : REVENUECAT_ANDROID_KEY;
 
             if (!apiKey) {
@@ -194,7 +199,7 @@ class SubscriptionService {
             }
 
             const message = this.classifyPurchaseError(error);
-            log.error('purchasePackage', error, { classified: message });
+            log.error('purchasePackage', sanitizeSubError(error), { classified: message });
             return { success: false, tier: null, error: message };
         } finally {
             this.purchaseInProgress = false;

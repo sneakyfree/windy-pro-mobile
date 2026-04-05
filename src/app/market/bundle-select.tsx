@@ -19,7 +19,8 @@ import {
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
+import { BUNDLE_PURCHASE_URL } from '@/config/api';
 import { pairCatalogService, type TranslationPair, type PairRegion } from '@/services/pairCatalog';
 import { pairManager, type DownloadProgress } from '@/services/pairManager';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -132,7 +133,7 @@ export default function BundleSelect() {
 
         // Open purchase URL (follows existing pattern)
         try {
-            await Linking.openURL(`https://windypro.thewindstorm.uk/bundles/${bundleInfo.rcId}`);
+            await Linking.openURL(BUNDLE_PURCHASE_URL(bundleInfo.rcId));
         } catch {
             Alert.alert('Error', 'Could not open the purchase page.');
             setConfirmDisabled(false);
@@ -330,10 +331,10 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.sm,
     },
     backBtn: { minWidth: 48, minHeight: 48, justifyContent: 'center' },
-    backText: { fontSize: 16, color: colors.accent },
+    backText: { fontSize: fontSizes.base, color: colors.accent },
     headerInfo: { marginTop: spacing.xs },
-    headerTitle: { fontSize: 24, fontWeight: '800', color: colors.textPrimary },
-    headerSubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
+    headerTitle: { fontSize: fontSizes['2xl'], fontWeight: '800', color: colors.textPrimary },
+    headerSubtitle: { fontSize: fontSizes.sm, color: colors.textSecondary, marginTop: 2 },
 
     // Counter
     counter: {
@@ -428,13 +429,13 @@ const styles = StyleSheet.create({
         borderColor: colors.accent,
     },
     checkmark: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '700',
         color: colors.background,
     },
-    pairFlags: { fontSize: 18 },
+    pairFlags: { fontSize: fontSizes.lg },
     pairInfo: { flex: 1 },
-    pairName: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+    pairName: { fontSize: fontSizes.sm, fontWeight: '600', color: colors.textPrimary },
     pairMeta: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
 
     // Bottom bar
@@ -457,7 +458,7 @@ const styles = StyleSheet.create({
         opacity: 0.4,
     },
     confirmBtnText: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: colors.background,
     },
@@ -469,7 +470,7 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.md,
     },
     downloadingText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textSecondary,
     },
 });

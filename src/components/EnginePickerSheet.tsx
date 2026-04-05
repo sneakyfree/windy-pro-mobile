@@ -8,6 +8,7 @@ import {
     ActivityIndicator, Alert,
 } from 'react-native';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { fontSizes } from '@/theme';
 import { ENGINE_REGISTRY } from '@/services/windy-tune';
 import { engineDownloadManager } from '@/services/engine-download';
 import * as Haptics from 'expo-haptics';
@@ -140,16 +141,16 @@ const s = StyleSheet.create({
     overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
     sheet: { backgroundColor: '#1e293b', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40, maxHeight: '80%' },
     handle: { width: 40, height: 4, backgroundColor: '#475569', borderRadius: 2, alignSelf: 'center', marginTop: 12 },
-    title: { color: '#f8fafc', fontSize: 18, fontWeight: '700', textAlign: 'center', marginVertical: 16 },
+    title: { color: '#f8fafc', fontSize: fontSizes.lg, fontWeight: '700', textAlign: 'center', marginVertical: 16 },
     list: { paddingHorizontal: 16 },
     item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, marginBottom: 8, backgroundColor: '#0f172a' },
     itemSelected: { borderWidth: 1, borderColor: '#a3e635' },
     itemLeft: { flex: 1 },
-    engineName: { color: '#f8fafc', fontSize: 16, fontWeight: '600' },
-    engineMeta: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
+    engineName: { color: '#f8fafc', fontSize: fontSizes.base, fontWeight: '600' },
+    engineMeta: { color: '#94a3b8', fontSize: fontSizes.xs, marginTop: 2 },
     itemRight: { marginLeft: 12, alignItems: 'center' },
-    check: { fontSize: 18 },
-    downloadBtn: { fontSize: 18 },
+    check: { fontSize: fontSizes.lg },
+    downloadBtn: { fontSize: fontSizes.lg },
     progressWrap: { alignItems: 'center' },
     progressText: { color: '#a3e635', fontSize: 11, marginTop: 2 },
     closeBtn: { marginTop: 12, alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 32, backgroundColor: '#334155', borderRadius: 12 },

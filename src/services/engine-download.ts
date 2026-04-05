@@ -3,9 +3,11 @@
  * Downloads whisper.cpp GGML models from HuggingFace CDN
  */
 import * as FileSystem from 'expo-file-system';
+import Constants from 'expo-constants';
 import type { EngineId } from '@/types';
+import { WHISPER_MODEL_CDN } from '@/config/api';
 
-const MODEL_CDN = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
+const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
 
 /**
  * Map engine ID to model filename on HuggingFace
@@ -43,7 +45,7 @@ class EngineDownloadManager {
         await FileSystem.makeDirectoryAsync(this.engineDir, { intermediates: true });
 
         const destPath = this.engineDir + filename;
-        const url = `${MODEL_CDN}/${filename}`;
+        const url = `${WHISPER_MODEL_CDN}/${filename}`;
 
         // Check if already downloaded
         const info = await FileSystem.getInfoAsync(destPath);
@@ -57,7 +59,7 @@ class EngineDownloadManager {
             url,
             destPath,
             {
-                headers: { 'User-Agent': 'WindyPro/0.1.0' },
+                headers: { 'User-Agent': `WindyPro/${APP_VERSION}` },
             },
             (progress) => {
                 if (progress.totalBytesExpectedToWrite > 0) {

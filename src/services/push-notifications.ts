@@ -8,11 +8,12 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { createLogger } from './logger';
-import { API_BASE_URL } from '@/config/api';
+import { API_BASE_URL, PUSH_TOKEN_ENDPOINT, apiUrl } from '@/config/api';
+import { fetchWithTimeout } from '@/utils/fetch-timeout';
 
 const log = createLogger('PushNotifications');
 
-const REGISTER_TOKEN_URL = `${API_BASE_URL}/api/register-push-token`;
+const REGISTER_TOKEN_URL = apiUrl(PUSH_TOKEN_ENDPOINT);
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -113,6 +114,15 @@ class PushNotificationService {
             importance: Notifications.AndroidImportance.LOW,
             description: 'Background sync progress and Wi-Fi reminders',
         });
+
+        await Notifications.setNotificationChannelAsync('agent', {
+            name: 'AI Agent Messages',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 100, 100, 200, 100, 200],
+            lightColor: '#a3e635',
+            sound: 'default',
+            description: 'Messages from your Windy Fly AI agent',
+        });
     }
 
     /**
@@ -120,9 +130,19 @@ class PushNotificationService {
      */
     private async registerTokenWithBackend(token: string): Promise<void> {
         try {
-            await fetch(REGISTER_TOKEN_URL, {
+            // Get auth token for backend registration
+            let authToken = '';
+            try {
+                const SecureStore = require('expo-secure-store');
+                authToken = await SecureStore.getItemAsync('windy_jwt_token') || '';
+            } catch { /* SecureStore unavailable */ }
+
+            await fetchWithTimeout(REGISTER_TOKEN_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+                },
                 body: JSON.stringify({
                     token,
                     platform: Platform.OS,
@@ -234,3 +254,35 @@ class PushNotificationService {
 }
 
 export const pushNotificationService = new PushNotificationService();
+
+/**
+ * Show a birth announcement notification when an AI agent hatches.
+ * Called when the backend sends the hatch event via WebSocket or push.
+ */
+export async function showBirthAnnouncement(agentName: string): Promise<void> {
+    await Notifications.scheduleNotificationAsync({
+        content: {
+            title: "🪰 IT'S ALIVE!",
+            body: `Your AI agent ${agentName} has hatched! Tap to chat.`,
+            data: { route: '/(tabs)/chat' },
+            ...(Platform.OS === 'android' ? { channelId: 'agent' } : {}),
+        },
+        trigger: null as unknown as Notifications.NotificationTriggerInput,
+    });
+}
+
+/**
+ * Show a notification for an incoming agent message.
+ * Uses the dedicated 'agent' channel with distinct vibration pattern.
+ */
+export async function showAgentMessage(agentName: string, message: string, roomId?: string): Promise<void> {
+    await Notifications.scheduleNotificationAsync({
+        content: {
+            title: `🪰 ${agentName}`,
+            body: message,
+            data: { route: roomId ? `/chat/${roomId}` : '/(tabs)/chat' },
+            ...(Platform.OS === 'android' ? { channelId: 'agent' } : {}),
+        },
+        trigger: null as unknown as Notifications.NotificationTriggerInput,
+    });
+}

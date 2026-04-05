@@ -9,12 +9,15 @@ import {
 } from 'react-native';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
+import { typography } from '@/theme/typography';
 import { ocrService, type OcrTranslation } from '@/services/ocr';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { feedbackService } from '@/services/feedback';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { EmptyState } from '@/components/EmptyState';
+import { useAccessibility } from '@/hooks/useAccessibility';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -41,6 +44,7 @@ export default function CameraTab() {
     const scanningRef = useRef(false);
     const isMountedRef = useRef(true);
 
+    const { announce } = useAccessibility();
     const overlayOpacity = useRef(new Animated.Value(0)).current;
 
     // Show overlay animation
@@ -93,6 +97,7 @@ export default function CameraTab() {
 
             if (!ocrResult.original.text.trim()) {
                 setError('No text detected. Point camera at readable text.');
+                announce('No text detected');
                 feedbackService.error();
                 return;
             }
@@ -100,6 +105,7 @@ export default function CameraTab() {
             setResult(ocrResult);
             setHistory((prev) => [ocrResult, ...prev.slice(0, 19)]); // Keep last 20
             feedbackService.success();
+            announce('Translation ready');
 
             // TTS: speak the translation
             translationService.speak(ocrResult.translated, targetLang);
@@ -213,7 +219,13 @@ export default function CameraTab() {
                 </View>
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.screenPadding }}>
                     {history.length === 0 ? (
-                        <Text style={styles.emptyHistory}>No translations yet. Capture some text!</Text>
+                        <EmptyState
+                            icon="📷"
+                            title="No translations yet"
+                            subtitle="Point your camera at text and tap Capture to translate it"
+                            actionLabel="Start Scanning"
+                            onAction={() => setShowHistory(false)}
+                        />
                     ) : (
                         history.map((h, i) => (
                             <View key={`h-${i}`} style={styles.historyCard}>
@@ -473,14 +485,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.screenPadding,
     },
     permissionEmoji: { fontSize: 64, marginBottom: 12 },
-    permissionTitle: { fontSize: 22, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
-    permissionText: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 16 },
+    permissionTitle: { ...typography.h2, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
+    permissionText: { ...typography.body, color: colors.textSecondary, textAlign: 'center', marginBottom: 16 },
     permissionLangs: { fontSize: 32, marginBottom: 24, letterSpacing: 8 },
     permissionBtn: {
         backgroundColor: colors.accent, paddingVertical: 14,
         paddingHorizontal: 32, borderRadius: borderRadius.lg,
     },
-    permissionBtnText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    permissionBtnText: { ...typography.button, fontWeight: '700', color: colors.background },
 
     // Camera
     camera: { flex: 1 },
@@ -492,9 +504,9 @@ const styles = StyleSheet.create({
 
     // Top bar
     topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    topTitle: { fontSize: 15, fontWeight: '600', color: '#fff', textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 },
+    topTitle: { ...typography.button, color: '#fff', textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 },
     historyBtn: { backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
-    historyBtnText: { fontSize: 13, color: '#fff' },
+    historyBtnText: { ...typography.bodySmall, color: '#fff' },
 
     // Crosshair
     crosshair: {
@@ -507,19 +519,19 @@ const styles = StyleSheet.create({
     cornerBL: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0 },
     cornerBR: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0 },
     scanningOverlay: { alignItems: 'center', gap: 8 },
-    scanningText: { fontSize: 14, color: '#fff', fontWeight: '500', textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 },
+    scanningText: { ...typography.bodySmall, fontWeight: '500', color: '#fff', textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 },
 
     // Hint / Error
     hint: {
-        color: '#fff', textAlign: 'center', fontSize: 14, fontWeight: '500',
+        ...typography.bodySmall, fontWeight: '500', color: '#fff', textAlign: 'center',
         textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4,
     },
     errorBanner: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         backgroundColor: 'rgba(239,68,68,0.9)', padding: 12, borderRadius: borderRadius.md,
     },
-    errorText: { fontSize: 13, color: '#fff', flex: 1 },
-    errorDismiss: { fontSize: 16, color: '#fff', paddingLeft: 12 },
+    errorText: { ...typography.bodySmall, color: '#fff', flex: 1 },
+    errorDismiss: { ...typography.body, color: '#fff', paddingLeft: 12 },
 
     // Translation overlay
     translationOverlay: {
@@ -529,13 +541,13 @@ const styles = StyleSheet.create({
     },
     overlayCard: {},
     overlaySection: { marginBottom: 8 },
-    overlayLabel: { fontSize: 11, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
-    overlayOriginal: { fontSize: 15, color: colors.textPrimary, lineHeight: 22 },
+    overlayLabel: { ...typography.tabLabel, color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+    overlayOriginal: { ...typography.body, color: colors.textPrimary },
     overlayDivider: { height: 1, backgroundColor: colors.borderLight, marginVertical: 8 },
-    overlayTranslated: { fontSize: 18, color: colors.accent, lineHeight: 26, fontWeight: '600' },
+    overlayTranslated: { ...typography.h3, color: colors.textPrimary },
     overlayActions: { flexDirection: 'row', gap: 12, marginTop: 12 },
     overlayActionBtn: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: colors.surface, borderRadius: borderRadius.md },
-    overlayActionText: { fontSize: 14, color: colors.textPrimary },
+    overlayActionText: { ...typography.bodySmall, color: colors.textPrimary },
 
     // Bottom bar
     bottomBar: {
@@ -549,8 +561,8 @@ const styles = StyleSheet.create({
         borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface,
     },
     langChipActive: { borderColor: colors.accent, backgroundColor: colors.accentTransparent },
-    langChipFlag: { fontSize: 18 },
-    langChipName: { fontSize: 13, color: colors.textSecondary },
+    langChipFlag: { fontSize: fontSizes.lg },
+    langChipName: { ...typography.bodySmall, color: colors.textSecondary },
     langChipNameActive: { color: colors.accent, fontWeight: '600' },
     captureBtn: {
         backgroundColor: colors.accent, borderRadius: borderRadius.lg,
@@ -559,7 +571,7 @@ const styles = StyleSheet.create({
     },
     captureBtnDisabled: { opacity: 0.6 },
     captureBtnEmoji: { fontSize: 22 },
-    captureBtnText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    captureBtnText: { ...typography.button, fontWeight: '700', color: colors.background },
     captureRow: { flexDirection: 'row', gap: 8 },
     liveBtn: {
         backgroundColor: colors.surface, borderRadius: borderRadius.lg,
@@ -568,14 +580,14 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: colors.borderLight,
     },
     liveBtnActive: { backgroundColor: 'rgba(34,197,94,0.15)', borderColor: '#22c55e' },
-    liveBtnText: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+    liveBtnText: { ...typography.bodySmall, fontWeight: '600', color: colors.textPrimary },
     freezeBtn: {
         backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: borderRadius.lg,
         paddingVertical: 14, paddingHorizontal: 16,
         alignItems: 'center', justifyContent: 'center',
         borderWidth: 1, borderColor: '#3b82f6',
     },
-    freezeBtnText: { fontSize: 13, fontWeight: '600', color: '#3b82f6' },
+    freezeBtnText: { ...typography.bodySmall, fontWeight: '600', color: '#3b82f6' },
 
     // Live overlays
     boundingBoxContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
@@ -583,12 +595,12 @@ const styles = StyleSheet.create({
         position: 'absolute', backgroundColor: 'rgba(99,102,241,0.75)',
         paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3,
     },
-    boundingBoxText: { fontSize: 10, color: '#fff', fontWeight: '600' },
+    boundingBoxText: { ...typography.tabLabel, fontWeight: '600', color: '#fff' },
     liveBadgeRow: { flexDirection: 'row', gap: 8, alignSelf: 'center' },
     liveBadge: { backgroundColor: 'rgba(34,197,94,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-    liveBadgeText: { fontSize: 12, fontWeight: '700', color: '#22c55e' },
+    liveBadgeText: { ...typography.caption, fontWeight: '700', color: '#22c55e' },
     detectedLangBadge: { backgroundColor: 'rgba(99,102,241,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-    detectedLangText: { fontSize: 12, fontWeight: '600', color: '#6366f1' },
+    detectedLangText: { ...typography.caption, fontWeight: '600', color: '#6366f1' },
 
     // Floating translation bubble
     floatingBubble: {
@@ -601,18 +613,18 @@ const styles = StyleSheet.create({
     bubbleHeader: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
     },
-    bubbleHeaderText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+    bubbleHeaderText: { ...typography.bodySmall, fontWeight: '700', color: '#fff' },
     bubbleLiveDot: {
         width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e',
     },
-    bubbleOriginal: { fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 18 },
+    bubbleOriginal: { ...typography.bodySmall, color: 'rgba(255,255,255,0.7)' },
     bubbleDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 8 },
-    bubbleTranslated: { fontSize: 17, color: '#a3e635', lineHeight: 24, fontWeight: '600' },
+    bubbleTranslated: { ...typography.h3, color: '#e2e8f0' },
     bubbleFreezeBtn: {
         marginTop: 10, backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: 10,
         paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)',
     },
-    bubbleFreezeBtnText: { fontSize: 13, fontWeight: '600', color: '#60a5fa' },
+    bubbleFreezeBtnText: { ...typography.bodySmall, fontWeight: '600', color: '#60a5fa' },
 
     // History
     historyHeader: {
@@ -620,12 +632,12 @@ const styles = StyleSheet.create({
         padding: spacing.screenPadding, paddingTop: Platform.OS === 'ios' ? 60 : 40,
         borderBottomWidth: 1, borderBottomColor: colors.borderLight,
     },
-    historyTitle: { fontSize: 20, fontWeight: '600', color: colors.textPrimary },
-    historyClose: { fontSize: 14, color: colors.accent },
-    emptyHistory: { fontSize: 15, color: colors.textTertiary, textAlign: 'center', marginTop: 60 },
+    historyTitle: { ...typography.h2, color: colors.textPrimary },
+    historyClose: { ...typography.bodySmall, color: colors.accent },
+    emptyHistory: { ...typography.body, color: colors.textTertiary, textAlign: 'center', marginTop: 60 },
     historyCard: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: 10 },
-    historyLang: { fontSize: 12, color: colors.textTertiary, marginBottom: 4 },
-    historyOriginal: { fontSize: 14, color: colors.textPrimary, lineHeight: 20 },
+    historyLang: { ...typography.caption, color: colors.textTertiary, marginBottom: 4 },
+    historyOriginal: { ...typography.bodySmall, color: colors.textPrimary },
     historyDivider: { height: 1, backgroundColor: colors.borderLight, marginVertical: 8 },
-    historyTranslated: { fontSize: 14, color: colors.accent, lineHeight: 20 },
+    historyTranslated: { ...typography.bodySmall, color: colors.accentSecondary },
 });

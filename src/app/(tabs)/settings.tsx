@@ -5,7 +5,7 @@
  * RP-8.5: Real clone progress
  * Navigation features, translation prefs, voice selection
  */
-import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
 import { useState, useCallback, memo } from 'react';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
@@ -15,7 +15,8 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import Constants from 'expo-constants';
 import { colors, spacing, borderRadius } from '@/theme';
-import { useSettingsStore } from '@/stores/useSettingsStore';
+import { typography } from '@/theme/typography';
+import { useSettingsStore, setLicense, getLicenseKey } from '@/stores/useSettingsStore';
 import { localStorageService } from '@/services/storage-local';
 import { cloneTracker } from '@/services/clone-tracker';
 import { licenseService } from '@/services/license';
@@ -26,6 +27,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import EnginePickerSheet from '@/components/EnginePickerSheet';
 import LanguagePickerSheet from '@/components/LanguagePickerSheet';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
+import { getEcosystemStatus, PRODUCT_DISPLAY, getStatusLabel, getStatusColor, getStatusIcon, getProductSubtitle, type EcosystemStatus } from '@/services/ecosystem-status';
+import { cloudApi } from '@/services/cloudApi';
 import type { StorageUsage } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { syncManager } from '@/services/sync-manager';
@@ -55,10 +58,23 @@ export default function SettingsScreen() {
   const [clearingCache, setClearingCache] = useState(false);
   const [packs, setPacks] = useState<LanguagePack[]>([]);
   const [clonedVoiceId, setClonedVoiceId] = useState<string | null>(null);
+  const [licenseKeyDisplay, setLicenseKeyDisplay] = useState<string | null>(null);
   const [targetLangPickerVisible, setTargetLangPickerVisible] = useState(false);
   const [serverUrl, setServerUrl] = useState(getTranscriptionServerUrl());
+  const [chatHomeserver, setChatHomeserver] = useState(settings.chatHomeserver || 'https://chat.windypro.com');
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadErrors, setLoadErrors] = useState<string[]>([]);
+  const [ecosystem, setEcosystem] = useState<EcosystemStatus | null>(settings.ecosystemStatus);
+  const [cloudUsage, setCloudUsage] = useState<{ usedBytes: number; limitBytes: number; fileCount: number; tierLabel: string; percentUsed: number } | null>(null);
 
   const SERVER_URL_KEY = 'windy-server-url';
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -67,10 +83,13 @@ export default function SettingsScreen() {
   );
 
   const loadData = async () => {
+    setSettingsLoading(true);
+    const errors: string[] = [];
+
     try {
       const storageData = await localStorageService.getStorageUsage();
       setStorage(storageData);
-    } catch (err) { settingsLog.warn('loadData', 'Error loading storage data'); }
+    } catch (err) { settingsLog.warn('loadData', 'Error loading storage data'); errors.push('storage'); }
 
     const progress = cloneTracker.getProgress();
     setCloneHours(progress.totalHours);
@@ -89,13 +108,39 @@ export default function SettingsScreen() {
     try {
       await offlinePackService.initialize();
       setPacks(offlinePackService.getPacks());
-    } catch (err) { settingsLog.warn('loadData', 'Offline packs init failed'); }
+    } catch (err) { settingsLog.warn('loadData', 'Offline packs init failed'); errors.push('language packs'); }
 
     // Load cloned voice ID
     try {
       const voiceId = await AsyncStorage.getItem(CLONE_VOICE_KEY);
       setClonedVoiceId(voiceId);
     } catch (err) { settingsLog.warn('loadData', 'Clone voice load failed'); }
+
+    // Load license key from SecureStore for display
+    try {
+      const key = await getLicenseKey();
+      setLicenseKeyDisplay(key);
+    } catch (err) { settingsLog.warn('loadData', 'License key load failed'); errors.push('license'); }
+
+    // Fetch ecosystem status (non-blocking)
+    try {
+      const ecoStatus = await getEcosystemStatus();
+      if (ecoStatus) {
+        setEcosystem(ecoStatus);
+        settings.setEcosystemStatus(ecoStatus);
+      }
+    } catch { /* Non-critical */ }
+
+    // Fetch cloud storage usage (non-blocking)
+    try {
+      if (cloudApi.isAuthenticated()) {
+        const usage = await cloudApi.getStorageUsage(settings.licenseTier);
+        setCloudUsage(usage);
+      }
+    } catch { /* Non-critical */ }
+
+    setLoadErrors(errors);
+    setSettingsLoading(false);
   };
 
   const formatBytes = (bytes: number): string => {
@@ -200,7 +245,7 @@ export default function SettingsScreen() {
                   onPress: async () => {
                     try {
                       // Reset settings
-                      settings.setLicense('free', null);
+                      await setLicense('free', null);
                       settings.setOnboardingComplete(false);
                       settings.setCloneTrackingEnabled(false);
                       // Clear local storage
@@ -227,7 +272,95 @@ export default function SettingsScreen() {
   return (
     <ScreenErrorBoundary screenName="Settings">
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent]} />}
+        >
+          {settingsLoading && (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <ActivityIndicator color={colors.accent} size="small" />
+              <Text style={{ ...typography.caption, color: colors.textTertiary, marginTop: 8 }}>Loading settings...</Text>
+            </View>
+          )}
+          {loadErrors.length > 0 && (
+            <View style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: 12, marginHorizontal: 16, marginBottom: 8, borderRadius: 8 }}>
+              <Text style={{ ...typography.caption, color: '#f87171' }}>
+                Some settings could not be loaded: {loadErrors.join(', ')}
+              </Text>
+            </View>
+          )}
+          {/* Ecosystem Section */}
+          {ecosystem && (
+            <SettingsSection title={ecosystem.creator_name ? `${ecosystem.creator_name}'s Windy Ecosystem` : 'Your Windy Ecosystem'}>
+              {/* Identity card */}
+              <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight }}>
+                <Text style={{ ...typography.bodySmall, color: colors.textTertiary }}>{ecosystem.email}</Text>
+                <Text style={{ ...typography.caption, color: colors.accent, marginTop: 2 }}>
+                  {formatTier(ecosystem.tier)} tier{ecosystem.windy_identity_id ? ` \u00B7 ${ecosystem.windy_identity_id.slice(0, 8)}...` : ''}
+                </Text>
+              </View>
+              {PRODUCT_DISPLAY.map((product) => {
+                const productStatus = ecosystem.products[product.key];
+                if (!productStatus) return null;
+                const statusLabel = getStatusLabel(productStatus.status, productStatus.detail);
+                const statusColor = getStatusColor(productStatus.status);
+                const statusIcon = getStatusIcon(productStatus.status);
+                const subtitle = getProductSubtitle(product.key, productStatus);
+                const needsSetup = productStatus.status === 'not_provisioned' || productStatus.status === 'available';
+                const isOffline = productStatus.status === 'offline';
+
+                return (
+                  <Pressable
+                    key={product.key}
+                    style={[styles.navRow, { minHeight: subtitle ? 56 : 48, paddingVertical: subtitle ? 8 : spacing.md - 2 }]}
+                    disabled={isOffline}
+                    onPress={() => {
+                      feedbackService.tap().catch(() => {});
+                      if (product.route) {
+                        router.push(product.route as any);
+                      } else if (product.externalUrl) {
+                        Linking.openURL(product.externalUrl).catch(() => {});
+                      }
+                    }}
+                    accessibilityLabel={`${product.label}: ${statusLabel}${subtitle ? `, ${subtitle}` : ''}`}
+                    accessibilityRole="button"
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.navRowLabel, isOffline && { color: colors.textTertiary }]}>{product.emoji} {product.label}</Text>
+                      {subtitle && (
+                        <Text style={{ ...typography.caption, color: colors.textTertiary, marginTop: 2, paddingLeft: 28 }} numberOfLines={1}>{subtitle}</Text>
+                      )}
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {needsSetup ? (
+                        <View style={{ backgroundColor: colors.accent, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                          <Text style={{ ...typography.caption, fontWeight: '600', color: colors.background }}>Set up</Text>
+                        </View>
+                      ) : isOffline ? (
+                        <Text style={{ ...typography.caption, color: colors.textTertiary }}>Offline</Text>
+                      ) : (
+                        <>
+                          <Text style={{ fontSize: 14 }}>{statusIcon}</Text>
+                          <Text style={{ ...typography.caption, color: statusColor }}>{statusLabel}</Text>
+                        </>
+                      )}
+                      {!isOffline && <Text style={styles.chevron} importantForAccessibility="no">›</Text>}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </SettingsSection>
+          )}
+          {!ecosystem && cloudApi.isAuthenticated() && (
+            <SettingsSection title="Your Windy Ecosystem">
+              <View style={{ padding: 16, alignItems: 'center' }}>
+                <ActivityIndicator color={colors.accent} size="small" />
+                <Text style={{ ...typography.caption, color: colors.textTertiary, marginTop: 8 }}>Loading ecosystem...</Text>
+              </View>
+            </SettingsSection>
+          )}
+
           {/* Account Section */}
           <SettingsSection title="Account">
             <SettingsRow
@@ -404,6 +537,34 @@ export default function SettingsScreen() {
             <SettingsToggle label="Audio feedback" subtitle="Blip sounds on record start/stop" value={settings.audioFeedback} onToggle={settings.setAudioFeedback} />
           </SettingsSection>
 
+          {/* Voice Chat */}
+          <SettingsSection title="Voice Chat">
+            <View style={styles.row}>
+              <View style={styles.rowLabelContainer}>
+                <Text style={styles.rowLabel}>Voice chat mode</Text>
+                <Text style={styles.rowSubtitle}>
+                  {settings.voiceChatMode === 'autosend' ? 'Speak → auto-send (power user)' : 'Speak → fill compose box (review first)'}
+                </Text>
+              </View>
+              <Pressable
+                style={[styles.themeBtn, settings.voiceChatMode === 'dictate' && styles.themeBtnActive, { flex: 0, paddingHorizontal: 12 }]}
+                onPress={() => settings.setVoiceChatMode('dictate')}
+                accessibilityLabel="Tap to dictate mode"
+                accessibilityRole="button"
+              >
+                <Text style={[styles.themeBtnText, settings.voiceChatMode === 'dictate' && styles.themeBtnTextActive]}>Dictate</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.themeBtn, settings.voiceChatMode === 'autosend' && styles.themeBtnActive, { flex: 0, paddingHorizontal: 12, marginLeft: 6 }]}
+                onPress={() => settings.setVoiceChatMode('autosend')}
+                accessibilityLabel="Tap to auto-send mode"
+                accessibilityRole="button"
+              >
+                <Text style={[styles.themeBtnText, settings.voiceChatMode === 'autosend' && styles.themeBtnTextActive]}>Auto-send</Text>
+              </Pressable>
+            </View>
+          </SettingsSection>
+
           {/* Notifications */}
           <SettingsSection title="Notifications">
             <SettingsToggle label="Recording complete" subtitle="When a transcription finishes" value={settings.notifyRecordingComplete} onToggle={settings.setNotifyRecordingComplete} />
@@ -550,6 +711,35 @@ export default function SettingsScreen() {
 
           {/* Cloud Sync */}
           <SettingsSection title="Cloud Sync">
+            {/* Storage Breakdown: Local + Cloud */}
+            {(storage || cloudUsage) && (
+              <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight }}>
+                {storage && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ ...typography.bodySmall, color: colors.textSecondary }}>Local (hot)</Text>
+                    <Text style={{ ...typography.bodySmall, color: colors.textPrimary }}>
+                      {formatBytes(storage.totalBytes || 0)} / {formatBytes(500 * 1024 * 1024)}
+                    </Text>
+                  </View>
+                )}
+                {cloudUsage && (
+                  <>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ ...typography.bodySmall, color: colors.textSecondary }}>Cloud (cold)</Text>
+                      <Text style={{ ...typography.bodySmall, color: colors.textPrimary }}>
+                        {formatBytes(cloudUsage.usedBytes)} / {formatBytes(cloudUsage.limitBytes)}
+                      </Text>
+                    </View>
+                    <View style={{ height: 4, backgroundColor: colors.surfaceLight, borderRadius: 2, overflow: 'hidden' }}>
+                      <View style={{ height: '100%', width: `${Math.min(cloudUsage.percentUsed, 100)}%`, backgroundColor: cloudUsage.percentUsed > 90 ? '#ef4444' : colors.accent, borderRadius: 2 }} />
+                    </View>
+                    <Text style={{ ...typography.caption, color: colors.textTertiary }}>
+                      {cloudUsage.tierLabel} tier · {cloudUsage.fileCount} file{cloudUsage.fileCount !== 1 ? 's' : ''} · {cloudUsage.percentUsed}% used
+                    </Text>
+                  </>
+                )}
+              </View>
+            )}
             <SettingsToggle
               label="Auto-Sync"
               subtitle="Automatically sync recordings when on Wi-Fi"
@@ -562,6 +752,22 @@ export default function SettingsScreen() {
               value={syncManager.getSettings().sync_on_cellular}
               onToggle={(v) => syncManager.updateSettings({ sync_on_cellular: v })}
             />
+            {/* Sync Status Indicator */}
+            {(() => {
+              const syncState = syncManager.getState();
+              return (
+                <View style={{ paddingHorizontal: 16, paddingVertical: 10, gap: 4 }} accessibilityRole="summary" accessibilityLabel={`Sync status: ${syncState.pendingCount} items pending, network ${syncState.networkType}, last sync ${syncState.lastSyncTime ? new Date(syncState.lastSyncTime).toLocaleString() : 'never'}`}>
+                  <Text style={[styles.rowSubtitle, { color: colors.textTertiary }]}>
+                    {syncState.networkType === 'wifi' ? '📶 Wi-Fi' : syncState.networkType === 'cellular' ? '📱 Cellular' : '📵 Offline'}
+                    {' · '}{syncState.pendingCount} pending
+                    {syncState.isSyncing ? ` · Syncing ${syncState.overallProgress}%` : ''}
+                  </Text>
+                  <Text style={[styles.rowSubtitle, { color: colors.textTertiary }]}>
+                    Last sync: {syncState.lastSyncTime ? new Date(syncState.lastSyncTime).toLocaleString() : 'Never'}
+                  </Text>
+                </View>
+              );
+            })()}
             <Pressable style={styles.navRow} onPress={async () => {
               await feedbackService.tap();
               await syncManager.manualSync();
@@ -595,17 +801,17 @@ export default function SettingsScreen() {
             </Pressable>
           </SettingsSection>
 
-          {/* Server Config */}
-          <SettingsSection title="Server">
+          {/* Server Config (Advanced) */}
+          <SettingsSection title="Advanced">
             <View style={styles.serverUrlRow}>
-              <Text style={styles.settingLabel}>Server URL</Text>
+              <Text style={styles.settingLabel}>Transcription Server</Text>
               <TextInput
                 style={styles.serverUrlInput}
                 value={serverUrl}
                 onChangeText={setServerUrl}
                 accessibilityLabel="Transcription server URL"
                 onEndEditing={async () => {
-                  const url = serverUrl.trim() || 'https://windypro.thewindstorm.uk';
+                  const url = serverUrl.trim() || 'https://windyword.ai';
                   const urlCheck = validateUrl(url);
                   if (!urlCheck.valid) {
                     Alert.alert('Invalid URL', urlCheck.error);
@@ -617,7 +823,7 @@ export default function SettingsScreen() {
                   feedbackService.success();
                   Alert.alert('Server Updated', `Transcription server set to:\n${url}`);
                 }}
-                placeholder="https://windypro.thewindstorm.uk"
+                placeholder="https://windyword.ai"
                 placeholderTextColor={colors.textTertiary}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -627,13 +833,53 @@ export default function SettingsScreen() {
               <Pressable
                 style={styles.serverResetBtn}
                 onPress={async () => {
-                  const def = 'https://windypro.thewindstorm.uk';
+                  const def = 'https://windyword.ai';
                   setServerUrl(def);
                   setTranscriptionServerUrl(def);
                   await AsyncStorage.setItem(SERVER_URL_KEY, def);
                   feedbackService.tap();
                 }}
                 accessibilityLabel="Reset server URL to default"
+                accessibilityRole="button"
+              >
+                <Text style={styles.serverResetText}>Reset</Text>
+              </Pressable>
+            </View>
+            <View style={[styles.serverUrlRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight }]}>
+              <Text style={styles.settingLabel}>Chat Homeserver</Text>
+              <TextInput
+                style={styles.serverUrlInput}
+                value={chatHomeserver}
+                onChangeText={setChatHomeserver}
+                accessibilityLabel="Matrix chat homeserver URL"
+                onEndEditing={() => {
+                  const url = chatHomeserver.trim() || 'https://chat.windypro.com';
+                  const urlCheck = validateUrl(url);
+                  if (!urlCheck.valid) {
+                    Alert.alert('Invalid URL', urlCheck.error);
+                    return;
+                  }
+                  setChatHomeserver(url);
+                  settings.setChatHomeserver(url);
+                  feedbackService.success();
+                  Alert.alert('Chat Server Updated', `Chat homeserver set to:\n${url}`);
+                }}
+                placeholder="https://chat.windypro.com"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                maxLength={INPUT_LIMITS.SERVER_URL}
+              />
+              <Pressable
+                style={styles.serverResetBtn}
+                onPress={() => {
+                  const def = 'https://chat.windypro.com';
+                  setChatHomeserver(def);
+                  settings.setChatHomeserver('');
+                  feedbackService.tap();
+                }}
+                accessibilityLabel="Reset chat homeserver to default"
                 accessibilityRole="button"
               >
                 <Text style={styles.serverResetText}>Reset</Text>
@@ -672,8 +918,8 @@ export default function SettingsScreen() {
               value={settings.licenseTier === 'free' ? 'Free' : formatTier(settings.licenseTier)}
               valueColor={settings.licenseTier === 'free' ? colors.textTertiary : colors.accent}
             />
-            {settings.licenseKey && (
-              <SettingsRow label="License Key" value={`${settings.licenseKey.slice(0, 8)}...`} />
+            {licenseKeyDisplay && (
+              <SettingsRow label="License Key" value={`${licenseKeyDisplay.slice(0, 8)}...`} />
             )}
             {settings.licenseTier !== 'free' && (
               <Pressable style={styles.navRow} onPress={() => router.push('/subscription')}
@@ -692,9 +938,10 @@ export default function SettingsScreen() {
                     text: 'Log Out',
                     style: 'destructive',
                     onPress: () => {
-                      settings.setLicense('free', null);
-                      feedbackService.success();
-                      Alert.alert('Logged Out', 'You have been logged out.');
+                      setLicense('free', null).then(() => {
+                        feedbackService.success();
+                        Alert.alert('Logged Out', 'You have been logged out.');
+                      });
                     },
                   },
                 ]);
@@ -788,18 +1035,18 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: spacing.screenPadding, paddingTop: spacing.md, paddingBottom: spacing.xxl },
   section: { marginBottom: spacing.lg },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm, paddingLeft: spacing.xs },
+  sectionTitle: { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm, paddingLeft: spacing.xs },
   sectionContent: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.md - 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight, minHeight: 48 },
   rowLabelContainer: { flex: 1 },
-  rowLabel: { fontSize: 15, color: colors.textPrimary },
-  rowSubtitle: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
-  rowValue: { fontSize: 15, color: colors.textSecondary },
-  chevron: { fontSize: 20, color: colors.textTertiary, fontWeight: '300' },
+  rowLabel: { ...typography.body, color: colors.textPrimary },
+  rowSubtitle: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
+  rowValue: { ...typography.body, color: colors.textSecondary },
+  chevron: { ...typography.h2, fontWeight: '300', color: colors.textTertiary },
   navRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.md - 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight, minHeight: 48 },
-  navRowLabel: { fontSize: 15, color: colors.textPrimary },
+  navRowLabel: { ...typography.body, color: colors.textPrimary },
   upgradeButton: { backgroundColor: colors.accent, margin: spacing.sm, paddingVertical: spacing.sm + 2, borderRadius: borderRadius.md, alignItems: 'center' },
-  upgradeText: { fontSize: 15, fontWeight: '600', color: colors.background },
+  upgradeText: { ...typography.button, color: colors.background },
 
   // Theme toggle
   themeRow: { flexDirection: 'row', gap: spacing.xs, padding: spacing.sm },
@@ -808,7 +1055,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.borderLight,
   },
   themeBtnActive: { borderColor: colors.accent, backgroundColor: 'rgba(163, 230, 53, 0.1)' },
-  themeBtnText: { fontSize: 13, color: colors.textTertiary },
+  themeBtnText: { ...typography.bodySmall, color: colors.textTertiary },
   themeBtnTextActive: { color: colors.accent, fontWeight: '600' },
 
   // Storage actions
@@ -816,7 +1063,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2,
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight,
   },
-  storageActionText: { fontSize: 14, color: colors.accent, fontWeight: '500' },
+  storageActionText: { ...typography.bodySmall, color: colors.accent, fontWeight: '500' },
 
   // Language pack progress
   packProgress: { height: 3, backgroundColor: colors.surfaceLight, borderRadius: 2, marginTop: 4, overflow: 'hidden' },
@@ -824,11 +1071,11 @@ const styles = StyleSheet.create({
 
   // Danger zone
   dangerRow: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, alignItems: 'center' },
-  dangerText: { fontSize: 15, fontWeight: '600', color: colors.stateError },
+  dangerText: { ...typography.button, color: colors.stateError },
 
   footer: { alignItems: 'center', paddingVertical: spacing.xl },
-  footerText: { fontSize: 13, color: colors.textTertiary },
-  footerVersion: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
+  footerText: { ...typography.bodySmall, color: colors.textTertiary },
+  footerVersion: { ...typography.tabLabel, color: colors.textTertiary, marginTop: 2 },
 
   // Translation prefs
   qualityPresetRow: { flexDirection: 'row', gap: 6 },
@@ -836,21 +1083,21 @@ const styles = StyleSheet.create({
     paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8,
     borderWidth: 1, borderColor: colors.borderLight,
   },
-  qualityPresetText: { fontSize: 11, color: colors.textTertiary },
+  qualityPresetText: { ...typography.tabLabel, color: colors.textTertiary },
 
   // Voice selection
   voiceRowActive: { backgroundColor: 'rgba(163, 230, 53, 0.06)' },
   // Server URL
   serverUrlRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  settingLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '600', marginBottom: 4 },
+  settingLabel: { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 },
   serverUrlInput: {
     backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
-    fontSize: 14, color: colors.textPrimary, borderWidth: 1, borderColor: colors.border,
+    ...typography.bodySmall, color: colors.textPrimary, borderWidth: 1, borderColor: colors.border,
   },
   serverResetBtn: {
     alignSelf: 'flex-end', paddingVertical: 6, paddingHorizontal: 12,
     backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border,
   },
-  serverResetText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
-  voiceCheck: { fontSize: 16, color: colors.accent, fontWeight: '700' },
+  serverResetText: { ...typography.caption, fontWeight: '600', color: colors.textSecondary },
+  voiceCheck: { ...typography.body, fontWeight: '700', color: colors.accent },
 });

@@ -10,12 +10,26 @@ import * as SecureStore from 'expo-secure-store';
 import type { LicenseTier, LicenseValidation } from '@/types';
 import { API_BASE_URL, ENDPOINTS, apiUrl } from '@/config/api';
 import { fetchWithTimeout } from '@/utils/fetch-timeout';
-import { parseApiError, createNetworkError, isAuthError, isRateLimited } from '@/utils/api-error';
+import { parseApiError, isAuthError, isRateLimited } from '@/utils/api-error';
 import { createLogger } from './logger';
 
 const log = createLogger('License');
 
 const TOKEN_KEY = 'windy_jwt_token';
+
+/**
+ * Normalize backend tier names (free/pro/ultra/max) to mobile LicenseTier.
+ * The backend uses a different naming scheme — this bridges the two.
+ */
+export function normalizeBackendTier(backendTier: string): LicenseTier {
+    const mapping: Record<string, LicenseTier> = {
+        'free': 'free',
+        'pro': 'pro',
+        'ultra': 'translate',      // ultra includes translation
+        'max': 'translate_pro',    // max includes everything
+    };
+    return mapping[backendTier] || 'free';
+}
 
 /**
  * 🧬 M10.1.1 — Feature matrix by tier

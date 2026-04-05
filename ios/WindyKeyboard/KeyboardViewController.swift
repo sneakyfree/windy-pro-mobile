@@ -35,9 +35,9 @@ class KeyboardViewController: UIInputViewController, AudioRecorderBridgeDelegate
     private var recordingTimer: Timer?
 
     // MARK: - Config
-    private let appGroupId = "group.uk.thewindstorm.windypro"
+    private let appGroupId = "group.ai.windyword.app"
     private lazy var sharedDefaults = UserDefaults(suiteName: appGroupId)
-    private let defaultServerUrl = "https://windypro.thewindstorm.uk"
+    private let defaultServerUrl = "https://windyword.ai"
 
     /// Server URL — configurable via main app settings (shared via App Group)
     private var serverUrl: String {

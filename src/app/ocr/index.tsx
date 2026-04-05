@@ -6,7 +6,8 @@ import { View, Text, StyleSheet, Pressable, Platform, Alert, ScrollView } from '
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
+import { PAIR_DOWNLOAD_URL } from '@/config/api';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { ocrService, OcrTranslation } from '@/services/ocr';
 import { TIER_1_LANGUAGES } from '@/services/translation';
@@ -231,7 +232,7 @@ export default function OcrTranslateScreen() {
                                             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                             await pairManager.downloadPair(
                                                 pairNeeded.pairId,
-                                                `https://windypro.thewindstorm.uk/pairs/${pairNeeded.pairId}.bin`,
+                                                PAIR_DOWNLOAD_URL(pairNeeded.pairId),
                                             );
                                             setPairNeeded(null);
                                         }
@@ -289,9 +290,9 @@ const styles = StyleSheet.create({
         backgroundColor: colors.accent, paddingVertical: spacing.md,
         paddingHorizontal: spacing.xl, borderRadius: borderRadius.lg,
     },
-    permissionBtnText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    permissionBtnText: { fontSize: fontSizes.base, fontWeight: '700', color: colors.background },
     backLink: { marginTop: spacing.lg },
-    backLinkText: { fontSize: 14, color: colors.accent },
+    backLinkText: { fontSize: fontSizes.sm, color: colors.accent },
 
     // Camera
     cameraContainer: { height: '40%', overflow: 'hidden' },
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.md, paddingHorizontal: spacing.md,
     },
     overlayBack: { alignSelf: 'flex-start' },
-    overlayBackText: { fontSize: 16, color: '#fff', fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 },
+    overlayBackText: { fontSize: fontSizes.base, color: '#fff', fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 },
 
     crosshair: {
         alignSelf: 'center', width: 200, height: 140,
@@ -317,7 +318,7 @@ const styles = StyleSheet.create({
     cornerBL: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0 },
     cornerBR: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0 },
 
-    hint: { color: '#fff', textAlign: 'center', fontSize: 14, textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 },
+    hint: { color: '#fff', textAlign: 'center', fontSize: fontSizes.sm, textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 },
 
     // Controls
     controls: { paddingHorizontal: spacing.screenPadding, paddingVertical: spacing.md },
@@ -327,7 +328,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     langSelectorText: { fontSize: 15, color: colors.textPrimary },
-    langSelectorArrow: { fontSize: 16, color: colors.textTertiary },
+    langSelectorArrow: { fontSize: fontSizes.base, color: colors.textTertiary },
 
     langList: { maxHeight: 50, marginBottom: spacing.sm },
     langChip: {
@@ -337,8 +338,8 @@ const styles = StyleSheet.create({
         marginRight: spacing.xs,
     },
     langChipActive: { borderColor: colors.accent, backgroundColor: colors.accentTransparent },
-    langChipFlag: { fontSize: 16 },
-    langChipName: { fontSize: 12, color: colors.textSecondary },
+    langChipFlag: { fontSize: fontSizes.base },
+    langChipName: { fontSize: fontSizes.xs, color: colors.textSecondary },
     langChipNameActive: { color: colors.accent },
 
     // Error Banner
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
     },
     errorText: { flex: 1, fontSize: 13, color: '#f87171', lineHeight: 18 },
     errorDismiss: { paddingLeft: spacing.sm },
-    errorDismissText: { fontSize: 16, color: '#f87171' },
+    errorDismissText: { fontSize: fontSizes.base, color: '#f87171' },
 
     captureBtn: {
         backgroundColor: colors.accent, borderRadius: borderRadius.lg,
@@ -359,7 +360,7 @@ const styles = StyleSheet.create({
     },
     captureBtnActive: { opacity: 0.6 },
     captureBtnEmoji: { fontSize: 22 },
-    captureBtnText: { fontSize: 16, fontWeight: '700', color: colors.background },
+    captureBtnText: { fontSize: fontSizes.base, fontWeight: '700', color: colors.background },
 
     // Results
     results: { flex: 1, paddingHorizontal: spacing.screenPadding },

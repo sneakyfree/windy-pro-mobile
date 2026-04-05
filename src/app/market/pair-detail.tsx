@@ -18,7 +18,8 @@ import {
 import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
+import { PAIR_PURCHASE_URL } from '@/config/api';
 import { pairCatalogService, type TranslationPair } from '@/services/pairCatalog';
 import { pairManager, type DownloadProgress } from '@/services/pairManager';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -97,7 +98,7 @@ export default function PairDetail() {
         if (!pair || buyDisabled) return;
         setBuyDisabled(true);
         haptic.medium();
-        Linking.openURL(`https://windypro.thewindstorm.uk/pairs/${pair.revenueCatProductId}`).catch(() => {
+        Linking.openURL(PAIR_PURCHASE_URL(pair.revenueCatProductId)).catch(() => {
             Alert.alert('Error', 'Could not open the purchase page.');
         }).finally(() => setBuyDisabled(false));
     };
@@ -310,9 +311,9 @@ const styles = StyleSheet.create({
         paddingBottom: 60,
     },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-    errorText: { fontSize: 16, color: colors.textSecondary },
+    errorText: { fontSize: fontSizes.base, color: colors.textSecondary },
     backBtn: { minWidth: 48, minHeight: 48, justifyContent: 'center', marginBottom: spacing.md },
-    backText: { fontSize: 16, color: colors.accent },
+    backText: { fontSize: fontSizes.base, color: colors.accent },
 
     // Pair header
     pairHeader: {
@@ -320,11 +321,11 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
     },
     pairFlags: {
-        fontSize: 48,
+        fontSize: fontSizes['5xl'],
         marginBottom: spacing.sm,
     },
     pairTitle: {
-        fontSize: 24,
+        fontSize: fontSizes['2xl'],
         fontWeight: '800',
         color: colors.textPrimary,
         textAlign: 'center',
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
         borderRadius: borderRadius.full,
     },
     bidirectionalText: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         fontWeight: '600',
         color: colors.accentSecondary,
     },
@@ -361,11 +362,11 @@ const styles = StyleSheet.create({
         borderBottomWidth: 0,
     },
     metaLabel: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textSecondary,
     },
     metaValue: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         fontWeight: '600',
         color: colors.textPrimary,
     },
@@ -378,13 +379,13 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     descTitle: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: colors.textPrimary,
         marginBottom: spacing.sm,
     },
     descText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textSecondary,
         lineHeight: 20,
     },
@@ -397,7 +398,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
     },
     samplesTitle: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: colors.textPrimary,
         marginBottom: spacing.md,
@@ -406,18 +407,18 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     sampleSource: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textPrimary,
         fontStyle: 'italic',
         marginBottom: 2,
     },
     sampleArrow: {
-        fontSize: 12,
+        fontSize: fontSizes.xs,
         color: colors.textTertiary,
         marginBottom: 2,
     },
     sampleTarget: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.accentSecondary,
         fontStyle: 'italic',
     },
@@ -435,7 +436,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     buyBtnText: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         fontWeight: '700',
         color: colors.background,
     },
@@ -448,7 +449,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     downloadBtnText: {
-        fontSize: 18,
+        fontSize: fontSizes.lg,
         fontWeight: '700',
         color: colors.background,
     },
@@ -462,7 +463,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     downloadedText: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: colors.accent,
     },
@@ -474,7 +475,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     deleteBtnText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.stateError,
         fontWeight: '600',
     },
@@ -501,7 +502,7 @@ const styles = StyleSheet.create({
         gap: spacing.sm,
     },
     downloadingText: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textSecondary,
     },
 

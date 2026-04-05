@@ -11,7 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing, borderRadius } from '@/theme';
+import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { syncManager } from '@/services/sync-manager';
 import { localStorageService } from '@/services/storage-local';
 import { feedbackService } from '@/services/feedback';
@@ -215,6 +215,15 @@ export default function CloudStorageScreen() {
                         >
                             <Text style={styles.secondaryBtnText}>🗑 Clear Completed</Text>
                         </Pressable>
+
+                        <Pressable
+                            style={[styles.secondaryBtn, { borderColor: colors.accent }]}
+                            onPress={() => router.push('/cloud/files')}
+                            accessibilityLabel="Browse cloud files"
+                            accessibilityRole="button"
+                        >
+                            <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>📂 Browse Files</Text>
+                        </Pressable>
                     </View>
 
                     {/* Info */}
@@ -252,7 +261,7 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.sm,
     },
     backBtn: { minWidth: 48, minHeight: 48, justifyContent: 'center' },
-    backText: { fontSize: 16, color: colors.accent },
+    backText: { fontSize: fontSizes.base, color: colors.accent },
     headerTitle: {
         fontSize: 28,
         fontWeight: '800',
@@ -260,7 +269,7 @@ const styles = StyleSheet.create({
         marginTop: spacing.xs,
     },
     headerSubtitle: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textSecondary,
         marginTop: 2,
     },
@@ -281,7 +290,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 4,
     },
-    statEmoji: { fontSize: 24 },
+    statEmoji: { fontSize: fontSizes['2xl'] },
     statValue: {
         fontSize: 28,
         fontWeight: '800',
@@ -323,7 +332,7 @@ const styles = StyleSheet.create({
         color: colors.textPrimary,
     },
     settingValue: {
-        fontSize: 14,
+        fontSize: fontSizes.sm,
         color: colors.textSecondary,
     },
 
@@ -339,7 +348,7 @@ const styles = StyleSheet.create({
     },
     actionBtnDisabled: { opacity: 0.5 },
     actionBtnText: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: colors.background,
     },

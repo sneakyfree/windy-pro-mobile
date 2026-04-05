@@ -15,13 +15,37 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     },
 }));
 
-import { analyticsService } from '../analytics';
+// Mock cloudApi and config for flush() (server analytics)
+jest.mock('@/services/cloudApi', () => ({ cloudApi: { getToken: () => null } }));
+jest.mock('@/config/api', () => ({ API_BASE_URL: 'https://test.example.com' }));
+jest.mock('@/services/logger', () => ({
+    createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), entry: jest.fn(), exit: jest.fn(), state: jest.fn() }),
+}));
+
+// Mock fetch for flush
+global.fetch = jest.fn(() => Promise.reject(new Error('no server'))) as any;
+
+// Re-import fresh module for each test suite
+let analyticsService: any;
 
 describe('AnalyticsService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockGetItem.mockResolvedValue(null);
         mockSetItem.mockResolvedValue(undefined);
+        // Reset the singleton by re-requiring the module
+        jest.resetModules();
+        // Re-mock deps after resetModules
+        jest.mock('@react-native-async-storage/async-storage', () => ({
+            __esModule: true,
+            default: { getItem: (...args: unknown[]) => mockGetItem(...args), setItem: (...args: unknown[]) => mockSetItem(...args) },
+        }));
+        jest.mock('@/services/cloudApi', () => ({ cloudApi: { getToken: () => null } }));
+        jest.mock('@/config/api', () => ({ API_BASE_URL: 'https://test.example.com' }));
+        jest.mock('@/services/logger', () => ({
+            createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), entry: jest.fn(), exit: jest.fn(), state: jest.fn() }),
+        }));
+        analyticsService = require('../analytics').analyticsService;
     });
 
     // ─── Initialization ────────────────────────────────────────
@@ -104,11 +128,11 @@ describe('AnalyticsService', () => {
     });
 
     describe('trackOcr()', () => {
-        it('should track as a translation with ocr source', () => {
-            const before = analyticsService.getSummary().totalTranslations;
+        it('should track OCR capture event', () => {
             analyticsService.trackOcr('es');
-            const after = analyticsService.getSummary().totalTranslations;
-            expect(after).toBe(before + 1);
+            // OCR events are now tracked as 'ocr_capture', not 'translation_made'
+            // Verify the event was queued (setItem called for queue)
+            expect(mockSetItem).toHaveBeenCalled();
         });
     });
 

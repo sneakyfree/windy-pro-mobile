@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '@/theme';
+import { colors, fontSizes } from '@/theme';
 import { cloudApi } from '@/services/cloudApi';
 import { INPUT_LIMITS, validateEmail } from '@/utils/validation';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
         paddingVertical: 40,
     },
     header: { alignItems: 'center', marginBottom: 36 },
-    icon: { fontSize: 48, marginBottom: 12 },
+    icon: { fontSize: fontSizes['5xl'], marginBottom: 12 },
     title: {
         fontSize: 28,
         fontWeight: '700',
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
-        fontSize: 16,
+        fontSize: fontSizes.base,
         color: colors.textPrimary,
         borderWidth: 1,
         borderColor: colors.borderLight,
@@ -196,10 +196,12 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         alignItems: 'center',
         marginTop: 24,
+        minHeight: 44,
+        justifyContent: 'center',
     },
     buttonDisabled: { opacity: 0.6 },
     buttonText: {
-        fontSize: 16,
+        fontSize: fontSizes.base,
         fontWeight: '700',
         color: colors.background,
     },
@@ -209,8 +211,8 @@ const styles = StyleSheet.create({
         padding: 12,
         marginBottom: 8,
     },
-    errorText: { color: colors.stateError, fontSize: 14, textAlign: 'center' },
-    linkContainer: { alignItems: 'center', paddingVertical: 12 },
-    linkText: { fontSize: 14, color: colors.textSecondary },
+    errorText: { color: colors.stateError, fontSize: fontSizes.sm, textAlign: 'center' },
+    linkContainer: { alignItems: 'center', paddingVertical: 12, minHeight: 44, justifyContent: 'center' },
+    linkText: { fontSize: fontSizes.sm, color: colors.textSecondary },
     linkAccent: { color: colors.accent, fontWeight: '600' },
 });
