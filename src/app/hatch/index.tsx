@@ -72,16 +72,38 @@ export default function HatchScreen() {
         }
     }, [step]);
 
+    const runPreFlight = async (): Promise<boolean> => {
+        // Check auth
+        if (!cloudApi.getToken()) {
+            setError('Please sign in first to hatch an agent.');
+            return false;
+        }
+        // Check network connectivity
+        try {
+            const healthRes = await fetch(`${API_BASE_URL}/health`, {
+                signal: AbortSignal.timeout(5000),
+            });
+            if (!healthRes.ok) {
+                setError('Our servers are having a moment. Try again in a few minutes.');
+                return false;
+            }
+        } catch {
+            setError('You need an internet connection to hatch your agent. Connect to Wi-Fi and try again.');
+            return false;
+        }
+        return true;
+    };
+
     const startHatch = async () => {
-        setStep('hatching');
         setError(null);
 
-        const token = cloudApi.getToken();
-        if (!token) {
-            setError('Please sign in first');
-            setStep('brain');
-            return;
-        }
+        // Pre-flight check
+        const ready = await runPreFlight();
+        if (!ready) return;
+
+        setStep('hatching');
+
+        const token = cloudApi.getToken()!;
 
         try {
             // Call the account-server's agent provision endpoint
@@ -105,12 +127,12 @@ export default function HatchScreen() {
 
             const data = await res.json();
 
-            // Simulate step-by-step progress for the ceremony
-            setProgress(p => ({ ...p, passport: 'done' }));
+            // Step-by-step progress — partial success is OK
+            setProgress(p => ({ ...p, passport: data.passport_number ? 'done' : (data.pending ? 'pending' : 'error') }));
             await delay(800);
             setProgress(p => ({ ...p, chat: data.chat_provisioned ? 'done' : (data.pending ? 'pending' : 'error') }));
             await delay(600);
-            setProgress(p => ({ ...p, mail: 'done' }));
+            setProgress(p => ({ ...p, mail: 'done' })); // Mail is always local
             await delay(400);
 
             setResult({

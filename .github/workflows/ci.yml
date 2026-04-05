@@ -15,11 +15,11 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - name: Type check
         run: npx tsc --noEmit
       - name: Test
-        run: npx jest --passWithNoTests --ci
+        run: npx jest --passWithNoTests --ci --forceExit --no-coverage
       - name: Lint
         run: npx expo lint 2>/dev/null || true
 
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - name: Export web build
         run: npx expo export --platform web --output-dir dist
       - name: Upload web build
@@ -51,10 +51,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-      - name: EAS Build (iOS + Android preview)
-        run: eas build --platform all --profile preview --non-interactive
+      - name: EAS Build (Android preview)
+        run: eas build --platform android --profile preview --non-interactive

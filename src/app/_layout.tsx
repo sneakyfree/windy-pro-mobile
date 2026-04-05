@@ -272,7 +272,44 @@ export default function RootLayout() {
           return;
         }
 
-        // App shortcuts: windypro://record, windypro://chat
+        // Cross-product deep links: windychat://room/ROOM_ID, windyfly://hatch, etc.
+        // Handle scheme-based routing (windychat://, windymail://, windyfly://)
+        const scheme = url.split('://')[0];
+        if (scheme === 'windychat') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              if (parsed.path?.startsWith('room/')) {
+                const roomId = parsed.path.replace('room/', '');
+                router.push(`/chat/${roomId}`);
+              } else {
+                router.push('/(tabs)/chat');
+              }
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+        if (scheme === 'windymail') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push('/mail');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+        if (scheme === 'windyfly') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              if (parsed.path === 'hatch') router.push('/hatch');
+              else router.push('/agent');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+
+        // App shortcuts: windypro://record, windypro://chat, windyword://record
         if (parsed.path === 'record') {
           setTimeout(() => {
             try {
