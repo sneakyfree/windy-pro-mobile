@@ -112,6 +112,38 @@ export default function EcosystemScreen() {
                         </Text>
                     )}
 
+                    {/* Agent Hero Card */}
+                    {ecosystem && ecosystem.products.windy_fly?.status === 'active' && (() => {
+                        const fly = ecosystem.products.windy_fly;
+                        const agentName = fly.agent_name || 'Windy Fly';
+                        return (
+                            <Pressable
+                                style={styles.agentHero}
+                                onPress={() => {
+                                    feedbackService.tap().catch(() => {});
+                                    if (fly.room_id) {
+                                        router.push(`/chat/${fly.room_id}` as any);
+                                    } else {
+                                        router.push('/agent' as any);
+                                    }
+                                }}
+                                accessibilityLabel={`Chat with ${agentName}`}
+                                accessibilityRole="button"
+                            >
+                                <Text style={styles.agentHeroEmoji}>{'\uD83E\uDEB0'}</Text>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.agentHeroName}>{agentName}</Text>
+                                    <Text style={styles.agentHeroStatus}>
+                                        {fly.agent_status === 'running' ? '🟢 Online' : fly.passport_id || 'Your AI agent'}
+                                    </Text>
+                                </View>
+                                <View style={styles.agentHeroCta}>
+                                    <Text style={styles.agentHeroCtaText}>💬 Chat</Text>
+                                </View>
+                            </Pressable>
+                        );
+                    })()}
+
                     {/* Product Cards */}
                     {ecosystem && PRODUCT_DISPLAY.map((product) => {
                         const p = ecosystem.products[product.key];
@@ -191,6 +223,19 @@ const styles = StyleSheet.create({
     header: { marginBottom: spacing.lg },
     headerTitle: { fontSize: 24, fontWeight: '700', color: colors.textPrimary },
     headerEmail: { ...typography.bodySmall, color: colors.textTertiary, marginTop: 4 },
+
+    agentHero: {
+        flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+        borderRadius: borderRadius.lg, padding: spacing.lg, marginBottom: spacing.lg,
+        borderWidth: 1.5, borderColor: colors.accent, gap: 12,
+    },
+    agentHeroEmoji: { fontSize: 40 },
+    agentHeroName: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+    agentHeroStatus: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
+    agentHeroCta: {
+        backgroundColor: '#22c55e', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    },
+    agentHeroCtaText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 
     card: {
         flexDirection: 'row',

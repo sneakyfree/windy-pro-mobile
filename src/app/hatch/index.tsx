@@ -244,6 +244,8 @@ export default function HatchScreen() {
         </ScrollView>
     );
 
+    const hasPartialFailure = progress.passport === 'error' || progress.chat === 'error';
+
     const renderHatchingStep = () => {
         const translateY = flyAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -15] });
 
@@ -259,9 +261,45 @@ export default function HatchScreen() {
                     <ProgressRow label="Connecting to chat..." status={progress.chat} />
                     <ProgressRow label="Setting up email..." status={progress.mail} />
                 </View>
+
+                {hasPartialFailure && (
+                    <View style={{ marginTop: spacing.lg, alignItems: 'center', gap: 8 }}>
+                        <Text style={{ ...typography.bodySmall, color: '#facc15', textAlign: 'center' }}>
+                            Some services are still setting up and will be ready shortly.
+                        </Text>
+                        <Pressable
+                            style={[styles.primaryBtn, { backgroundColor: '#facc15', width: 'auto', paddingHorizontal: 24 }]}
+                            onPress={startHatch}
+                            accessibilityLabel="Retry failed provisioning steps"
+                            accessibilityRole="button"
+                        >
+                            <Text style={[styles.primaryBtnText, { color: '#0f172a' }]}>Retry</Text>
+                        </Pressable>
+                    </View>
+                )}
             </View>
         );
     };
+
+    // Auto-navigate 3s after celebration
+    useEffect(() => {
+        if (step !== 'alive') return;
+        const timer = setTimeout(() => {
+            if (result?.dm_room_id) {
+                router.replace('/(tabs)/chat');
+                setTimeout(() => router.push(`/chat/${result.dm_room_id}`), 300);
+            } else if (progress.chat === 'error' || progress.chat === 'pending') {
+                // Chat not ready — go to ecosystem instead
+                router.replace('/(tabs)/ecosystem');
+            } else {
+                router.replace('/(tabs)/chat');
+            }
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [step, result]);
+
+    const chatReady = progress.chat === 'done' && result?.dm_room_id;
+    const partialSuccess = progress.passport === 'pending' || progress.chat === 'pending' || progress.chat === 'error';
 
     const renderAliveStep = () => (
         <View style={styles.stepContent}>
@@ -270,6 +308,12 @@ export default function HatchScreen() {
             </Animated.Text>
             <Text style={styles.aliveTitle}>IT'S ALIVE!</Text>
             <Text style={styles.aliveSubtitle}>{result?.agent_name} has hatched</Text>
+
+            {partialSuccess && (
+                <Text style={{ ...typography.bodySmall, color: '#facc15', textAlign: 'center', marginBottom: spacing.sm }}>
+                    Some services are still setting up and will be ready shortly.
+                </Text>
+            )}
 
             <View style={styles.birthCard}>
                 {result?.passport_number && (
@@ -287,26 +331,24 @@ export default function HatchScreen() {
             </View>
 
             <Pressable
-                style={[styles.primaryBtn, { backgroundColor: '#22c55e' }]}
-                accessibilityLabel="Go to chat with your new agent"
+                style={[styles.primaryBtn, { backgroundColor: chatReady ? '#22c55e' : colors.accent }]}
+                accessibilityLabel={chatReady ? 'Go to chat with your new agent' : 'View ecosystem status'}
                 accessibilityRole="button"
                 onPress={() => {
-                    if (result?.dm_room_id) {
+                    if (chatReady) {
                         router.replace('/(tabs)/chat');
-                        setTimeout(() => router.push(`/chat/${result.dm_room_id}`), 300);
+                        setTimeout(() => router.push(`/chat/${result!.dm_room_id}`), 300);
                     } else {
-                        router.replace('/(tabs)/chat');
+                        router.replace('/(tabs)/ecosystem');
                     }
                 }}
             >
-                <Text style={styles.primaryBtnText}>💬 Go to Chat</Text>
+                <Text style={styles.primaryBtnText}>{chatReady ? '💬 Go to Chat' : '🌪️ View Ecosystem'}</Text>
             </Pressable>
 
-            <Pressable style={styles.backBtn} onPress={() => router.replace('/(tabs)/ecosystem')}
-                accessibilityLabel="Back to ecosystem" accessibilityRole="button"
-            >
-                <Text style={styles.backBtnText}>Back to Ecosystem</Text>
-            </Pressable>
+            <Text style={{ ...typography.caption, color: colors.textTertiary, marginTop: spacing.sm }}>
+                Auto-navigating in 3 seconds...
+            </Text>
         </View>
     );
 
