@@ -104,7 +104,7 @@ React Native + Expo (TypeScript)
 | **State** | Zustand |
 | **Audio Recording** | expo-av |
 | **Speech-to-Text (on-device)** | whisper.rn (whisper.cpp React Native bindings) |
-| **Speech-to-Text (cloud)** | WebSocket to Windy Cloud API (NVIDIA 5090) |
+| **Speech-to-Text (cloud)** | WebSocket to WindyCloud API (NVIDIA 5090) |
 | **Camera** | expo-camera |
 | **Local DB** | expo-sqlite |
 | **File Storage** | expo-file-system |
@@ -253,7 +253,7 @@ windy-pro-mobile/
 │         │    ├── Mid-range → small/medium                        │
 │         │    └── Low-end → tiny/base                             │
 │         │                                                        │
-│         └─── CLOUD: WebSocket to Windy Cloud API                 │
+│         └─── CLOUD: WebSocket to WindyCloud API                 │
 │              └── NVIDIA 5090 (32GB VRAM) via Kit 0 VPS           │
 │                                                                  │
 │         ▼                                                        │
@@ -277,7 +277,7 @@ windy-pro-mobile/
 │         ▼                                                        │
 │  Sync Engine (background, when Wi-Fi + plugged in):              │
 │         └── Upload un-synced sessions to:                        │
-│             ├── Windy Cloud (MinIO cluster, 1,831 GB)            │
+│             ├── WindyCloud (MinIO cluster, 1,831 GB)            │
 │             └── OR user's custom S3-compatible endpoint          │
 │                                                                  │
 │  Clone Tracker (background):                                     │
@@ -1049,7 +1049,7 @@ CODONS:
 │   ├── async cloudTranscribe(uri: string, engine: EngineId):
 │   │   Promise<TranscriptSegment[]> 🔲
 │   │   │
-│   │   │  WebSocket streaming to Windy Cloud API
+│   │   │  WebSocket streaming to WindyCloud API
 │   │   │  Server: wss://windypro.thewindstorm.uk/ws/transcribe
 │   │   │  Backend: NVIDIA 5090 (32GB VRAM) via Kit 0 VPS gateway
 │   │   │
@@ -1702,7 +1702,7 @@ CODONS:
 │   │       ├── storageUsed: query cloud API for usage
 │   │       └── storageQuota: from license tier
 │   │
-│   └── Windy Cloud Configuration (MinIO):
+│   └── WindyCloud Configuration (MinIO):
 │       ├── Endpoint: https://windypro.thewindstorm.uk/storage
 │       ├── Gateway: Kit 0 VPS (72.60.118.54)
 │       ├── Cluster: 5 nodes, 1,831 GB total
@@ -1945,7 +1945,7 @@ CODONS:
 │   │
 │   ├── Section: Cloud Sync
 │   │   ├── Sync enabled: ON / OFF
-│   │   ├── Destination: [Windy Cloud / Custom S3 / None]
+│   │   ├── Destination: [WindyCloud / Custom S3 / None]
 │   │   ├── Sync conditions: Wi-Fi only [ON] / Plugged in only [ON]
 │   │   ├── Sync status: "42 of 50 sessions synced"
 │   │   ├── Pending upload: "1.2 GB waiting"
@@ -2221,7 +2221,7 @@ Windy (parent identity)
 │
 ├── Windy Word ← VOICE-TO-TEXT (desktop, windyword.com)
 ├── Windy Chat ← MESSAGING (future)
-├── Windy Cloud ← INFRASTRUCTURE (backend)
+├── WindyCloud ← INFRASTRUCTURE (backend)
 └── Windy Clone ← DIGITAL LIKENESS (future, windyclone.com)
 
 Naming Rules:

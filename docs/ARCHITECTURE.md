@@ -34,7 +34,7 @@ Both desktop and mobile connect to the same distributed storage cluster:
 Shared Stripe account for both platforms:
 
 - **Account:** WindyPro Sandbox (acct_1T5nu2BXIOBasDQi)
-- **Products:** Pro ($49), Translate ($79 or $7.99/mo), Translate Pro ($149)
+- **Products:** Pro ($49), Translate ($79 or $8.99/mo), Windy Max ($149)
 - **Webhook:** https://windypro.thewindstorm.uk/stripe/webhook
 - **Coupons:** WINDYFRIEND (25% off), WINDYBETA (50% off)
 
@@ -86,7 +86,7 @@ windy-pro-mobile/
 ├── src/
 │   ├── app/                 # Expo Router screens (file-based routing)
 │   │   ├── (tabs)/          # Main tab navigation
-│   │   │   ├── translate.tsx    # Windy Translate screen
+│   │   │   ├── translate.tsx    # Windy Ultra screen
 │   │   │   ├── history.tsx      # Translation/transcription history
 │   │   │   ├── settings.tsx     # Settings, account, storage
 │   │   │   └── _layout.tsx      # Tab bar configuration

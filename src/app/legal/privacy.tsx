@@ -24,7 +24,7 @@ export default function PrivacyPolicyScreen() {
             <Text style={styles.heading}>Cloud Sync</Text>
             <Text style={styles.body}>
                 If you enable Cloud Sync, your recordings are uploaded to your
-                designated storage endpoint (Windy Cloud or your own S3-compatible
+                designated storage endpoint (WindyCloud or your own S3-compatible
                 server). You control where your data lives. You can disable Cloud
                 Sync at any time, and data already synced remains on your storage.
             </Text>

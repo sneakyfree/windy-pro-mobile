@@ -27,7 +27,7 @@ const CHANGELOG = [
             '🌐 Live translation across 15 languages',
             '🧬 Voice clone data collection pipeline',
             '📹 Video recording mode with camera preview',
-            '💳 Flexible pricing tiers (Free / Pro / Translate / Translate Pro)',
+            '💳 Flexible pricing tiers (Free / Pro / Ultra / Max)',
             '☁️ Cloud sync & cross-device session history',
             '🔒 Privacy-first: all processing on device by default',
         ],

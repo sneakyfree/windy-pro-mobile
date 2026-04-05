@@ -15,7 +15,7 @@ These two missions are symbiotic: every time you use Windy Pro to translate a co
 ## The Two Pillars
 
 ### Pillar 1: World-Class Voice-to-Text & Translation
-- **Windy Translate** — Real-time speech-to-speech translation. Speak English, hear Spanish (or any of 100+ languages). Bidirectional.
+- **Windy Ultra** — Real-time speech-to-speech translation. Speak English, hear Spanish (or any of 100+ languages). Bidirectional.
 - **Transcription** — Best-in-class voice-to-text for meetings, notes, dictation, interviews
 - **OCR Translation** — Point your camera at a sign, menu, or document and get instant translation
 - **Text Translation** — Type or paste text for instant translation
@@ -23,7 +23,7 @@ These two missions are symbiotic: every time you use Windy Pro to translate a co
 
 ### Pillar 2: Personal Data Archive → Clone Pipeline
 - **Media Archive** — Every audio recording, video clip, and text transcription is saved
-- **Storage Options** — Local device storage OR Windy Cloud Storage (user's choice, privacy-first)
+- **Storage Options** — Local device storage OR WindyCloud Storage (user's choice, privacy-first)
 - **Voice Clone Pipeline** — When you've accumulated enough clean audio data (target: 10+ hours), you can generate a voice clone that sounds exactly like you
 - **Avatar Clone Pipeline** — Video data feeds into virtual avatar generation (future feature)
 - **Progress Tracking** — "You have 4.2 hours of voice data. 5.8 more hours until voice clone ready!"
@@ -93,9 +93,9 @@ We're not building a translation app. We're building the infrastructure for pers
 | Tier | Price | Features |
 |------|-------|----------|
 | Free | $0 | Basic voice-to-text, 30 min/day, no archive |
-| Pro | $49 one-time | Unlimited voice-to-text, local archive, history |
-| Translate | $79 or $7.99/mo | Everything in Pro + Windy Translate (all languages) |
-| Translate Pro | $149 one-time | Everything + priority processing, offline packs, cloud storage |
+| Pro | $4.99/mo | $49/yr | $99 lifetime | Unlimited voice-to-text, local archive, history |
+| Translate | $79 or $8.99/mo | Everything in Pro + Windy Ultra (all languages) |
+| Windy Max | $14.99/mo | $149/yr | $299 lifetime | Everything + priority processing, offline packs, cloud storage |
 
 Voice clone and avatar clone will be premium add-ons or part of a future "Ultimate" tier.
 

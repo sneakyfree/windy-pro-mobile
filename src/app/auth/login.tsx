@@ -65,7 +65,7 @@ export default function LoginScreen() {
                     {/* Header */}
                     <View style={styles.header}>
                         <Text style={styles.icon}>☁️</Text>
-                        <Text style={styles.title}>Windy Cloud</Text>
+                        <Text style={styles.title}>WindyCloud</Text>
                         <Text style={styles.subtitle}>
                             Sign in to sync your recordings
                         </Text>

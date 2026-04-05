@@ -237,11 +237,11 @@ export default function SettingsScreen() {
             />
             {settings.licenseTier === 'free' && (
               <Pressable style={styles.upgradeButton} onPress={handleUpgrade}
-                accessibilityLabel="Upgrade to Pro for $49"
+                accessibilityLabel="Upgrade to Pro"
                 accessibilityRole="button"
                 accessibilityHint="Opens subscription page"
               >
-                <Text style={styles.upgradeText}>⚡ Upgrade to Pro — $49</Text>
+                <Text style={styles.upgradeText}>⚡ Upgrade to Pro — $4.99/mo</Text>
               </Pressable>
             )}
           </SettingsSection>

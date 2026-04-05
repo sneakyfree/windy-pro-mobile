@@ -39,7 +39,7 @@ export const FEATURE_MATRIX: Record<LicenseTier, string[]> = {
         'speaker-id',
         'llm-cleanup',
         'batch-mode',
-        'long-recording', // 30 min
+        'long-recording', // 15 min cloud — Bible v2
         'export-all',
         'quality-scoring',
         'offline-pairs-5',
@@ -63,12 +63,12 @@ export const FEATURE_MATRIX: Record<LicenseTier, string[]> = {
     ],
 };
 
-/** Recording limits by tier */
+/** Recording limits by tier (cloud recording — Bible v2) */
 export const RECORDING_LIMITS: Record<LicenseTier, number> = {
-    free: 300,          // 5 minutes
-    pro: 1800,          // 30 minutes
-    translate: 1800,    // 30 minutes
-    translate_pro: 3600, // 60 minutes
+    free: 300,          // 5 minutes (local only, no cloud)
+    pro: 900,           // 15 minutes cloud — Bible v2
+    translate: 1800,    // 30 minutes cloud — Bible v2
+    translate_pro: 3600, // 60 minutes cloud — Bible v2
 };
 
 class LicenseService {

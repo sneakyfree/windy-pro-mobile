@@ -24,7 +24,7 @@ export default function TermsOfServiceScreen() {
                 You may use Windy Pro for any lawful purpose. You may not reverse
                 engineer, redistribute, or sublicense the software. Voice engine
                 models included with Windy Pro are subject to their respective
-                open-source licenses (Whisper: MIT License).
+                open-source licenses (open-source voice engine: MIT License).
             </Text>
 
             <Text style={styles.heading}>Cloud Services</Text>

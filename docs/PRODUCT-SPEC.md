@@ -3,12 +3,12 @@
 ## Overview
 
 Windy Pro is a cross-platform application (Desktop + Mobile) with four core modules:
-1. **Windy Translate** — Real-time speech-to-speech translation
+1. **Windy Ultra** — Real-time speech-to-speech translation
 2. **Voice-to-Text** — Transcription engine
 3. **Media Archive** — Audio, video, text capture and storage
 4. **Clone Pipeline** — Voice clone and avatar clone generation from accumulated data
 
-## Module 1: Windy Translate
+## Module 1: Windy Ultra
 
 ### What It Does
 Real-time, bidirectional speech-to-speech translation. User speaks in Language A, Windy Pro outputs audio in Language B. The other person speaks in Language B, Windy Pro outputs in Language A.
@@ -72,7 +72,7 @@ Captures, organizes, and stores all audio recordings, video clips, and text tran
 - **Organization** — folders, tags, favorites, date sorting
 - **Storage options:**
   - Local device storage (default, privacy-first)
-  - Windy Cloud Storage (5-node distributed cluster, encrypted)
+  - WindyCloud Storage (5-node distributed cluster, encrypted)
   - Custom path (external drive, NAS, etc. — desktop only)
 - **Storage dashboard** — visual breakdown of data by type, size, date
 - **Sync** — optional bidirectional sync between local and cloud
@@ -83,7 +83,7 @@ Captures, organizes, and stores all audio recordings, video clips, and text tran
 - **Video recording** — front and/or rear camera with simultaneous audio capture
 - **Photo OCR** — take a photo of text, extract and archive the text content
 - **Quick capture** — shake device or use hardware button to start recording
-- **Auto-upload** — optionally sync to Windy Cloud when on Wi-Fi
+- **Auto-upload** — optionally sync to WindyCloud when on Wi-Fi
 - **Storage management** — clean up low-quality recordings to save space
 
 ### Data Types Stored
@@ -131,10 +131,10 @@ Captures, organizes, and stores all audio recordings, video clips, and text tran
 
 ## Feature Tier Matrix
 
-| Feature | Free | Pro ($49) | Translate ($79/$7.99mo) | Translate Pro ($149) |
+| Feature | Free | Pro ($49) | Translate ($79/$7.99mo) | Windy Max ($149) |
 |---------|------|-----------|------------------------|---------------------|
 | Voice-to-text | 30 min/day | Unlimited | Unlimited | Unlimited |
-| Windy Translate | — | — | All languages | All languages |
+| Windy Ultra | — | — | All languages | All languages |
 | Offline packs | — | — | — | ✅ |
 | Local archive | — | ✅ | ✅ | ✅ |
 | Cloud storage | — | — | — | 50 GB included |
@@ -148,7 +148,7 @@ Captures, organizes, and stores all audio recordings, video clips, and text tran
 | Feature | Desktop | Mobile |
 |---------|---------|--------|
 | Voice-to-text | ✅ | ✅ |
-| Windy Translate | ✅ | ✅ |
+| Windy Ultra | ✅ | ✅ |
 | Video recording | Webcam | Front + rear camera |
 | Background recording | ✅ (always foreground) | ✅ (background service) |
 | OCR/Camera translate | — | ✅ (native camera) |

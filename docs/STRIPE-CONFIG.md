@@ -17,9 +17,9 @@
 | Product | Price | Type | Stripe Price ID |
 |---------|-------|------|-----------------|
 | Windy Pro | $49 | One-time | (check Stripe dashboard) |
-| Windy Translate | $79 | One-time | (check Stripe dashboard) |
-| Windy Translate | $7.99/mo | Subscription | (check Stripe dashboard) |
-| Windy Translate Pro | $149 | One-time | (check Stripe dashboard) |
+| Windy Ultra | $79 | One-time | (check Stripe dashboard) |
+| Windy Ultra | $8.99/mo | Subscription | (check Stripe dashboard) |
+| Windy Max | $149 | One-time | (check Stripe dashboard) |
 
 ## Coupons
 
@@ -30,10 +30,10 @@
 
 ## Feature Gating by Tier
 
-| Feature | Free | Pro | Translate | Translate Pro |
+| Feature | Free | Pro | Translate | Windy Max |
 |---------|------|-----|-----------|---------------|
 | Voice-to-text | 30 min/day | ✅ Unlimited | ✅ Unlimited | ✅ Unlimited |
-| Windy Translate | ❌ | ❌ | ✅ All languages | ✅ All languages |
+| Windy Ultra | ❌ | ❌ | ✅ All languages | ✅ All languages |
 | Offline packs | ❌ | ❌ | ❌ | ✅ |
 | Local archive | ❌ | ✅ | ✅ | ✅ |
 | Cloud storage | ❌ | ❌ | ❌ | 50 GB |

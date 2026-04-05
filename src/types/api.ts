@@ -132,7 +132,7 @@ export interface LicenseValidation {
 /**
  * License tier levels (maps to Stripe products).
  * - `free`: Basic voice-to-text, 5-minute limit
- * - `pro`: Unlimited recording, models, cloud sync ($49)
+ * - `pro`: Unlimited local recording, all models, cloud sync
  * - `translate`: Real-time translation add-on ($29)
  * - `translate_pro`: Pro + Translate bundle ($69)
  */
@@ -161,7 +161,7 @@ export interface SyncStatus {
 
 /**
  * Cloud sync destination configuration.
- * Supports Windy Cloud (MinIO) or user-provided S3-compatible storage.
+ * Supports WindyCloud (MinIO) or user-provided S3-compatible storage.
  */
 export interface SyncDestination {
     /** Sync backend type */

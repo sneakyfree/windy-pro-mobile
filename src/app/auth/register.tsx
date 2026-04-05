@@ -173,7 +173,7 @@ export default function RegisterScreen() {
                         <Text style={styles.tierLine}>Free — 500 MB</Text>
                         <Text style={styles.tierLine}>Pro ($49/yr) — 5 GB</Text>
                         <Text style={styles.tierLine}>Translate ($79/yr) — 10 GB</Text>
-                        <Text style={styles.tierLine}>Translate Pro ($149/yr) — 25 GB</Text>
+                        <Text style={styles.tierLine}>Windy Max ($149/yr) — 25 GB</Text>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
