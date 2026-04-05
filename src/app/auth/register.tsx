@@ -147,6 +147,14 @@ export default function RegisterScreen() {
                         </TouchableOpacity>
                     </View>
 
+                    {/* Legal Agreement */}
+                    <Text style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', marginTop: 12, lineHeight: 18 }}>
+                        By creating an account, you agree to our{' '}
+                        <Text style={{ color: colors.accent }} onPress={() => router.push('/legal/terms')}>Terms of Service</Text>
+                        {' '}and{' '}
+                        <Text style={{ color: colors.accent }} onPress={() => router.push('/legal/privacy')}>Privacy Policy</Text>.
+                    </Text>
+
                     {/* Login Link */}
                     <TouchableOpacity
                         onPress={() => router.push('/auth/login')}

@@ -229,6 +229,18 @@ export default function SubscriptionScreen() {
                     // User cancelled — do nothing
                 } else if (result.success && result.tier && result.tier !== 'free') {
                     await setLicense(result.tier, `rc-${Date.now()}`);
+                    // Sync entitlement to account-server
+                    try {
+                        const { cloudApi: api } = require('@/services/cloudApi');
+                        const token = api.getToken();
+                        if (token) {
+                            fetchWithTimeout(`${require('@/config/api').API_BASE_URL}/api/v1/license/activate`, {
+                                method: 'POST',
+                                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ tier: result.tier, source: 'revenuecat', billing: billingPeriod }),
+                            }).catch(() => {}); // Non-blocking
+                        }
+                    } catch { /* ignore */ }
                     haptic.success();
                     Alert.alert(
                         '🎉 Welcome!',
@@ -630,6 +642,16 @@ export default function SubscriptionScreen() {
                 <Text style={styles.restoreText}>
                     {restoring ? '⏳ Restoring...' : '🔑 Restore Purchase'}
                 </Text>
+            </Pressable>
+
+            {/* Web Payment Fallback */}
+            <Pressable
+                style={styles.restoreButton}
+                onPress={() => Linking.openURL('https://windyword.ai/pricing')}
+                accessibilityLabel="Subscribe on web — opens windyword.ai pricing page"
+                accessibilityRole="link"
+            >
+                <Text style={styles.restoreText}>🌐 Subscribe on Web</Text>
             </Pressable>
 
             {/* Guarantee */}

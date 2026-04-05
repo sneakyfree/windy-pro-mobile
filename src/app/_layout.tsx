@@ -8,6 +8,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+
+// ─── Sentry Crash Reporting (no-op if DSN not set) ──────────────
+try {
+    const Sentry = require('@sentry/react-native');
+    const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+    if (dsn) {
+        Sentry.init({
+            dsn,
+            environment: __DEV__ ? 'development' : 'production',
+            tracesSampleRate: __DEV__ ? 1.0 : 0.2,
+        });
+    }
+} catch { /* Sentry not installed or native module unavailable */ }
 import { View, StyleSheet, Alert, Platform, BackHandler, AppState, AppStateStatus, InteractionManager } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
