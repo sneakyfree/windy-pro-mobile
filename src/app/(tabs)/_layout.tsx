@@ -1,13 +1,17 @@
 /**
- * 🧬 M1.2.1 — Tab Bar Configuration
- * 3 tabs: Record (home), History, Settings
+ * Tab Bar Configuration
+ * 5 visible tabs: Word, Chat, Mail, Cloud, Settings
  * Dark theme, lime green active tint, comfortable tap targets
+ * Hidden tabs: camera, history, clone-data, ecosystem, market
  */
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 import { colors, fontSizes } from '@/theme';
+import { useChatBadgeStore } from '@/stores/useChatBadgeStore';
 
 export default function TabLayout() {
+  const chatBadge = useChatBadgeStore(s => s.unreadCount);
+
   return (
     <Tabs
       screenOptions={{
@@ -40,52 +44,16 @@ export default function TabLayout() {
         },
       }}
     >
+      {/* ── Visible tabs: Word, Chat, Mail, Cloud, Settings ── */}
+
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Record',
+          title: 'Word',
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '🎤 Rec',
-          tabBarAccessibilityLabel: 'Record tab',
-        }}
-      />
-      <Tabs.Screen
-        name="camera"
-        options={{
-          title: 'Camera',
-          headerShown: false,
-          tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '📷 Cam',
-          tabBarAccessibilityLabel: 'Camera translate tab',
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: 'History',
-          tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '📋 Hist',
-          tabBarAccessibilityLabel: 'Recording history tab',
-        }}
-      />
-      <Tabs.Screen
-        name="clone-data"
-        options={{
-          title: 'Clone Data',
-          headerShown: false,
-          tabBarButton: () => null,
-          tabBarAccessibilityLabel: 'Voice clone data',
-        }}
-      />
-      <Tabs.Screen
-        name="ecosystem"
-        options={{
-          title: 'Ecosystem',
-          headerShown: false,
-          tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '🌪️ Eco',
-          tabBarAccessibilityLabel: 'Ecosystem tab — all Windy products',
+          tabBarLabel: '🌪️ Word',
+          tabBarAccessibilityLabel: 'Word tab — voice to text',
         }}
       />
       <Tabs.Screen
@@ -95,17 +63,40 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '💬 Chat',
-          tabBarAccessibilityLabel: 'Chat tab',
+          tabBarBadge: chatBadge > 0 ? chatBadge : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.accent,
+            color: colors.background,
+            fontSize: 10,
+            fontWeight: '700',
+            minWidth: 18,
+            height: 18,
+            lineHeight: 18,
+            borderRadius: 9,
+          },
+          tabBarAccessibilityLabel: chatBadge > 0
+            ? `Chat tab — ${chatBadge} unread messages`
+            : 'Chat tab',
         }}
       />
       <Tabs.Screen
-        name="market"
+        name="mail"
         options={{
-          title: 'Market',
+          title: 'Mail',
           headerShown: false,
           tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '🛒 Mkt',
-          tabBarAccessibilityLabel: 'Market tab',
+          tabBarLabel: '📧 Mail',
+          tabBarAccessibilityLabel: 'Mail tab — Windy Mail inbox',
+        }}
+      />
+      <Tabs.Screen
+        name="cloud"
+        options={{
+          title: 'Cloud',
+          headerShown: false,
+          tabBarIcon: ({ focused }) => null,
+          tabBarLabel: '☁️ Cloud',
+          tabBarAccessibilityLabel: 'Cloud tab — sync and storage',
         }}
       />
       <Tabs.Screen
@@ -115,6 +106,48 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => null,
           tabBarLabel: '⚙️ More',
           tabBarAccessibilityLabel: 'Settings tab',
+        }}
+      />
+
+      {/* ── Hidden tabs (still routable, not shown in tab bar) ── */}
+
+      <Tabs.Screen
+        name="camera"
+        options={{
+          title: 'Camera',
+          headerShown: false,
+          tabBarButton: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: 'History',
+          tabBarButton: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="clone-data"
+        options={{
+          title: 'Clone Data',
+          headerShown: false,
+          tabBarButton: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="ecosystem"
+        options={{
+          title: 'Ecosystem',
+          headerShown: false,
+          tabBarButton: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="market"
+        options={{
+          title: 'Market',
+          headerShown: false,
+          tabBarButton: () => null,
         }}
       />
     </Tabs>

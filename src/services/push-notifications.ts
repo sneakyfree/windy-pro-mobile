@@ -123,6 +123,24 @@ class PushNotificationService {
             sound: 'default',
             description: 'Messages from your Windy Fly AI agent',
         });
+
+        await Notifications.setNotificationChannelAsync('mail', {
+            name: 'Windy Mail',
+            importance: Notifications.AndroidImportance.HIGH,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#a3e635',
+            sound: 'default',
+            description: 'New email alerts from Windy Mail',
+        });
+
+        await Notifications.setNotificationChannelAsync('chat', {
+            name: 'Windy Chat',
+            importance: Notifications.AndroidImportance.HIGH,
+            vibrationPattern: [0, 200, 100, 200],
+            lightColor: '#a3e635',
+            sound: 'default',
+            description: 'New message alerts from Windy Chat',
+        });
     }
 
     /**

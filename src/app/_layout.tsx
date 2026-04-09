@@ -306,7 +306,7 @@ export default function RootLayout() {
           setTimeout(() => {
             try {
               const { router } = require('expo-router');
-              router.push('/mail');
+              router.push('/(tabs)/mail');
             } catch (err) { log.warn('deepLink', 'Navigation error'); }
           }, 300);
           return;
@@ -318,6 +318,22 @@ export default function RootLayout() {
               if (parsed.path === 'hatch') router.push('/hatch');
               else router.push('/agent');
             } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+
+        // Share intent: app opened via Android SEND intent or share deep link
+        if (parsed.queryParams?.sharedText || parsed.queryParams?.sharedUrl) {
+          const sharedText = String(parsed.queryParams.sharedText ?? '');
+          const sharedUrl = String(parsed.queryParams.sharedUrl ?? '');
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push({
+                pathname: '/(tabs)/mail',
+                params: { sharedText, sharedUrl },
+              });
+            } catch (err) { log.warn('deepLink', 'Share intent navigation error'); }
           }, 300);
           return;
         }

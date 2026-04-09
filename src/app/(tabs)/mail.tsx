@@ -1,14 +1,12 @@
 /**
- * Chat Tab — Embedded Windy Chat WebView
- * Loads the Windy Chat dashboard with native bridges for:
- * - Microphone access (voice messages)
- * - Camera access (photo/video messages)
- * - Push notifications (new message alerts)
- * - Contacts access (contact discovery)
+ * Mail Tab — Embedded Windy Mail WebView
+ * Loads the Windy Mail dashboard with native bridges for:
+ * - Microphone access (voice compose STT)
+ * - Push notifications (new email alerts)
+ * - Share intent (receive shared content from other apps)
  * Auth token injected into WebView localStorage for auto-login.
- * Unread badge count synced from WebView via bridge messages.
  */
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -16,19 +14,19 @@ import {
     ActivityIndicator,
     Platform,
     Pressable,
+    Share,
 } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
 import * as Notifications from 'expo-notifications';
-import * as Contacts from 'expo-contacts';
+import * as Linking from 'expo-linking';
 import { Audio } from 'expo-av';
-import { Camera } from 'expo-camera';
 import { colors, spacing } from '@/theme';
 import { typography } from '@/theme/typography';
 import { cloudApi } from '@/services/cloudApi';
-import { WINDY_CHAT_WEBVIEW_URL } from '@/config/api';
+import { WINDY_MAIL_WEBVIEW_URL } from '@/config/api';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
-import { useChatBadgeStore } from '@/stores/useChatBadgeStore';
 
 /** JavaScript injected before page load to set the auth token in localStorage */
 function buildInjectedJS(): string {
@@ -49,16 +47,42 @@ function buildInjectedJS(): string {
  */
 type BridgeMessage =
     | { type: 'requestMicrophone' }
-    | { type: 'requestCamera' }
-    | { type: 'requestContacts' }
     | { type: 'scheduleNotification'; title: string; body: string; data?: Record<string, string> }
-    | { type: 'unreadCount'; count: number };
+    | { type: 'share'; text?: string; url?: string; title?: string };
 
-export default function ChatTab() {
+export default function MailTab() {
     const webViewRef = useRef<WebView>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const setUnreadCount = useChatBadgeStore(s => s.setUnreadCount);
+    const params = useLocalSearchParams<{ sharedText?: string; sharedUrl?: string }>();
+
+    // Forward shared content from other apps into the WebView
+    useEffect(() => {
+        if (!params.sharedText && !params.sharedUrl) return;
+        const payload = JSON.stringify({
+            type: 'sharedContent',
+            text: params.sharedText ?? '',
+            url: params.sharedUrl ?? '',
+        });
+        webViewRef.current?.postMessage(payload);
+    }, [params.sharedText, params.sharedUrl]);
+
+    // Listen for incoming share intents while on this tab
+    useEffect(() => {
+        const handleUrl = ({ url }: { url: string }) => {
+            const parsed = Linking.parse(url);
+            if (parsed.queryParams?.sharedText || parsed.queryParams?.sharedUrl) {
+                const payload = JSON.stringify({
+                    type: 'sharedContent',
+                    text: String(parsed.queryParams.sharedText ?? ''),
+                    url: String(parsed.queryParams.sharedUrl ?? ''),
+                });
+                webViewRef.current?.postMessage(payload);
+            }
+        };
+        const sub = Linking.addEventListener('url', handleUrl);
+        return () => sub.remove();
+    }, []);
 
     const handleMessage = useCallback(async (event: WebViewMessageEvent) => {
         let msg: BridgeMessage;
@@ -77,54 +101,25 @@ export default function ChatTab() {
                 break;
             }
 
-            case 'requestCamera': {
-                const { status } = await Camera.requestCameraPermissionsAsync();
-                webViewRef.current?.postMessage(
-                    JSON.stringify({ type: 'cameraResult', granted: status === 'granted' }),
-                );
-                break;
-            }
-
-            case 'requestContacts': {
-                const { status } = await Contacts.requestPermissionsAsync();
-                if (status === 'granted') {
-                    const { data } = await Contacts.getContactsAsync({
-                        fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails],
-                    });
-                    webViewRef.current?.postMessage(
-                        JSON.stringify({
-                            type: 'contactsResult',
-                            granted: true,
-                            contacts: data.map(c => ({
-                                name: c.name,
-                                phones: (c.phoneNumbers ?? []).map(p => p.number),
-                                emails: (c.emails ?? []).map(e => e.email),
-                            })),
-                        }),
-                    );
-                } else {
-                    webViewRef.current?.postMessage(
-                        JSON.stringify({ type: 'contactsResult', granted: false, contacts: [] }),
-                    );
-                }
-                break;
-            }
-
             case 'scheduleNotification': {
                 await Notifications.scheduleNotificationAsync({
                     content: {
                         title: msg.title,
                         body: msg.body,
-                        data: { ...msg.data, route: '/(tabs)/chat' },
-                        ...(Platform.OS === 'android' ? { channelId: 'chat' } : {}),
+                        data: msg.data ?? {},
+                        ...(Platform.OS === 'android' ? { channelId: 'mail' } : {}),
                     },
                     trigger: null as unknown as Notifications.NotificationTriggerInput,
                 });
                 break;
             }
 
-            case 'unreadCount': {
-                setUnreadCount(msg.count);
+            case 'share': {
+                await Share.share({
+                    message: msg.text ?? '',
+                    url: msg.url,
+                    title: msg.title,
+                });
                 break;
             }
         }
@@ -140,11 +135,11 @@ export default function ChatTab() {
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
                 <View style={styles.center}>
-                    <Text style={styles.emoji}>💬</Text>
-                    <Text style={styles.title}>Couldn't load Chat</Text>
+                    <Text style={styles.emoji}>📧</Text>
+                    <Text style={styles.title}>Couldn't load Mail</Text>
                     <Text style={styles.subtitle}>
                         {__DEV__
-                            ? 'Is the dev server running on localhost:3000?'
+                            ? 'Is the dev server running on localhost:5173?'
                             : 'Check your internet connection and try again.'}
                     </Text>
                     <Pressable style={styles.retryBtn} onPress={reload} accessibilityRole="button">
@@ -156,7 +151,7 @@ export default function ChatTab() {
     }
 
     return (
-        <ScreenErrorBoundary screenName="ChatTab">
+        <ScreenErrorBoundary screenName="MailTab">
             <SafeAreaView style={styles.container} edges={['top']}>
                 {loading && (
                     <View style={styles.loader}>
@@ -165,7 +160,7 @@ export default function ChatTab() {
                 )}
                 <WebView
                     ref={webViewRef}
-                    source={{ uri: WINDY_CHAT_WEBVIEW_URL }}
+                    source={{ uri: WINDY_MAIL_WEBVIEW_URL }}
                     injectedJavaScriptBeforeContentLoaded={buildInjectedJS()}
                     onMessage={handleMessage}
                     onLoadEnd={() => setLoading(false)}
@@ -177,7 +172,7 @@ export default function ChatTab() {
                         setLoading(false);
                         setError(true);
                     }}
-                    // Allow microphone + camera for voice/video messages
+                    // Allow microphone for voice compose
                     mediaPlaybackRequiresUserAction={false}
                     allowsInlineMediaPlayback
                     mediaCapturePermissionGrantType="grant"
@@ -189,7 +184,7 @@ export default function ChatTab() {
                     // Style
                     style={styles.webview}
                     containerStyle={styles.webviewContainer}
-                    // Allow navigation within the chat app
+                    // Allow navigation within the mail app
                     originWhitelist={['https://*', 'http://*']}
                 />
             </SafeAreaView>

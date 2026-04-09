@@ -36,7 +36,8 @@
           "audio",
           "fetch"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSContactsUsageDescription": "Windy Chat uses your contacts for contact discovery so you can find friends."
       },
       "backgroundColor": "#0f172a"
     },
@@ -50,7 +51,19 @@
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "READ_CONTACTS"
+      ],
+      "intentFilters": [
+        {
+          "action": "SEND",
+          "category": ["DEFAULT"],
+          "data": [
+            { "mimeType": "text/plain" },
+            { "mimeType": "text/*" },
+            { "mimeType": "image/*" }
+          ]
+        }
       ],
       "backgroundColor": "#0f172a"
     },
@@ -78,6 +91,12 @@
       ],
       "expo-asset",
       "expo-secure-store",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Windy Chat uses your contacts for contact discovery so you can find friends."
+        }
+      ],
       [
         "expo-notifications",
         {
