@@ -39,7 +39,11 @@ import { offlinePackService } from '@/services/offline-packs';
 import { subscriptionService } from '@/services/subscription';
 import { networkMonitor } from '@/services/network-monitor';
 import { cloudApi } from '@/services/cloudApi';
+import { identityApi } from '@/services/identityApi';
 import { syncManager } from '@/services/sync-manager';
+import { parseWindyUrl } from '@/lib/parseWindyUrl';
+import { pendingDeepLink } from '@/state/pendingDeepLink';
+import { trustMonitor } from '@/services/trust-monitor';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkBanner } from '@/components/NetworkBanner';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -124,10 +128,31 @@ export default function RootLayout() {
         pushNotificationService.initialize(),
         offlinePackService.initialize(),
         subscriptionService.initialize(),
-        cloudApi.restoreSession(),
+        identityApi.restoreSession(),
       ]).catch(() => { });
+      trustMonitor.start();
     });
-    return () => handle.cancel();
+    return () => { handle.cancel(); trustMonitor.stop(); };
+  }, []);
+
+  // Track the user's own Eternitas passport + connected agent passports for
+  // trust-monitor polling. Re-runs when ecosystem status changes.
+  useEffect(() => {
+    const sync = () => {
+      try {
+        const eco = useSettingsStore.getState().ecosystemStatus;
+        const ownPassport = eco?.products?.eternitas?.passport_id;
+        const agentPassport = eco?.products?.windy_fly?.passport_id;
+        if (ownPassport) trustMonitor.track(ownPassport, 'Your passport');
+        if (agentPassport) {
+          const label = eco?.products?.windy_fly?.agent_name || 'Your agent';
+          trustMonitor.track(agentPassport, label);
+        }
+      } catch { /* store may not be ready */ }
+    };
+    sync();
+    const unsub = useSettingsStore.subscribe(sync);
+    return () => { unsub(); };
   }, []);
 
   // Safety timeout: force-dismiss splash after 5 seconds no matter what
@@ -239,6 +264,29 @@ export default function RootLayout() {
   useEffect(() => {
     const handleDeepLink = async ({ url }: { url: string }) => {
       try {
+        // Wave 3 — unified deep links (windyword://recording/{id},
+        // windyclone://clone/{id}, windycloud://file/{id}). If the user isn't
+        // authenticated, stash the target and push to login so the
+        // device-code flow can resume the user at the intended screen.
+        const windyTarget = parseWindyUrl(url);
+        if (windyTarget) {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              if (!identityApi.isAuthenticated()) {
+                pendingDeepLink.set(windyTarget);
+                router.push('/auth/device-code');
+              } else {
+                router.push({
+                  pathname: windyTarget.route as any,
+                  params: windyTarget.params,
+                });
+              }
+            } catch (err) { log.warn('deepLink', 'wave3 navigation error'); }
+          }, 300);
+          return;
+        }
+
         const parsed = Linking.parse(url);
 
         /** Deep-link format: windypro://license?key=<LICENSE_KEY> */

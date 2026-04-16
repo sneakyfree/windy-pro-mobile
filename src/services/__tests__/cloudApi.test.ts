@@ -1,9 +1,11 @@
 /**
- * 🧪 Unit tests for CloudApiClient
- * Tests auth, file operations, health checks, retry queue, and error handling.
+ * Shim-era tests for cloudApi. Auth lives in identityApi; cloudApi is now a
+ * thin delegation layer, so these tests verify:
+ *   - Deprecated password methods throw AuthFlowDeprecatedError
+ *   - Getters and lifecycle delegate to identityApi
+ *   - Storage APIs use identityApi's token + authedFetch + refresh
+ *   - Unauthenticated health endpoints still work
  */
-
-// ─── Mocks ──────────────────────────────────────────────────────
 
 jest.mock('expo-secure-store', () => ({
     getItemAsync: jest.fn().mockResolvedValue(null),
@@ -19,348 +21,193 @@ jest.mock('expo-file-system', () => ({
     documentDirectory: '/mock/docs/',
 }));
 
-jest.mock('@react-native-async-storage/async-storage', () => ({
-    __esModule: true,
-    default: {
-        getItem: jest.fn().mockResolvedValue(null),
-        setItem: jest.fn().mockResolvedValue(undefined),
-    },
-}));
-
 jest.mock('../ecosystem-status', () => ({
     getEcosystemStatus: jest.fn().mockResolvedValue(null),
+}));
+
+// Define the identityApi mock inline in the factory so it survives jest.mock
+// hoisting (outer `const` references hit TDZ at factory-eval time).
+jest.mock('../identityApi', () => ({
+    identityApi: {
+        restoreSession: jest.fn().mockResolvedValue(true),
+        logout: jest.fn().mockResolvedValue(undefined),
+        isAuthenticated: jest.fn().mockReturnValue(true),
+        getToken: jest.fn().mockReturnValue('mock_jwt'),
+        getUserId: jest.fn().mockReturnValue('user_1'),
+        getEmail: jest.fn().mockReturnValue('u@ex.com'),
+        getWindyIdentityId: jest.fn().mockReturnValue('identity_1'),
+        setAuthExpiredHandler: jest.fn(),
+        authedFetch: jest.fn(),
+        refresh: jest.fn().mockResolvedValue(true),
+    },
 }));
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-import * as SecureStore from 'expo-secure-store';
 import * as FileSystem from 'expo-file-system';
+import { cloudApi, AuthFlowDeprecatedError } from '../cloudApi';
+import { identityApi } from '../identityApi';
 
-// We need to import after mocks are set up
-let cloudApi: typeof import('../cloudApi').cloudApi;
+// Short-hand typed handle to the mocked methods so the assertions are clean.
+const mockIdentity = identityApi as unknown as {
+    restoreSession: jest.Mock;
+    logout: jest.Mock;
+    isAuthenticated: jest.Mock;
+    getToken: jest.Mock;
+    getUserId: jest.Mock;
+    getEmail: jest.Mock;
+    getWindyIdentityId: jest.Mock;
+    setAuthExpiredHandler: jest.Mock;
+    authedFetch: jest.Mock;
+    refresh: jest.Mock;
+};
 
-beforeAll(() => {
-    cloudApi = require('../cloudApi').cloudApi;
-});
-
-describe('CloudApiClient', () => {
+describe('cloudApi shim', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockFetch.mockReset();
+        // Re-seed defaults after clearAllMocks wipes them.
+        mockIdentity.isAuthenticated.mockReturnValue(true);
+        mockIdentity.getToken.mockReturnValue('mock_jwt');
+        mockIdentity.getWindyIdentityId.mockReturnValue('identity_1');
+        mockIdentity.refresh.mockResolvedValue(true);
     });
 
-    // ─── Auth: Register ────────────────────────────────────────
-
-    describe('register()', () => {
-        it('should register successfully and persist auth', async () => {
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({ token: 'jwt123', userId: 'user1' }),
-            });
-
-            const result = await cloudApi.register('test@example.com', 'password123');
-
-            expect(result.success).toBe(true);
-            expect(result.token).toBe('jwt123');
-            expect(result.userId).toBe('user1');
-            expect(SecureStore.setItemAsync).toHaveBeenCalledWith('windy_jwt_token', 'jwt123');
+    describe('deprecated password flow', () => {
+        it('login() throws AuthFlowDeprecatedError', async () => {
+            await expect(cloudApi.login('a', 'b')).rejects.toBeInstanceOf(AuthFlowDeprecatedError);
         });
-
-        it('should handle registration failure with error message', async () => {
-            mockFetch.mockResolvedValue({
-                ok: false,
-                status: 409,
-                json: () => Promise.resolve({ error: 'Email already registered' }),
-            });
-
-            const result = await cloudApi.register('test@example.com', 'password123');
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain('Email already registered');
-        });
-
-        it('should handle network error during registration', async () => {
-            mockFetch.mockRejectedValue(new Error('Network timeout'));
-
-            const result = await cloudApi.register('test@example.com', 'password123');
-
-            expect(result.success).toBe(false);
-            expect(result.error).toBe('Network timeout');
+        it('register() throws AuthFlowDeprecatedError', async () => {
+            await expect(cloudApi.register('a', 'b')).rejects.toBeInstanceOf(AuthFlowDeprecatedError);
         });
     });
 
-    // ─── Auth: Login ───────────────────────────────────────────
-
-    describe('login()', () => {
-        it('should login successfully and persist auth', async () => {
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({ token: 'jwt456', userId: 'user2' }),
-            });
-
-            const result = await cloudApi.login('test@example.com', 'password123');
-
-            expect(result.success).toBe(true);
-            expect(result.token).toBe('jwt456');
-            expect(cloudApi.isAuthenticated()).toBe(true);
+    describe('lifecycle delegation', () => {
+        it('restoreSession delegates to identityApi', async () => {
+            await cloudApi.restoreSession();
+            expect(mockIdentity.restoreSession).toHaveBeenCalled();
         });
-
-        it('should handle invalid credentials', async () => {
-            mockFetch.mockResolvedValue({
-                ok: false,
-                status: 401,
-                json: () => Promise.resolve({ error: 'Invalid email or password' }),
-            });
-
-            const result = await cloudApi.login('wrong@email.com', 'wrong');
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain('Invalid');
-        });
-    });
-
-    // ─── Auth: Session ─────────────────────────────────────────
-
-    describe('restoreSession()', () => {
-        it('should restore from secure store', async () => {
-            (SecureStore.getItemAsync as jest.Mock)
-                .mockResolvedValueOnce('stored_jwt')   // TOKEN
-                .mockResolvedValueOnce('stored_user')  // USER_ID
-                .mockResolvedValueOnce('test@ex.com'); // EMAIL
-
-            const result = await cloudApi.restoreSession();
-
-            expect(result).toBe(true);
-            expect(cloudApi.isAuthenticated()).toBe(true);
-        });
-
-        it('should return false when no stored token', async () => {
-            (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
-
-            const result = await cloudApi.restoreSession();
-
-            expect(result).toBe(false);
-        });
-    });
-
-    describe('logout()', () => {
-        it('should clear auth state and secure store', async () => {
-            // Login first
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({ token: 'jwt789', userId: 'user3' }),
-            });
-            await cloudApi.login('test@example.com', 'pass');
-
+        it('logout delegates to identityApi', async () => {
             await cloudApi.logout();
+            expect(mockIdentity.logout).toHaveBeenCalled();
+        });
+        it('setAuthExpiredHandler delegates', () => {
+            const handler = () => {};
+            cloudApi.setAuthExpiredHandler(handler);
+            expect(mockIdentity.setAuthExpiredHandler).toHaveBeenCalledWith(handler);
+        });
+    });
 
+    describe('getters read from identityApi', () => {
+        it('getToken returns identityApi token', () => {
+            expect(cloudApi.getToken()).toBe('mock_jwt');
+        });
+        it('isAuthenticated reflects identityApi state', () => {
+            mockIdentity.isAuthenticated.mockReturnValue(false);
             expect(cloudApi.isAuthenticated()).toBe(false);
-            expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('windy_jwt_token');
+        });
+        it('getWindyIdentityId reads through', () => {
+            expect(cloudApi.getWindyIdentityId()).toBe('identity_1');
         });
     });
 
-    // ─── Storage: Upload ───────────────────────────────────────
-
-    describe('uploadFile()', () => {
-        it('should fail when not authenticated', async () => {
-            await cloudApi.logout();
-            const result = await cloudApi.uploadFile('file:///audio.wav', 'audio.wav');
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain('Not authenticated');
+    describe('uploadFile', () => {
+        it('fails when no token', async () => {
+            mockIdentity.getToken.mockReturnValue(null);
+            const r = await cloudApi.uploadFile('file:///a.wav', 'a.wav');
+            expect(r.success).toBe(false);
+            expect(r.error).toContain('Not authenticated');
         });
-
-        it('should upload successfully', async () => {
-            // Login first
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({ token: 'jwt_upload', userId: 'u1' }),
-            });
-            await cloudApi.login('test@ex.com', 'pass');
-
+        it('succeeds on 2xx', async () => {
             (FileSystem.uploadAsync as jest.Mock).mockResolvedValue({
                 status: 200,
-                body: JSON.stringify({ fileId: 'file_123' }),
+                body: JSON.stringify({ fileId: 'f1' }),
             });
-
-            const result = await cloudApi.uploadFile('file:///audio.wav', 'audio.wav', 'audio/wav');
-
-            expect(result.success).toBe(true);
-            expect(result.fileId).toBe('file_123');
+            const r = await cloudApi.uploadFile('file:///a.wav', 'a.wav');
+            expect(r.success).toBe(true);
+            expect(r.fileId).toBe('f1');
         });
-
-        it('should handle 401 and trigger auth expired', async () => {
-            // Login first
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({ token: 'jwt_exp', userId: 'u1' }),
-            });
-            await cloudApi.login('test@ex.com', 'pass');
-
-            const authHandler = jest.fn();
-            cloudApi.setAuthExpiredHandler(authHandler);
-
-            (FileSystem.uploadAsync as jest.Mock).mockResolvedValue({
-                status: 401,
-                body: '{}',
-            });
-
-            const result = await cloudApi.uploadFile('file:///audio.wav', 'audio.wav');
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain('expired');
-            expect(authHandler).toHaveBeenCalled();
+        it('on 401, refreshes then retries once', async () => {
+            (FileSystem.uploadAsync as jest.Mock)
+                .mockResolvedValueOnce({ status: 401, body: '{}' })
+                .mockResolvedValueOnce({ status: 200, body: JSON.stringify({ fileId: 'f2' }) });
+            mockIdentity.refresh.mockResolvedValue(true);
+            mockIdentity.getToken
+                .mockReturnValueOnce('old_jwt')
+                .mockReturnValue('new_jwt');
+            const r = await cloudApi.uploadFile('file:///a.wav', 'a.wav');
+            expect(mockIdentity.refresh).toHaveBeenCalled();
+            expect(r.success).toBe(true);
+            expect(r.fileId).toBe('f2');
         });
-
-        it('should queue failed uploads for retry', async () => {
-            // Login first
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({ token: 'jwt_retry', userId: 'u1' }),
-            });
-            await cloudApi.login('test@ex.com', 'pass');
-
+        it('queues on network error', async () => {
             (FileSystem.uploadAsync as jest.Mock).mockRejectedValue(new Error('ENETUNREACH'));
-
-            const result = await cloudApi.uploadFile('file:///audio.wav', 'audio.wav');
-
-            expect(result.success).toBe(false);
+            const r = await cloudApi.uploadFile('file:///a.wav', 'a.wav');
+            expect(r.success).toBe(false);
             expect(cloudApi.getRetryQueueLength()).toBeGreaterThan(0);
         });
     });
 
-    // ─── Storage: List ─────────────────────────────────────────
-
-    describe('listFiles()', () => {
-        it('should return file list', async () => {
-            // Login first
-            mockFetch
-                .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ token: 'jwt_list', userId: 'u1' }) })
-                .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ files: [{ id: 'f1', filename: 'test.wav', size: 1024, contentType: 'audio/wav', uploadedAt: '2026-01-01' }] }), status: 200 });
-
-            await cloudApi.login('test@ex.com', 'pass');
-            const result = await cloudApi.listFiles();
-
-            expect(result.files).toHaveLength(1);
-            expect(result.files[0].id).toBe('f1');
+    describe('listFiles uses authedFetch', () => {
+        it('returns files on ok', async () => {
+            mockIdentity.authedFetch.mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ files: [{ id: 'f1' }] }),
+            });
+            const r = await cloudApi.listFiles();
+            expect(mockIdentity.authedFetch).toHaveBeenCalled();
+            expect(r.files).toHaveLength(1);
+        });
+        it('returns error when authedFetch returns null', async () => {
+            mockIdentity.authedFetch.mockResolvedValue(null);
+            const r = await cloudApi.listFiles();
+            expect(r.files).toHaveLength(0);
+            expect(r.error).toContain('Not authenticated');
         });
     });
 
-    // ─── Storage: Delete ───────────────────────────────────────
-
-    describe('deleteFile()', () => {
-        it('should delete successfully', async () => {
-            // Login first
-            mockFetch
-                .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ token: 'jwt_del', userId: 'u1' }) })
-                .mockResolvedValueOnce({ ok: true, status: 200 });
-
-            await cloudApi.login('test@ex.com', 'pass');
-            const result = await cloudApi.deleteFile('file_123');
-
-            expect(result.success).toBe(true);
+    describe('deleteFile uses authedFetch', () => {
+        it('success on 2xx', async () => {
+            mockIdentity.authedFetch.mockResolvedValue({ ok: true, status: 200 });
+            const r = await cloudApi.deleteFile('f1');
+            expect(r.success).toBe(true);
+        });
+        it('failure on 4xx', async () => {
+            mockIdentity.authedFetch.mockResolvedValue({
+                ok: false, status: 404,
+                json: () => Promise.resolve({ error: 'Not found' }),
+            });
+            const r = await cloudApi.deleteFile('f1');
+            expect(r.success).toBe(false);
+            expect(r.error).toContain('Not found');
         });
     });
 
-    // ─── Health ─────────────────────────────────────────────────
-
-    describe('getHealth()', () => {
-        it('should return health status', async () => {
+    describe('getHealth (unauthed)', () => {
+        it('returns ok when healthy', async () => {
             mockFetch.mockResolvedValue({
                 ok: true,
                 json: () => Promise.resolve({ status: 'ok', nodeId: 'n1' }),
             });
-
-            const result = await cloudApi.getHealth();
-
-            expect(result.ok).toBe(true);
-            expect(result.nodeId).toBe('n1');
+            const r = await cloudApi.getHealth();
+            expect(r.ok).toBe(true);
+            expect(r.nodeId).toBe('n1');
         });
-
-        it('should handle health check failure', async () => {
+        it('returns not-ok on network error', async () => {
             mockFetch.mockRejectedValue(new Error('ECONNREFUSED'));
-
-            const result = await cloudApi.getHealth();
-
-            expect(result.ok).toBe(false);
+            const r = await cloudApi.getHealth();
+            expect(r.ok).toBe(false);
         });
     });
 
-    describe('getGatewayHealth()', () => {
-        it('should return true when gateway is healthy', async () => {
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({ status: 'ok' }),
-            });
-
-            const result = await cloudApi.getGatewayHealth();
-            expect(result).toBe(true);
-        });
-
-        it('should return false on failure', async () => {
-            mockFetch.mockRejectedValue(new Error('timeout'));
-
-            const result = await cloudApi.getGatewayHealth();
-            expect(result).toBe(false);
-        });
-    });
-
-    // ─── Storage Usage ──────────────────────────────────────────
-
-    describe('getStorageUsage()', () => {
-        it('should calculate usage from file list', async () => {
-            // Login
-            mockFetch
-                .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ token: 'jwt_usage', userId: 'u1' }) })
-                .mockResolvedValueOnce({
-                    ok: true,
-                    status: 200,
-                    json: () => Promise.resolve({
-                        files: [
-                            { id: 'f1', size: 1024 * 1024 },       // 1 MB
-                            { id: 'f2', size: 2 * 1024 * 1024 },   // 2 MB
-                        ],
-                    }),
-                });
-
-            await cloudApi.login('test@ex.com', 'pass');
-            const usage = await cloudApi.getStorageUsage('free');
-
-            expect(usage.usedBytes).toBe(3 * 1024 * 1024);
-            expect(usage.fileCount).toBe(2);
-            expect(usage.tierLabel).toBe('Free');
-        });
-    });
-
-    // ─── Retry Queue ───────────────────────────────────────────
-
-    describe('processRetryQueue()', () => {
-        it('should return zeros when not authenticated', async () => {
-            await cloudApi.logout();
-            const result = await cloudApi.processRetryQueue();
-
-            expect(result.succeeded).toBe(0);
-            expect(result.failed).toBe(0);
-        });
-    });
-
-    // ─── Token Accessor ────────────────────────────────────────
-
-    describe('getToken()', () => {
-        it('should return null when not authenticated', async () => {
-            await cloudApi.logout();
-            expect(cloudApi.getToken()).toBeNull();
-        });
-
-        it('should return token after login', async () => {
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({ token: 'jwt_token_test', userId: 'u1' }),
-            });
-            await cloudApi.login('test@ex.com', 'pass');
-
-            expect(cloudApi.getToken()).toBe('jwt_token_test');
+    describe('processRetryQueue', () => {
+        it('returns zeros when not authenticated', async () => {
+            mockIdentity.isAuthenticated.mockReturnValue(false);
+            const r = await cloudApi.processRetryQueue();
+            expect(r.succeeded).toBe(0);
+            expect(r.failed).toBe(0);
         });
     });
 });

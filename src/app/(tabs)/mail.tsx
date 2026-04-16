@@ -1,218 +1,213 @@
 /**
- * Mail Tab — Embedded Windy Mail WebView
- * Loads the Windy Mail dashboard with native bridges for:
- * - Microphone access (voice compose STT)
- * - Push notifications (new email alerts)
- * - Share intent (receive shared content from other apps)
- * Auth token injected into WebView localStorage for auto-login.
+ * Mail Tab — native inbox list (Wave 3).
+ *
+ * Fetches {WINDY_MAIL_URL}/api/v1/inbox with the account-server JWT.
+ * Tapping a row navigates to /mail/[id] which renders the message in a
+ * WebView pointed at /webmail/message/{id}.
+ *
+ * Out of scope for v1: compose, reply, search, labels, archive.
  */
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    ActivityIndicator,
-    Platform,
-    Pressable,
-    Share,
+    View, Text, StyleSheet, FlatList,
+    ActivityIndicator, RefreshControl, TouchableOpacity,
 } from 'react-native';
-import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
-import * as Notifications from 'expo-notifications';
-import * as Linking from 'expo-linking';
-import { Audio } from 'expo-av';
-import { colors, spacing } from '@/theme';
-import { typography } from '@/theme/typography';
-import { cloudApi } from '@/services/cloudApi';
-import { WINDY_MAIL_WEBVIEW_URL } from '@/config/api';
+import { router } from 'expo-router';
+import { colors, fontSizes } from '@/theme';
+import { identityApi } from '@/services/identityApi';
+import { listInbox, type InboxMessage } from '@/services/mailApi';
+import { MessageRow } from '@/components/mail/MessageRow';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
-/** JavaScript injected before page load to set the auth token in localStorage */
-function buildInjectedJS(): string {
-    const token = cloudApi.getToken();
-    if (!token) return '';
-    return `
-        (function() {
-            try {
-                localStorage.setItem('windy_auth_token', ${JSON.stringify(token)});
-            } catch(e) {}
-            true;
-        })();
-    `;
-}
-
-/**
- * Bridge message types the WebView can send via window.ReactNativeWebView.postMessage()
- */
-type BridgeMessage =
-    | { type: 'requestMicrophone' }
-    | { type: 'scheduleNotification'; title: string; body: string; data?: Record<string, string> }
-    | { type: 'share'; text?: string; url?: string; title?: string };
+const PAGE_SIZE = 50;
 
 export default function MailTab() {
-    const webViewRef = useRef<WebView>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
-    const params = useLocalSearchParams<{ sharedText?: string; sharedUrl?: string }>();
+    const [authed, setAuthed] = useState<boolean>(identityApi.isAuthenticated());
+    const [messages, setMessages] = useState<InboxMessage[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [total, setTotal] = useState(0);
+    const [error, setError] = useState<string | null>(null);
 
-    // Forward shared content from other apps into the WebView
     useEffect(() => {
-        if (!params.sharedText && !params.sharedUrl) return;
-        const payload = JSON.stringify({
-            type: 'sharedContent',
-            text: params.sharedText ?? '',
-            url: params.sharedUrl ?? '',
+        const unsub = identityApi.onChange(() => {
+            setAuthed(identityApi.isAuthenticated());
         });
-        webViewRef.current?.postMessage(payload);
-    }, [params.sharedText, params.sharedUrl]);
-
-    // Listen for incoming share intents while on this tab
-    useEffect(() => {
-        const handleUrl = ({ url }: { url: string }) => {
-            const parsed = Linking.parse(url);
-            if (parsed.queryParams?.sharedText || parsed.queryParams?.sharedUrl) {
-                const payload = JSON.stringify({
-                    type: 'sharedContent',
-                    text: String(parsed.queryParams.sharedText ?? ''),
-                    url: String(parsed.queryParams.sharedUrl ?? ''),
-                });
-                webViewRef.current?.postMessage(payload);
-            }
-        };
-        const sub = Linking.addEventListener('url', handleUrl);
-        return () => sub.remove();
+        return unsub;
     }, []);
 
-    const handleMessage = useCallback(async (event: WebViewMessageEvent) => {
-        let msg: BridgeMessage;
-        try {
-            msg = JSON.parse(event.nativeEvent.data) as BridgeMessage;
-        } catch {
+    const load = useCallback(async (offset: number, mode: 'initial' | 'refresh' | 'more') => {
+        if (mode === 'initial') setLoading(true);
+        if (mode === 'refresh') setRefreshing(true);
+        if (mode === 'more') setLoadingMore(true);
+
+        const result = await listInbox({ limit: PAGE_SIZE, offset });
+
+        if (mode === 'initial') setLoading(false);
+        if (mode === 'refresh') setRefreshing(false);
+        if (mode === 'more') setLoadingMore(false);
+
+        if (!result.ok || !result.page) {
+            setError(result.error || 'Failed to load inbox');
             return;
         }
-
-        switch (msg.type) {
-            case 'requestMicrophone': {
-                const { status } = await Audio.requestPermissionsAsync();
-                webViewRef.current?.postMessage(
-                    JSON.stringify({ type: 'microphoneResult', granted: status === 'granted' }),
-                );
-                break;
-            }
-
-            case 'scheduleNotification': {
-                await Notifications.scheduleNotificationAsync({
-                    content: {
-                        title: msg.title,
-                        body: msg.body,
-                        data: msg.data ?? {},
-                        ...(Platform.OS === 'android' ? { channelId: 'mail' } : {}),
-                    },
-                    trigger: null as unknown as Notifications.NotificationTriggerInput,
-                });
-                break;
-            }
-
-            case 'share': {
-                await Share.share({
-                    message: msg.text ?? '',
-                    url: msg.url,
-                    title: msg.title,
-                });
-                break;
-            }
-        }
+        setError(null);
+        setTotal(result.page.total);
+        setMessages(prev =>
+            mode === 'more'
+                ? dedupeById([...prev, ...result.page!.messages])
+                : result.page!.messages
+        );
     }, []);
 
-    const reload = useCallback(() => {
-        setError(false);
-        setLoading(true);
-        webViewRef.current?.reload();
+    useEffect(() => {
+        if (authed) void load(0, 'initial');
+    }, [authed, load]);
+
+    const onRefresh = useCallback(() => { void load(0, 'refresh'); }, [load]);
+    const onEndReached = useCallback(() => {
+        if (loadingMore || refreshing || loading) return;
+        if (messages.length >= total) return;
+        void load(messages.length, 'more');
+    }, [loadingMore, refreshing, loading, messages.length, total, load]);
+
+    const onPressMessage = useCallback((id: string) => {
+        router.push({ pathname: '/mail/[id]', params: { id } });
     }, []);
 
-    if (error) {
+    if (!authed) {
         return (
-            <SafeAreaView style={styles.container} edges={['top']}>
-                <View style={styles.center}>
-                    <Text style={styles.emoji}>📧</Text>
-                    <Text style={styles.title}>Couldn't load Mail</Text>
-                    <Text style={styles.subtitle}>
-                        {__DEV__
-                            ? 'Is the dev server running on localhost:5173?'
-                            : 'Check your internet connection and try again.'}
-                    </Text>
-                    <Pressable style={styles.retryBtn} onPress={reload} accessibilityRole="button">
-                        <Text style={styles.retryText}>Retry</Text>
-                    </Pressable>
-                </View>
-            </SafeAreaView>
+            <ScreenErrorBoundary screenName="Mail">
+                <SafeAreaView style={styles.container}>
+                    <View style={styles.emptyState}>
+                        <Text style={styles.emptyIcon}>📧</Text>
+                        <Text style={styles.emptyTitle}>Sign in to see your mail</Text>
+                        <TouchableOpacity
+                            style={styles.signInButton}
+                            onPress={() => router.push('/auth/login')}
+                        >
+                            <Text style={styles.signInButtonText}>Sign in with Windy</Text>
+                        </TouchableOpacity>
+                    </View>
+                </SafeAreaView>
+            </ScreenErrorBoundary>
         );
     }
 
     return (
-        <ScreenErrorBoundary screenName="MailTab">
-            <SafeAreaView style={styles.container} edges={['top']}>
-                {loading && (
-                    <View style={styles.loader}>
-                        <ActivityIndicator color={colors.accent} size="large" />
+        <ScreenErrorBoundary screenName="Mail">
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Inbox</Text>
+                    {total > 0 && (
+                        <Text style={styles.headerSubtitle}>
+                            {messages.length} of {total}
+                        </Text>
+                    )}
+                </View>
+
+                {loading && messages.length === 0 ? (
+                    <View style={styles.center}>
+                        <ActivityIndicator color={colors.accent} />
                     </View>
+                ) : error ? (
+                    <View style={styles.emptyState}>
+                        <Text style={styles.errorText}>{error}</Text>
+                        <TouchableOpacity
+                            style={styles.signInButton}
+                            onPress={() => load(0, 'initial')}
+                        >
+                            <Text style={styles.signInButtonText}>Retry</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : messages.length === 0 ? (
+                    <View style={styles.emptyState}>
+                        <Text style={styles.emptyIcon}>📭</Text>
+                        <Text style={styles.emptyTitle}>No messages yet</Text>
+                    </View>
+                ) : (
+                    <FlatList
+                        data={messages}
+                        keyExtractor={(m) => m.id}
+                        renderItem={({ item }) => (
+                            <MessageRow message={item} onPress={onPressMessage} />
+                        )}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                tintColor={colors.accent}
+                            />
+                        }
+                        onEndReached={onEndReached}
+                        onEndReachedThreshold={0.4}
+                        ListFooterComponent={loadingMore ? (
+                            <View style={styles.footer}>
+                                <ActivityIndicator color={colors.textSecondary} />
+                            </View>
+                        ) : null}
+                    />
                 )}
-                <WebView
-                    ref={webViewRef}
-                    source={{ uri: WINDY_MAIL_WEBVIEW_URL }}
-                    injectedJavaScriptBeforeContentLoaded={buildInjectedJS()}
-                    onMessage={handleMessage}
-                    onLoadEnd={() => setLoading(false)}
-                    onError={() => {
-                        setLoading(false);
-                        setError(true);
-                    }}
-                    onHttpError={() => {
-                        setLoading(false);
-                        setError(true);
-                    }}
-                    // Allow microphone for voice compose
-                    mediaPlaybackRequiresUserAction={false}
-                    allowsInlineMediaPlayback
-                    mediaCapturePermissionGrantType="grant"
-                    // Performance
-                    startInLoadingState={false}
-                    javaScriptEnabled
-                    domStorageEnabled
-                    sharedCookiesEnabled
-                    // Style
-                    style={styles.webview}
-                    containerStyle={styles.webviewContainer}
-                    // Allow navigation within the mail app
-                    originWhitelist={['https://*', 'http://*']}
-                />
             </SafeAreaView>
         </ScreenErrorBoundary>
     );
 }
 
+function dedupeById(list: InboxMessage[]): InboxMessage[] {
+    const seen = new Set<string>();
+    const out: InboxMessage[] = [];
+    for (const m of list) {
+        if (seen.has(m.id)) continue;
+        seen.add(m.id);
+        out.push(m);
+    }
+    return out;
+}
+
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    webview: { flex: 1, backgroundColor: colors.background },
-    webviewContainer: { flex: 1 },
-    loader: {
-        ...StyleSheet.absoluteFillObject,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: colors.background,
-        zIndex: 10,
+    header: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 12,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: colors.borderLight,
     },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-    emoji: { fontSize: 64, marginBottom: 16 },
-    title: { ...typography.h1, color: colors.textPrimary, marginBottom: 8 },
-    subtitle: { ...typography.body, color: colors.textTertiary, textAlign: 'center', marginTop: 4 },
-    retryBtn: {
+    headerTitle: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
+    headerSubtitle: { fontSize: fontSizes.sm, color: colors.textSecondary },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+    emptyIcon: { fontSize: 52, marginBottom: 16 },
+    emptyTitle: {
+        fontSize: fontSizes.base,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        marginBottom: 24,
+    },
+    errorText: {
+        fontSize: fontSizes.base,
+        color: colors.stateError,
+        textAlign: 'center',
+        marginBottom: 24,
+    },
+    signInButton: {
         backgroundColor: colors.accent,
-        paddingHorizontal: 24,
-        paddingVertical: 12,
         borderRadius: 12,
-        marginTop: 32,
+        paddingVertical: 14,
+        paddingHorizontal: 24,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    retryText: { ...typography.button, color: colors.background },
+    signInButtonText: {
+        color: colors.background,
+        fontWeight: '700',
+        fontSize: fontSizes.base,
+    },
+    footer: { paddingVertical: 16, alignItems: 'center' },
 });

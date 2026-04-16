@@ -18,6 +18,7 @@ import { getEcosystemStatus, type EcosystemProduct } from '@/services/ecosystem-
 import { feedbackService } from '@/services/feedback';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import EternitasBadge from '@/components/EternitasBadge';
+import { TrustBadge } from '@/components/trust/TrustBadge';
 
 export default function AgentScreen() {
     const router = useRouter();
@@ -97,6 +98,7 @@ export default function AgentScreen() {
                             </Text>
                         </View>
                         {passportId && <EternitasBadge passportId={passportId} size={12} />}
+                        {passportId && <TrustBadge passport={passportId} />}
                     </View>
 
                     {/* Info Cards */}

@@ -6,7 +6,7 @@
     "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
-    "scheme": ["windypro", "windyword", "windychat", "windymail", "windyfly"],
+    "scheme": ["windypro", "windyword", "windychat", "windymail", "windyfly", "windyclone", "windycloud"],
     "userInterfaceStyle": "dark",
     "splash": {
       "image": "./src/assets/splash.png",

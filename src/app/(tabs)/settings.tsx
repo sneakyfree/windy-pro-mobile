@@ -529,6 +529,12 @@ export default function SettingsScreen() {
               <Text style={styles.navRowLabel}>📹 Video Recorder</Text>
               <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
+            <Pressable style={styles.navRow} onPress={() => router.push('/settings/trust')}
+              accessibilityLabel="Trust and Clearance" accessibilityRole="button" accessibilityHint="Opens Eternitas trust profile"
+            >
+              <Text style={styles.navRowLabel}>🪪 Trust &amp; Clearance</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+            </Pressable>
           </SettingsSection>
 
           {/* UI */}
