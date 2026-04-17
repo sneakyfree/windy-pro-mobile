@@ -29,6 +29,10 @@ import { cloudApi } from '@/services/cloudApi';
 import { WINDY_CHAT_WEBVIEW_URL } from '@/config/api';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { useChatBadgeStore } from '@/stores/useChatBadgeStore';
+import { buildOriginWhitelist, buildNavigationGuard } from '@/lib/webviewOrigins';
+
+const CHAT_ALLOWED_ORIGINS = buildOriginWhitelist(WINDY_CHAT_WEBVIEW_URL);
+const chatNavigationGuard = buildNavigationGuard(CHAT_ALLOWED_ORIGINS);
 
 /** JavaScript injected before page load to set the auth token in localStorage */
 function buildInjectedJS(): string {
@@ -189,8 +193,10 @@ export default function ChatTab() {
                     // Style
                     style={styles.webview}
                     containerStyle={styles.webviewContainer}
-                    // Allow navigation within the chat app
-                    originWhitelist={['https://*', 'http://*']}
+                    // Lock the WebView to chat.windyword.ai so the injected
+                    // JWT can't follow a redirect off-domain and get stolen.
+                    originWhitelist={CHAT_ALLOWED_ORIGINS}
+                    onShouldStartLoadWithRequest={chatNavigationGuard}
                 />
             </SafeAreaView>
         </ScreenErrorBoundary>

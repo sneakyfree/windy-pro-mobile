@@ -18,6 +18,10 @@ import { colors, fontSizes } from '@/theme';
 import { WINDY_MAIL_WEBVIEW_URL } from '@/config/api';
 import { identityApi } from '@/services/identityApi';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { buildOriginWhitelist, buildNavigationGuard } from '@/lib/webviewOrigins';
+
+const MAIL_ALLOWED_ORIGINS = buildOriginWhitelist(WINDY_MAIL_WEBVIEW_URL);
+const mailNavigationGuard = buildNavigationGuard(MAIL_ALLOWED_ORIGINS);
 
 const SAFE_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 
@@ -64,6 +68,10 @@ export default function MessageReadScreen() {
                             </View>
                         )}
                         style={styles.webview}
+                        // Lock the reader to windymail.ai so the injected JWT
+                        // can't follow a redirect off-domain and get stolen.
+                        originWhitelist={MAIL_ALLOWED_ORIGINS}
+                        onShouldStartLoadWithRequest={mailNavigationGuard}
                     />
                 ) : (
                     <View style={styles.center}>
