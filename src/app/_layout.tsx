@@ -70,6 +70,22 @@ function sanitizeSessionId(raw: string): string | null {
   return id;
 }
 
+/**
+ * Sanitize a Matrix room identifier from a windychat://room/{id} deep link.
+ * Matrix IDs are `!localpart:server` or `#alias:server`; we also accept
+ * opaque router-friendly ids of `[a-zA-Z0-9_-]{1,128}` so internal deep
+ * links that hand us a mapped id still route. Anything else (slashes,
+ * path traversal, url-encoded escapes) is rejected.
+ */
+function sanitizeMatrixRoomId(raw: string): string | null {
+  const id = raw.trim();
+  if (!id || id.length > 256) return null;
+  if (id.includes('..') || id.includes('/') || id.includes('\\') || id.includes('?')) return null;
+  if (/^[!#@][a-zA-Z0-9._=-]+:[a-zA-Z0-9.-]+$/.test(id)) return id;
+  if (SAFE_ID_RE.test(id) && id.length <= 128) return id;
+  return null;
+}
+
 /** Sanitize a deep link language code */
 function sanitizeLangCode(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
@@ -217,7 +233,7 @@ export default function RootLayout() {
           } else if (data.type === 'subscription') {
             router.push('/subscription');
           } else if (data.type === 'update') {
-            Linking.openURL('market://details?id=uk.thewindstorm.windypro').catch(() => { });
+            Linking.openURL('market://details?id=ai.windyword.app').catch(() => { });
           }
         } catch (err) { log.warn('notificationTap', 'Navigation error'); }
       }, 300);
@@ -341,7 +357,13 @@ export default function RootLayout() {
             try {
               const { router } = require('expo-router');
               if (parsed.path?.startsWith('room/')) {
-                const roomId = parsed.path.replace('room/', '');
+                const rawRoomId = parsed.path.replace('room/', '');
+                const roomId = sanitizeMatrixRoomId(rawRoomId);
+                if (!roomId) {
+                  log.warn('deepLink', 'Rejected malicious windychat deep link', { rawLen: rawRoomId.length });
+                  router.push('/(tabs)/chat');
+                  return;
+                }
                 router.push(`/chat/${roomId}`);
               } else {
                 router.push('/(tabs)/chat');
