@@ -162,6 +162,98 @@ describe('identityApi.pollForToken', () => {
         expect(outcome.success).toBe(false);
         if (!outcome.success) expect(outcome.error).toBe('cancelled');
     });
+
+    it('bails immediately on 4xx with a known-bad error code', async () => {
+        mockFetch.mockResolvedValueOnce({
+            ok: false, status: 400,
+            json: () => Promise.resolve({ error: 'invalid_grant', error_description: 'bad device_code' }),
+        });
+        const outcome = await identityApi.pollForToken();
+        expect(outcome.success).toBe(false);
+        if (!outcome.success) {
+            expect(outcome.error).toBe('network');
+            expect(outcome.message).toBe('bad device_code');
+        }
+    });
+});
+
+// A second pollForToken describe block that boots its own device session
+// with `interval: 0.001` so the real setTimeout-backed `wait()` clamps to 1ms
+// per tick and backoff-chain tests finish in <100ms. Sharing the outer
+// describe's `interval: 1` (= 1000ms per tick) would time out the jest runner.
+describe('identityApi.pollForToken backoff + circuit breaker', () => {
+    beforeEach(async () => {
+        mockFetch.mockResolvedValueOnce({
+            ok: true,
+            json: () => Promise.resolve({
+                device_code: 'dc_backoff', user_code: 'BACK-OFFF',
+                verification_uri: 'x', verification_uri_complete: 'x',
+                expires_in: 900, interval: 0.001,
+            }),
+        });
+        await identityApi.startDeviceFlow();
+    });
+
+    function successJwt() {
+        return Buffer.from(JSON.stringify({ alg: 'RS256' })).toString('base64url')
+            + '.' + Buffer.from(JSON.stringify({ sub: 'u', email: 'e@f.g' })).toString('base64url')
+            + '.sig';
+    }
+
+    it('backs off and fires onWarning after 3 consecutive 5xx failures, then recovers', async () => {
+        mockFetch
+            .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+            .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+            .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+            .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+            .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({ access_token: successJwt(), refresh_token: 'rt', expires_in: 900 }),
+            });
+
+        const onWarning = jest.fn();
+        const outcome = await identityApi.pollForToken({ onWarning });
+        expect(outcome.success).toBe(true);
+        expect(onWarning).toHaveBeenCalledTimes(1);
+    });
+
+    it('aborts after 6 consecutive transient failures with a network error', async () => {
+        mockFetch.mockResolvedValue({
+            ok: false, status: 502,
+            json: () => Promise.resolve({}),
+        });
+        const outcome = await identityApi.pollForToken();
+        expect(outcome.success).toBe(false);
+        if (!outcome.success) {
+            expect(outcome.error).toBe('network');
+            expect(outcome.message).toMatch(/unreachable|6/);
+        }
+    });
+
+    it('authorization_pending resets the failure counter', async () => {
+        mockFetch
+            .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+            .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+            .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+            .mockResolvedValueOnce({ ok: false, status: 400, json: () => Promise.resolve({ error: 'authorization_pending' }) })
+            .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+            .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+            .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({ access_token: successJwt(), refresh_token: 'rt', expires_in: 900 }),
+            });
+        const outcome = await identityApi.pollForToken();
+        expect(outcome.success).toBe(true);
+    });
+
+    it('thrown fetch errors count as transient failures', async () => {
+        mockFetch.mockRejectedValue(new Error('ECONNRESET'));
+        const outcome = await identityApi.pollForToken();
+        expect(outcome.success).toBe(false);
+        if (!outcome.success) expect(outcome.error).toBe('network');
+    });
 });
 
 describe('identityApi.refresh', () => {

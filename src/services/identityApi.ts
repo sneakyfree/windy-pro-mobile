@@ -47,6 +47,22 @@ export type DeviceCodeOutcome =
     | { success: true; token: string; userId: string | null; email: string | null }
     | { success: false; error: 'expired' | 'denied' | 'cancelled' | 'network'; message?: string };
 
+export interface PollForTokenOptions {
+    /**
+     * Fires once after the first consecutive transient poll failure (5xx or
+     * network). The UI can surface a "Having trouble reaching the server"
+     * warning so the user isn't staring at a silent spinner for 15 minutes.
+     */
+    onWarning?: () => void;
+}
+
+/** Start the exponential backoff after this many consecutive transient failures. */
+const POLL_BACKOFF_START_AFTER = 3;
+/** Abort the whole session after this many consecutive transient failures. */
+const POLL_MAX_CONSECUTIVE_FAILURES = 6;
+/** Cap the backoff at this many ms so we don't wait 5 minutes between polls. */
+const POLL_BACKOFF_CAP_MS = 30_000;
+
 type Listener = () => void;
 type AuthExpiredCallback = () => void;
 
@@ -171,16 +187,22 @@ class IdentityApiClient {
         return data;
     }
 
-    async pollForToken(): Promise<DeviceCodeOutcome> {
+    async pollForToken(opts: PollForTokenOptions = {}): Promise<DeviceCodeOutcome> {
         if (!this.deviceSession) return { success: false, error: 'cancelled' };
         const session = this.deviceSession;
         const signal = session.abort.signal;
+
+        let consecutiveFailures = 0;
+        let warningFired = false;
 
         while (!signal.aborted) {
             if (Date.now() >= session.expiresAt) {
                 this.deviceSession = null;
                 return { success: false, error: 'expired' };
             }
+
+            let hadTransientFailure = false;
+
             try {
                 const res = await this.fetchWithTimeout(
                     `${ACCOUNT_SERVER_URL}${OAUTH_ENDPOINTS.TOKEN}`,
@@ -210,14 +232,28 @@ class IdentityApiClient {
                 const body = await this.safeJson(res);
                 const errorCode = (body?.error as string) || '';
                 if (errorCode === 'authorization_pending' || errorCode === 'slow_down') {
-                    // continue polling on the next tick
+                    // Server responded with a known pending state — reset any
+                    // transient-failure counter so a brief outage doesn't
+                    // accumulate across successful "still waiting" replies.
+                    consecutiveFailures = 0;
                 } else if (errorCode === 'expired_token') {
                     this.deviceSession = null;
                     return { success: false, error: 'expired' };
                 } else if (errorCode === 'access_denied') {
                     this.deviceSession = null;
                     return { success: false, error: 'denied' };
+                } else if (res.status >= 500 || (!errorCode && res.status >= 400)) {
+                    // Transient server failure (5xx) or an unknown-code 4xx
+                    // that may be a CDN challenge page. Retry with backoff
+                    // rather than bail immediately.
+                    hadTransientFailure = true;
+                    log.warn('pollForToken', 'transient server failure, will back off', {
+                        status: res.status, errorCode,
+                    });
                 } else {
+                    // Genuine 4xx with a known-unrecognised error code
+                    // (invalid_grant, invalid_client, invalid_request) — the
+                    // request itself is bad, no amount of retrying helps.
                     this.deviceSession = null;
                     return {
                         success: false,
@@ -227,11 +263,37 @@ class IdentityApiClient {
                 }
             } catch (err: unknown) {
                 if (signal.aborted) return { success: false, error: 'cancelled' };
-                log.warn('pollForToken', 'poll attempt failed, will retry', {
+                hadTransientFailure = true;
+                log.warn('pollForToken', 'poll attempt threw, will retry', {
                     message: err instanceof Error ? err.message : String(err),
                 });
             }
-            await this.wait(session.interval, signal);
+
+            let nextDelay = session.interval;
+            if (hadTransientFailure) {
+                consecutiveFailures++;
+                if (consecutiveFailures >= POLL_MAX_CONSECUTIVE_FAILURES) {
+                    this.deviceSession = null;
+                    return {
+                        success: false,
+                        error: 'network',
+                        message: `Server unreachable after ${consecutiveFailures} attempts`,
+                    };
+                }
+                if (consecutiveFailures >= POLL_BACKOFF_START_AFTER) {
+                    const exponent = consecutiveFailures - POLL_BACKOFF_START_AFTER + 1;
+                    nextDelay = Math.min(
+                        session.interval * Math.pow(2, exponent),
+                        POLL_BACKOFF_CAP_MS,
+                    );
+                    if (!warningFired) {
+                        warningFired = true;
+                        try { opts.onWarning?.(); } catch { /* listener error */ }
+                    }
+                }
+            }
+
+            await this.wait(nextDelay, signal);
         }
         return { success: false, error: 'cancelled' };
     }
