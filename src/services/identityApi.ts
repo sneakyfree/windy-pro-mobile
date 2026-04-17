@@ -79,6 +79,29 @@ class IdentityApiClient {
                 SecureStore.getItemAsync(IDENTITY_ID_KEY),
             ]);
             if (!token) return false;
+
+            // Respect the access token's `exp` claim. If it's past (with
+            // a 30 s grace window), proactively refresh or log out — we
+            // don't want to spray a known-dead token to every service the
+            // mobile talks to until the first 401 bounces back.
+            if (this.isTokenExpired(token)) {
+                if (!refresh) {
+                    await this.logout();
+                    return false;
+                }
+                this.refreshTokenValue = refresh;
+                this.userId = userId;
+                this.email = email;
+                this.windyIdentityId = identityId;
+                const ok = await this.refresh();
+                if (!ok) {
+                    await this.logout();
+                    return false;
+                }
+                this.emitChange();
+                return true;
+            }
+
             this.accessToken = token;
             this.refreshTokenValue = refresh;
             this.userId = userId;
@@ -112,7 +135,13 @@ class IdentityApiClient {
 
     // ─── State getters ──────────────────────────────────────────
 
-    isAuthenticated(): boolean { return !!this.accessToken; }
+    isAuthenticated(): boolean {
+        if (!this.accessToken) return false;
+        // Treat a JWT past its `exp` as unauthenticated so the UI stops
+        // pretending we're signed in after a long background sleep — the
+        // next call will run a refresh via authedFetch's 401 path.
+        return !this.isTokenExpired(this.accessToken);
+    }
     getToken(): string | null { return this.accessToken; }
     getUserId(): string | null { return this.userId; }
     getEmail(): string | null { return this.email; }
@@ -390,6 +419,23 @@ class IdentityApiClient {
             const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
             return JSON.parse(payload);
         } catch { return null; }
+    }
+
+    /**
+     * Client-side `exp` check with a 30 s grace window so a token that expires
+     * mid-request isn't retried against a server that just rotated it. The
+     * server is still the authority — this is only an optimisation to avoid
+     * known-dead requests and to make `isAuthenticated()` honest after long
+     * background sleeps.
+     */
+    private isTokenExpired(token: string, graceSeconds = 30): boolean {
+        const payload = this.decodeJwtPayload(token);
+        if (!payload || typeof payload.exp !== 'number') {
+            // No exp claim — trust the server and don't short-circuit.
+            return false;
+        }
+        const expMs = (payload.exp as number) * 1000;
+        return expMs <= Date.now() + graceSeconds * 1000;
     }
 
     private async fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
