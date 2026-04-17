@@ -3,7 +3,7 @@
 **Date:** 2026-03-18
 **Auditor:** Hostile QA (automated code-level + static analysis)
 **App Version:** 2.0.0 (versionCode 10)
-**Package:** `uk.thewindstorm.windypro`
+**Package:** `ai.windyword.app`
 
 ---
 
@@ -69,7 +69,7 @@
 | 22 | **Splash Screen** | `expo_splash_screen_status_bar_translucent` is `"false"` | **P2** | `strings.xml:4`: Status bar is NOT translucent during splash, but the app itself uses `translucent backgroundColor="transparent"` (`_layout.tsx:320`). This creates a visual jump from opaque status bar (splash) to transparent (app). |
 | 23 | **Notification** | Push notification registration doesn't pass `deviceId` or `appVersion` | **P2** | `push-notifications.ts:129-130`: Sends `Device.modelName` and `Constants.expoConfig?.version` but no unique device identifier. Model name alone isn't enough to target specific devices. |
 | 24 | **Notification** | `trigger: null` deprecated in expo-notifications | **P1** | `push-notifications.ts:151,168,185`: Uses `trigger: null` for immediate notifications. In recent expo-notifications versions, this should be `trigger: { type: 'timeInterval', seconds: 1, repeats: false }` or similar. |
-| 25 | **Deep Links** | `windypro://` and `uk.thewindstorm.windypro://` both registered | **P2** | `AndroidManifest.xml:34-35`: Two custom schemes registered. Having the package name as a second scheme is unusual and could cause conflicts. Consider if both are needed. |
+| 25 | **Deep Links** | `windypro://` and `ai.windyword.app://` both registered | **P2** | `AndroidManifest.xml:34-35`: Two custom schemes registered. Having the package name as a second scheme is unusual and could cause conflicts. Consider if both are needed. |
 | 26 | **Deep Links** | App Links `autoVerify` configured but `.well-known/assetlinks.json` not verified | **P2** | `AndroidManifest.xml:38`: `android:autoVerify="true"` for `https://windypro.thewindstorm.uk/app`. If the Digital Asset Links file isn't hosted properly, verified links will silently fail and show a disambiguation dialog. |
 | 27 | **RevenueCat** | Same API key used for iOS and Android | **P2** | `app.json:114-115`: `revenueCatIosKey` and `revenueCatAndroidKey` both use value `"test_sRWCoNXTMzpinPzDkvknRgtsQDh"`. They should be different per platform. Also using a **test key** (`test_`) — must be replaced with production keys before release. |
 | 28 | **Play Console** | `eas.json` submit is set to `internal` track + `draft` | **OK** | `eas.json:46-47`: Correct for initial testing, but must change to `production` track for public release. |

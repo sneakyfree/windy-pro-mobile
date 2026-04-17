@@ -101,7 +101,7 @@ Files now using `apiUrl()`: `history.tsx`, `clone/index.tsx`, `batch-translate/i
 | `https://windypro.thewindstorm.uk/models` | `windy-tune.ts`, `offline-packs.ts` | CDN base for engine/model downloads |
 | `https://windypro.thewindstorm.uk` | `push-notifications.ts` | Push notification service base |
 | `https://apps.apple.com/app/windy-pro/id6740123456` | `appstore/index.tsx` | iOS App Store link |
-| `https://play.google.com/store/apps/details?id=uk.thewindstorm.windypro` | `appstore/index.tsx` | Play Store link |
+| `https://play.google.com/store/apps/details?id=ai.windyword.app` | `appstore/index.tsx` | Play Store link |
 | `https://matrix.org` | `chatClient.ts`, `chat/profile.tsx` | Matrix homeserver default |
 | `https://vision.googleapis.com/v1/images:annotate` | `ocr.ts` | Google Vision API (external) |
 | `https://huggingface.co/ggerganov/whisper.cpp/resolve/main` | `engine-download.ts` | Whisper model CDN (external) |
