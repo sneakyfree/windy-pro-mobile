@@ -1,18 +1,18 @@
-# Windy Pro — Play Store Listing
+# Windy Word — Play Store Listing
 
 ## App Title (30 chars max)
-**Windy Pro: Voice Translator**
+**Windy Word: Voice Translator**
 
 ## Short Description (80 chars max)
 **Record, transcribe & translate speech in 15+ languages. Fast, private, offline.**
 
 ## Full Description (4000 chars max)
 
-🌪️ **Windy Pro** — the world's most powerful voice-to-text and speech translation app.
+🌪️ **Windy Word** — the world's most powerful voice-to-text and speech translation app.
 
 **Record. Transcribe. Translate. Share.**
 
-Windy Pro combines cutting-edge speech recognition with real-time translation in one beautiful interface. Whether you're traveling abroad, conducting business across languages, or learning a new language — Windy Pro has you covered.
+Windy Word combines cutting-edge speech recognition with real-time translation in one beautiful interface. Whether you're traveling abroad, conducting business across languages, or learning a new language — Windy Word has you covered.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -47,6 +47,8 @@ Hear translations spoken aloud in native accents. Adjust speech rate and choose 
 ✅ Offline language packs
 ✅ Dark mode
 ✅ Voice clone technology (Pro)
+✅ One sign-in across Windy Word, Chat, Mail, Cloud, and Fly
+✅ See your agent's Eternitas trust band at a glance
 
 **PRIVACY FIRST:**
 • Audio is processed on your device by default
@@ -59,6 +61,9 @@ Upgrade to unlock voice cloning, unlimited translations, priority cloud processi
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **WHAT'S NEW IN v2.0:**
+• One sign-in across the Windy ecosystem (OAuth2 device-code flow)
+• Native mail inbox tab + message reader
+• Trust & Clearance settings view with Eternitas passport
 • Cloud sync with offline fallback
 • Camera OCR live scan mode
 • Voice clone technology
@@ -67,7 +72,7 @@ Upgrade to unlock voice cloning, unlimited translations, priority cloud processi
 • Comprehensive accessibility (TalkBack)
 • Performance optimizations for faster launch
 
-Download Windy Pro today and break every language barrier.
+Download Windy Word today and break every language barrier.
 
 ---
 
@@ -81,7 +86,7 @@ voice translator, speech to text, translation app, language translator, real-tim
 Everyone
 
 ## Contact Email
-support@thewindstorm.uk
+support@windyword.ai
 
 ## Privacy Policy URL
-https://windypro.thewindstorm.uk/privacy
+https://windyword.ai/privacy

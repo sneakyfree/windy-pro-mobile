@@ -279,3 +279,86 @@ describe('getEcosystemStatus', () => {
         expect(result!.products.eternitas.status).toBe('not_provisioned');
     });
 });
+
+// ─── Backend Field-Alias Contract ──────────────────────────────
+//
+// `getEcosystemStatus()` accepts multiple historical field names per product
+// (e.g. backend has emitted `address` vs `email_address` for mail at
+// different times). This table locks the current alias set so any
+// future server rename lights up CI with a clear failure rather than
+// silently dropping a field. When the server team pins a final name,
+// delete the losing alias from both the transform code at
+// ecosystem-status.ts:215-220 AND the corresponding row here.
+
+describe('EcosystemStatus backend field-alias contract', () => {
+    type AliasCase = {
+        label: string;
+        /** What the server sends (pre-transform). */
+        serverProduct: Record<string, unknown>;
+        /** Which mobile field we expect the server field to map into. */
+        mobileField: keyof EcosystemProduct;
+        expectedValue: unknown;
+    };
+
+    const ALIASES: AliasCase[] = [
+        // Mail: backend has used `address` and `email_address`
+        { label: 'windy_mail.address → email_address',
+          serverProduct: { status: 'active', address: 'user@windymail.ai' },
+          mobileField: 'email_address', expectedValue: 'user@windymail.ai' },
+        { label: 'windy_mail.email_address passthrough',
+          serverProduct: { status: 'active', email_address: 'u@m.ai' },
+          mobileField: 'email_address', expectedValue: 'u@m.ai' },
+
+        // Cloud storage: backend has used `storage_used` + `storage_used_bytes`
+        { label: 'windy_cloud.storage_used → storage_used_bytes',
+          serverProduct: { status: 'active', storage_used: 1024, storage_limit: 2048 },
+          mobileField: 'storage_used_bytes', expectedValue: 1024 },
+        { label: 'windy_cloud.storage_limit → storage_limit_bytes',
+          serverProduct: { status: 'active', storage_used: 1024, storage_limit: 2048 },
+          mobileField: 'storage_limit_bytes', expectedValue: 2048 },
+        { label: 'windy_cloud.storage_used_bytes takes priority over storage_used',
+          serverProduct: { status: 'active', storage_used: 1, storage_used_bytes: 99 },
+          mobileField: 'storage_used_bytes', expectedValue: 99 },
+
+        // Eternitas: backend has used `passport` and `passport_id`
+        { label: 'eternitas.passport → passport_id',
+          serverProduct: { status: 'active', passport: 'ET-1' },
+          mobileField: 'passport_id', expectedValue: 'ET-1' },
+        { label: 'eternitas.passport_id takes priority over passport',
+          serverProduct: { status: 'active', passport: 'ET-old', passport_id: 'ET-new' },
+          mobileField: 'passport_id', expectedValue: 'ET-new' },
+
+        // Health: backend string `'ok'` | `'down'` → mobile boolean
+        { label: 'health "ok" → healthy: true',
+          serverProduct: { status: 'active', health: 'ok' },
+          mobileField: 'healthy', expectedValue: true },
+        { label: 'health "down" → healthy: false',
+          serverProduct: { status: 'active', health: 'down' },
+          mobileField: 'healthy', expectedValue: false },
+        { label: 'no health field → healthy: undefined',
+          serverProduct: { status: 'active' },
+          mobileField: 'healthy', expectedValue: undefined },
+    ];
+
+    it.each(ALIASES)('$label', async ({ serverProduct, mobileField, expectedValue }) => {
+        // Use windy_mail for mail aliases, windy_cloud for cloud, eternitas for passport,
+        // windy_chat for health. Pick by which field we're testing.
+        const productKey =
+            mobileField === 'email_address' ? 'windy_mail'
+            : mobileField === 'storage_used_bytes' || mobileField === 'storage_limit_bytes' ? 'windy_cloud'
+            : mobileField === 'passport_id' ? 'eternitas'
+            : 'windy_chat';
+
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({
+                windy_identity_id: 'wid', email: 'e@x', tier: 'pro',
+                products: { [productKey]: serverProduct },
+            }),
+        } as any);
+
+        const result = await getEcosystemStatus();
+        expect(result).not.toBeNull();
+        expect(result!.products[productKey][mobileField]).toBe(expectedValue);
+    });
+});

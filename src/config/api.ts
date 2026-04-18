@@ -18,10 +18,10 @@ export const API_BASE_URL: string =
 // ─── Endpoint paths (relative to API_BASE_URL) ────────────────
 
 export const ENDPOINTS = {
-    // Auth (live API)
-    AUTH_REGISTER: '/api/auth/register',
-    AUTH_LOGIN_LIVE: '/api/auth/login',
-    AUTH_REFRESH_LIVE: '/api/auth/refresh',
+    // Auth is owned by @/services/identityApi via OAuth2 device-code flow
+    // against windy-pro account-server. The legacy /api/auth/* + /api/v1/auth/*
+    // constants were removed post-Wave 3 when their last caller (the dead
+    // storage-cloud.ts) was deleted.
 
     // Storage (live API — R2 cloud storage)
     STORAGE_HEALTH: '/api/storage/health',
@@ -30,18 +30,9 @@ export const ENDPOINTS = {
     /** Use with /:fileId — e.g. `${STORAGE_FILE}/${fileId}` */
     STORAGE_FILE: '/api/storage/files',
 
-    // Auth (legacy v1 — kept for backward compat)
-    /** @deprecated Use AUTH_LOGIN_LIVE instead */
-    AUTH_LOGIN: '/api/v1/auth/login',
-    /** @deprecated Use AUTH_REFRESH_LIVE instead */
-    AUTH_REFRESH: '/api/v1/auth/refresh',
-
-    // Recordings (legacy v1)
+    // Recordings (live — used by sync-manager for chunked recording upload)
     RECORDINGS_UPLOAD: '/api/v1/recordings/upload',
-    RECORDINGS_LIST: '/api/v1/recordings/list',
     RECORDINGS_CHECK: '/api/v1/recordings/check',
-    /** Use with /:id — e.g. `${RECORDINGS_BY_ID}/${id}` */
-    RECORDINGS_BY_ID: '/api/v1/recordings',
 
     // Translation
     TRANSLATE_TEXT: '/api/v1/translate/text',

@@ -176,7 +176,7 @@ _Scope: All 37 service modules in `src/services/`_
 **Dependencies:** `react-native`, `@react-native-async-storage/async-storage` (unused import)
 **API Endpoints:** None (native bridge only)
 **Hardcoded Config:**
-- **`APP_GROUP_ID = 'group.uk.thewindstorm.windypro'`** — standard for iOS extensions.
+- **`APP_GROUP_ID = 'group.ai.windyword.app'`** — standard for iOS extensions.
 
 **Gaps:** AsyncStorage imported but unused. Android no-op (no equivalent stubbed). `openKeyboardSettings()` opens app settings, not keyboard settings specifically.
 

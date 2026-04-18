@@ -1,8 +1,11 @@
-# Deployment Checklist — Windy Pro Mobile
+# Deployment Checklist — Windy Word Mobile
 
-**Last Updated:** 2026-04-04
+**Last Updated:** 2026-04-17
 
-This document lists every secret, credential, and configuration required to ship Windy Pro Mobile to production. For each item: what it is, where to get it, where to put it, and what breaks without it.
+> **See also `docs/eas-submission-checklist.md`** — the step-by-step EAS
+> submission playbook that complements this secrets/credentials inventory.
+
+This document lists every secret, credential, and configuration required to ship Windy Word Mobile to production. For each item: what it is, where to get it, where to put it, and what breaks without it.
 
 ---
 
@@ -12,7 +15,7 @@ This document lists every secret, credential, and configuration required to ship
 
 **Where to get:**
 1. Create a RevenueCat account at https://app.revenuecat.com
-2. Create a project "Windy Pro"
+2. Create a project "Windy Word"
 3. Configure iOS App Store Connect and Google Play Store credentials
 4. Copy the API keys from Project Settings > API Keys
 
@@ -72,9 +75,9 @@ For EAS builds, set via `eas.json` environment variables:
 
 **Where to get:**
 1. Go to https://console.firebase.google.com
-2. Create a project "Windy Pro"
-3. Add an Android app (package: `uk.thewindstorm.windypro`)
-4. Add an iOS app (bundle ID: `uk.thewindstorm.windypro`)
+2. Create a project "Windy Word"
+3. Add an Android app (package: `ai.windyword.app`)
+4. Add an iOS app (bundle ID: `ai.windyword.app`)
 5. Download the config files
 
 **Where to put:**

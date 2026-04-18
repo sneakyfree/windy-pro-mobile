@@ -1,6 +1,8 @@
-# 🌪️ Windy Pro Mobile
+# 🌪️ Windy Word Mobile
 
 > The world's most potent, simplified voice-to-text and speech translation app.
+> (The repo directory is still named `windy-pro-mobile` for historical
+> reasons; the shipped app and bundle — `ai.windyword.app` — are Windy Word.)
 
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-blue)](https://expo.dev)
 [![SDK](https://img.shields.io/badge/Expo%20SDK-52-black)](https://docs.expo.dev)

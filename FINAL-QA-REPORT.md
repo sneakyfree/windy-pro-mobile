@@ -108,7 +108,7 @@
 | `privacyPolicyUrl` in `app.json` | ✅ `https://windypro.thewindstorm.uk/privacy` |
 | App description | ✅ Present |
 | App icon 1024×1024 | ✅ Both `icon.png` and `adaptive-icon.png` |
-| Bundle identifier | ✅ `uk.thewindstorm.windypro` (iOS + Android) |
+| Bundle identifier | ✅ `ai.windyword.app` (iOS + Android) |
 | Version string | ✅ `2.0.0` |
 | iOS permissions (6 declared) | ✅ All with usage descriptions |
 | Android permissions (12) | ✅ All necessary |

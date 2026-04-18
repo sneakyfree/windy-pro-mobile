@@ -1,7 +1,7 @@
-# 📝 App Store Metadata — Windy Pro
+# 📝 App Store Metadata — Windy Word
 
 ## App Name
-Windy Pro — Speech to Text
+Windy Word — Speech to Text
 
 ## Subtitle
 Record, Transcribe, Translate
@@ -11,7 +11,7 @@ Primary: Productivity
 Secondary: Utilities
 
 ## Description
-Windy Pro turns your voice into text — instantly, privately, and beautifully.
+Windy Word turns your voice into text — instantly, privately, and beautifully.
 
 Record meetings, lectures, conversations, and ideas with one tap. Get live transcripts powered by on-device AI. Translate between 15 languages with real-time speech translation. Point your camera at signs, menus, and documents for instant OCR translation.
 
@@ -26,6 +26,8 @@ KEY FEATURES:
 • Export as text, markdown, SRT subtitles, or CSV
 • VoiceOver accessible throughout
 • Dark mode native design
+• One sign-in across Windy Word, Chat, Mail, Cloud, and Fly
+• See your agent's trust level (Eternitas integrity band) at a glance
 
 PLANS:
 • Free — 5-minute recordings, English only
@@ -39,16 +41,16 @@ No subscriptions. No recurring charges. Pay once, own forever.
 speech to text, voice recorder, transcription, translator, OCR, camera translate, meeting recorder, dictation, subtitles, speech recognition
 
 ## Privacy Policy URL
-https://windypro.thewindstorm.uk/privacy
+https://windyword.ai/privacy
 
 ## Support URL
-https://windypro.thewindstorm.uk/support
+https://windyword.ai/support
 
 ## Marketing URL
-https://windypro.thewindstorm.uk
+https://windyword.ai
 
 ## Copyright
-© 2026 Windy Pro
+© 2026 Windy Word
 
 ## Age Rating
 4+
@@ -57,5 +59,6 @@ https://windypro.thewindstorm.uk
 - App requires microphone permission for speech-to-text recording
 - Camera permission for OCR translation (optional feature)
 - RevenueCat handles in-app purchases (one-time, not subscriptions)
-- No user accounts required — all data stored locally
+- Sign-in via OAuth2 device-code flow against windyword.ai — see
+  docs/eas-submission-checklist.md §7 for the reviewer-account block
 - Test with sandbox Apple ID for purchase flow
