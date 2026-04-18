@@ -1,6 +1,6 @@
 /**
  * Tab Bar Configuration
- * 5 visible tabs: Word, Chat, Mail, Cloud, Settings
+ * 6 visible tabs: Word, Chat, Fly, Mail, Cloud, More(Settings)
  * Dark theme, lime green active tint, comfortable tap targets
  * Hidden tabs: camera, history, clone-data, ecosystem, market
  */
@@ -77,6 +77,16 @@ export default function TabLayout() {
           tabBarAccessibilityLabel: chatBadge > 0
             ? `Chat tab — ${chatBadge} unread messages`
             : 'Chat tab',
+        }}
+      />
+      <Tabs.Screen
+        name="fly"
+        options={{
+          title: 'Fly',
+          headerShown: false,
+          tabBarIcon: ({ focused }) => null,
+          tabBarLabel: '🪰 Fly',
+          tabBarAccessibilityLabel: 'Fly tab — your Windy Fly agent',
         }}
       />
       <Tabs.Screen

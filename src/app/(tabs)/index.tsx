@@ -36,6 +36,7 @@ import { analyticsService } from '@/services/analytics';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 import { syncManager } from '@/services/sync-manager';
 import { cloneBundleService } from '@/services/clone-bundle';
+import HatchPromptCard from '@/components/HatchPromptCard';
 
 const WAVEFORM_BARS = 40;
 
@@ -592,6 +593,9 @@ export default function RecordScreen() {
                 <View style={{ paddingHorizontal: spacing.screenPadding }}>
                     <SyncStatusBanner />
                 </View>
+
+                {/* Wave 8: Hatch ribbon — appears when signed-in user has no agent yet */}
+                <HatchPromptCard />
 
                 {/* Media Toggles */}
                 <View style={styles.toggleRow}>
