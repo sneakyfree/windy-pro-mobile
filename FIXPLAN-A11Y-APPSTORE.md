@@ -17,14 +17,14 @@
 ```json
 "ios": {
   "supportsTablet": true,
-  "bundleIdentifier": "uk.thewindstorm.windypro",
+  "bundleIdentifier": "ai.windyword.app",
 ```
 
 **Fix:**
 ```json
 "ios": {
   "supportsTablet": true,
-  "bundleIdentifier": "uk.thewindstorm.windypro",
+  "bundleIdentifier": "ai.windyword.app",
   "privacyPolicyUrl": "https://windypro.thewindstorm.uk/privacy",
 ```
 

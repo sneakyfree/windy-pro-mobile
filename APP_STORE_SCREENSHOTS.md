@@ -1,4 +1,4 @@
-# 🖼 App Store Screenshot Spec — Windy Pro iOS
+# 🖼 App Store Screenshot Spec — Windy Word iOS
 
 ## Required Device Sizes
 
