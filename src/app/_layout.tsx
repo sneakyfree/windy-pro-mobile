@@ -45,6 +45,7 @@ import { parseWindyUrl } from '@/lib/parseWindyUrl';
 import { pendingDeepLink } from '@/state/pendingDeepLink';
 import { sanitizeSharedUrl, sanitizeSharedText } from '@/lib/shareIntentSanitizer';
 import { trustMonitor } from '@/services/trust-monitor';
+import { heartbeatService } from '@/services/heartbeat';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkBanner } from '@/components/NetworkBanner';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -146,10 +147,17 @@ export default function RootLayout() {
         offlinePackService.initialize(),
         subscriptionService.initialize(),
         identityApi.restoreSession(),
+        // License re-verification heartbeat. Runs an immediate check on start
+        // then every 15 min; rate-limited internally per the tier's
+        // HEARTBEAT_INTERVAL. Endpoint outage is handled gracefully —
+        // consecutiveFailures tick up and the tier-specific grace period
+        // (24h free / 7d pro / 14d translate / 30d translate_pro) keeps
+        // things working offline before any lock.
+        heartbeatService.start(),
       ]).catch(() => { });
       trustMonitor.start();
     });
-    return () => { handle.cancel(); trustMonitor.stop(); };
+    return () => { handle.cancel(); trustMonitor.stop(); heartbeatService.stop(); };
   }, []);
 
   // Track the user's own Eternitas passport + connected agent passports for
