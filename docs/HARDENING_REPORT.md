@@ -218,17 +218,26 @@ Unit-test coverage: `tests/deep-links.test.ts` + `tests/wave8-deep-links.test.ts
 
 ## Build URLs
 
-The builds are uploading / queuing as this report is written.
+Both builds uploaded successfully and were queued on EAS infrastructure:
 
-| Platform | Status | Build ID | Artifact URL |
-| --- | --- | --- | --- |
-| iOS | **UPLOADING** (see live dashboard) | `see https://expo.dev/accounts/windypro/projects/windy-pro-mobile/builds` | *populates when build finishes* |
-| Android | **UPLOADING** (see live dashboard) | *same dashboard* | *populates when build finishes* |
+| Platform | Build ID | Live URL |
+| --- | --- | --- |
+| iOS (production) | `cf9a7934-0bd2-4540-a859-aaf1b36cb73d` | https://expo.dev/accounts/windypro/projects/windy-pro-mobile/builds/cf9a7934-0bd2-4540-a859-aaf1b36cb73d |
+| Android (production) | `1d1bfd74-76ad-48c7-ace6-2dc6812ec70b` | https://expo.dev/accounts/windypro/projects/windy-pro-mobile/builds/1d1bfd74-76ad-48c7-ace6-2dc6812ec70b |
 
-Grant: once the builds complete (~25 min after upload finishes), edit
-this table with the actual build URL + build ID, and add the
-TestFlight invite link once Apple finishes processing (§3 + §5 of the
-TestFlight checklist).
+- Branch: `wave11/hardening`, commits `0adf3dc` (bundle-ID fix) + `6ef1ccf` (docs)
+- Credentials: Apple Team `VXZ434QL89` dist cert valid 2027-03-03, iOS provisioning profile `77S36KDMNM`, Android keystore `SHSUDbnxEo (default)`
+- Build numbers: iOS `buildNumber 11`, Android `versionCode 11` (auto-incremented from `10`)
+
+Typical EAS queue + build time is 15–25 min per platform. Grant: once
+the builds finish, follow `docs/wave11-testflight-checklist.md` §3 to
+submit the iOS build to TestFlight and §7 to promote the Android AAB
+to the Internal testing track.
+
+`eas submit` was **not** attempted from this session. It requires the
+App Store Connect API key (`.p8` + Key ID + Issuer ID) to be registered
+with EAS via `eas credentials` — that's an interactive, Grant-only
+step documented in `docs/wave11-testflight-checklist.md` §1.4.
 
 ---
 
