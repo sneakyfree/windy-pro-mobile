@@ -1,39 +1,40 @@
 /**
- * Agent Hatch Wizard — Mobile flow to create a Windy Fly agent
- * 4 steps: Name → Brain → Hatching (animated) → IT'S ALIVE!
- * Calls POST /api/v1/identity/agent/provision on the account-server.
+ * Agent Hatch Wizard — Mobile flow to create a Windy Fly agent.
+ * 4 steps: Name → Brain → Hatching (SSE ceremony) → IT'S ALIVE!
+ *
+ * Consumes the Wave-8 SSE endpoint from hatchApi.startHatch(). Each
+ * ceremony event updates a step in the progress list, and the
+ * final `result` event deep-links into the agent's DM chat room.
  */
 import { useState, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, TextInput, Pressable, ScrollView,
-    ActivityIndicator, Animated, Alert, Platform,
+    ActivityIndicator, Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, borderRadius, fontSizes } from '@/theme';
+import { colors, spacing, borderRadius } from '@/theme';
 import { typography } from '@/theme/typography';
 import { cloudApi } from '@/services/cloudApi';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { getEcosystemStatus } from '@/services/ecosystem-status';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { API_BASE_URL } from '@/config/api';
-import { fetchWithTimeout } from '@/utils/fetch-timeout';
 import { INPUT_LIMITS } from '@/utils/validation';
+import { startHatch, type HatchEvent, type HatchStepKey, type HatchStepState } from '@/services/hatchApi';
 
 type Step = 'name' | 'brain' | 'hatching' | 'alive';
 
-interface HatchProgress {
-    passport: 'pending' | 'done' | 'error';
-    chat: 'pending' | 'done' | 'error';
-    mail: 'pending' | 'done' | 'error';
-}
+type ProgressMap = Record<HatchStepKey, HatchStepState>;
 
 interface HatchResult {
     passport_number?: string;
     matrix_user_id?: string;
     dm_room_id?: string;
+    trust_score?: number;
     agent_name: string;
+    pending?: boolean;
 }
 
 const BRAIN_OPTIONS = [
@@ -43,6 +44,20 @@ const BRAIN_OPTIONS = [
     { id: 'other', label: 'Other / Custom', desc: 'Advanced — bring your own model', emoji: '⚙️', needsKey: true },
 ];
 
+const STEP_LABELS: Record<HatchStepKey, string> = {
+    passport: 'Getting passport...',
+    chat: 'Connecting to chat...',
+    mail: 'Setting up email...',
+    trust: 'Sealing integrity score...',
+};
+
+const initialProgress: ProgressMap = {
+    passport: 'pending',
+    chat: 'pending',
+    mail: 'pending',
+    trust: 'pending',
+};
+
 export default function HatchScreen() {
     const router = useRouter();
     const settings = useSettingsStore();
@@ -50,11 +65,12 @@ export default function HatchScreen() {
     const [agentName, setAgentName] = useState('');
     const [selectedBrain, setSelectedBrain] = useState('free');
     const [apiKey, setApiKey] = useState('');
-    const [progress, setProgress] = useState<HatchProgress>({ passport: 'pending', chat: 'pending', mail: 'pending' });
+    const [progress, setProgress] = useState<ProgressMap>(initialProgress);
     const [result, setResult] = useState<HatchResult | null>(null);
     const [error, setError] = useState<string | null>(null);
     const flyAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.5)).current;
+    const hatchAbort = useRef<AbortController | null>(null);
 
     // Fly animation during hatching
     useEffect(() => {
@@ -72,17 +88,16 @@ export default function HatchScreen() {
         }
     }, [step]);
 
+    // Abort the in-flight hatch if the user leaves the screen mid-ceremony.
+    useEffect(() => () => { hatchAbort.current?.abort(); }, []);
+
     const runPreFlight = async (): Promise<boolean> => {
-        // Check auth
         if (!cloudApi.getToken()) {
             setError('Please sign in first to hatch an agent.');
             return false;
         }
-        // Check network connectivity
         try {
-            const healthRes = await fetch(`${API_BASE_URL}/health`, {
-                signal: AbortSignal.timeout(5000),
-            });
+            const healthRes = await fetch(`${API_BASE_URL}/health`, { signal: AbortSignal.timeout(5000) });
             if (!healthRes.ok) {
                 setError('Our servers are having a moment. Try again in a few minutes.');
                 return false;
@@ -94,64 +109,85 @@ export default function HatchScreen() {
         return true;
     };
 
-    const startHatch = async () => {
+    const beginHatch = async () => {
         setError(null);
-
-        // Pre-flight check
         const ready = await runPreFlight();
         if (!ready) return;
 
+        setProgress(initialProgress);
+        setResult(null);
         setStep('hatching');
 
-        const token = cloudApi.getToken()!;
+        hatchAbort.current?.abort();
+        const controller = new AbortController();
+        hatchAbort.current = controller;
 
-        try {
-            // Call the account-server's agent provision endpoint
-            const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/identity/agent/provision`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    agent_name: agentName.trim(),
-                    model_id: selectedBrain,
-                    ...(apiKey ? { model_api_key: apiKey } : {}),
-                }),
-            });
+        let finalResult: HatchResult | null = null;
+        let sawError = false;
 
-            if (!res.ok) {
-                const body = await res.json().catch(() => ({}));
-                throw new Error(body.error || `Server error (${res.status})`);
-            }
-
-            const data = await res.json();
-
-            // Step-by-step progress — partial success is OK
-            setProgress(p => ({ ...p, passport: data.passport_number ? 'done' : (data.pending ? 'pending' : 'error') }));
-            await delay(800);
-            setProgress(p => ({ ...p, chat: data.chat_provisioned ? 'done' : (data.pending ? 'pending' : 'error') }));
-            await delay(600);
-            setProgress(p => ({ ...p, mail: 'done' })); // Mail is always local
-            await delay(400);
-
-            setResult({
-                passport_number: data.passport_number,
-                matrix_user_id: data.matrix_user_id,
-                dm_room_id: data.dm_room_id,
+        await startHatch(
+            {
                 agent_name: agentName.trim(),
-            });
+                model_id: selectedBrain,
+                ...(apiKey ? { model_api_key: apiKey } : {}),
+            },
+            {
+                signal: controller.signal,
+                onEvent: (event: HatchEvent) => {
+                    if (event.kind === 'step') {
+                        setProgress(prev => ({ ...prev, [event.step]: event.state }));
+                    } else if (event.kind === 'result') {
+                        finalResult = {
+                            passport_number: event.passport_number,
+                            matrix_user_id: event.matrix_user_id,
+                            dm_room_id: event.dm_room_id,
+                            trust_score: event.trust_score,
+                            agent_name: agentName.trim(),
+                            pending: event.pending,
+                        };
+                    } else if (event.kind === 'error') {
+                        sawError = true;
+                        setError(event.message);
+                    }
+                },
+            },
+        );
 
-            // Refresh ecosystem status
+        if (sawError) {
+            setStep('brain');
+            return;
+        }
+
+        // Refresh ecosystem status so Fly tab / Home CTA update immediately.
+        try {
             const eco = await getEcosystemStatus();
             if (eco) settings.setEcosystemStatus(eco);
+        } catch { /* ignore — non-fatal */ }
 
+        if (finalResult) {
+            setResult(finalResult);
             setStep('alive');
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Hatching failed');
+        } else {
+            setError('Hatching finished but we could not confirm your agent. Pull to refresh on the Fly tab.');
             setStep('brain');
         }
     };
+
+    // Auto-navigate 3s after celebration
+    useEffect(() => {
+        if (step !== 'alive') return;
+        const timer = setTimeout(() => {
+            if (result?.dm_room_id) {
+                router.replace('/(tabs)/chat');
+                setTimeout(() => router.push(`/chat/${result.dm_room_id}`), 300);
+            } else if (progress.chat === 'error' || progress.chat === 'pending') {
+                router.replace('/(tabs)/ecosystem');
+            } else {
+                router.replace('/(tabs)/chat');
+            }
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [step, result]);
 
     // ─── Step Renderers ─────────────────────────────────────────
 
@@ -229,7 +265,7 @@ export default function HatchScreen() {
 
             <Pressable
                 style={[styles.primaryBtn, { marginTop: spacing.lg }]}
-                onPress={startHatch}
+                onPress={beginHatch}
                 accessibilityLabel={`Hatch ${agentName || 'agent'} with ${selectedBrain} brain`}
                 accessibilityRole="button"
             >
@@ -257,9 +293,9 @@ export default function HatchScreen() {
                 <Text style={styles.stepTitle}>Hatching {agentName}...</Text>
 
                 <View style={styles.progressList}>
-                    <ProgressRow label="Getting passport..." status={progress.passport} />
-                    <ProgressRow label="Connecting to chat..." status={progress.chat} />
-                    <ProgressRow label="Setting up email..." status={progress.mail} />
+                    {(Object.keys(STEP_LABELS) as HatchStepKey[]).map(key => (
+                        <ProgressRow key={key} label={STEP_LABELS[key]} status={progress[key]} />
+                    ))}
                 </View>
 
                 {hasPartialFailure && (
@@ -269,7 +305,7 @@ export default function HatchScreen() {
                         </Text>
                         <Pressable
                             style={[styles.primaryBtn, { backgroundColor: '#facc15', width: 'auto', paddingHorizontal: 24 }]}
-                            onPress={startHatch}
+                            onPress={beginHatch}
                             accessibilityLabel="Retry failed provisioning steps"
                             accessibilityRole="button"
                         >
@@ -281,25 +317,8 @@ export default function HatchScreen() {
         );
     };
 
-    // Auto-navigate 3s after celebration
-    useEffect(() => {
-        if (step !== 'alive') return;
-        const timer = setTimeout(() => {
-            if (result?.dm_room_id) {
-                router.replace('/(tabs)/chat');
-                setTimeout(() => router.push(`/chat/${result.dm_room_id}`), 300);
-            } else if (progress.chat === 'error' || progress.chat === 'pending') {
-                // Chat not ready — go to ecosystem instead
-                router.replace('/(tabs)/ecosystem');
-            } else {
-                router.replace('/(tabs)/chat');
-            }
-        }, 3000);
-        return () => clearTimeout(timer);
-    }, [step, result]);
-
     const chatReady = progress.chat === 'done' && result?.dm_room_id;
-    const partialSuccess = progress.passport === 'pending' || progress.chat === 'pending' || progress.chat === 'error';
+    const partialSuccess = progress.passport === 'pending' || progress.chat === 'pending' || progress.chat === 'error' || !!result?.pending;
 
     const renderAliveStep = () => (
         <View style={styles.stepContent}>
@@ -326,6 +345,12 @@ export default function HatchScreen() {
                     <View style={styles.birthRow}>
                         <Text style={styles.birthLabel}>Chat ID</Text>
                         <Text style={styles.birthValue}>{result.matrix_user_id}</Text>
+                    </View>
+                )}
+                {result?.trust_score != null && (
+                    <View style={styles.birthRow}>
+                        <Text style={styles.birthLabel}>Trust</Text>
+                        <Text style={styles.birthValue}>{result.trust_score}%</Text>
                     </View>
                 )}
             </View>
@@ -366,18 +391,16 @@ export default function HatchScreen() {
 
 // ─── Sub-components ─────────────────────────────────────────────
 
-function ProgressRow({ label, status }: { label: string; status: 'pending' | 'done' | 'error' }) {
+function ProgressRow({ label, status }: { label: string; status: HatchStepState }) {
     return (
         <View style={styles.progressRow}>
-            {status === 'pending' && <ActivityIndicator size="small" color={colors.accent} />}
+            {(status === 'pending' || status === 'in_progress') && <ActivityIndicator size="small" color={colors.accent} />}
             {status === 'done' && <Text style={styles.progressCheck}>✅</Text>}
             {status === 'error' && <Text style={styles.progressCheck}>⚠️</Text>}
             <Text style={[styles.progressLabel, status === 'done' && { color: colors.accent }]}>{label}</Text>
         </View>
     );
 }
-
-function delay(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 // ─── Styles ─────────────────────────────────────────────────────
 
