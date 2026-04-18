@@ -216,28 +216,113 @@ Unit-test coverage: `tests/deep-links.test.ts` + `tests/wave8-deep-links.test.ts
 
 ---
 
-## Build URLs
+## Build attempts — both failed, one already fixed
 
-Both builds uploaded successfully and were queued on EAS infrastructure:
+### Attempt 1
 
-| Platform | Build ID | Live URL |
-| --- | --- | --- |
-| iOS (production) | `cf9a7934-0bd2-4540-a859-aaf1b36cb73d` | https://expo.dev/accounts/windypro/projects/windy-pro-mobile/builds/cf9a7934-0bd2-4540-a859-aaf1b36cb73d |
-| Android (production) | `1d1bfd74-76ad-48c7-ace6-2dc6812ec70b` | https://expo.dev/accounts/windypro/projects/windy-pro-mobile/builds/1d1bfd74-76ad-48c7-ace6-2dc6812ec70b |
+Both platforms uploaded successfully and queued on EAS. Both **errored
+during the native build phase**:
 
-- Branch: `wave11/hardening`, commits `0adf3dc` (bundle-ID fix) + `6ef1ccf` (docs)
-- Credentials: Apple Team `VXZ434QL89` dist cert valid 2027-03-03, iOS provisioning profile `77S36KDMNM`, Android keystore `SHSUDbnxEo (default)`
-- Build numbers: iOS `buildNumber 11`, Android `versionCode 11` (auto-incremented from `10`)
+| Platform | Build ID | Status | Root cause |
+| --- | --- | --- | --- |
+| iOS | `cf9a7934-0bd2-4540-a859-aaf1b36cb73d` | ❌ `XCODE_BUILD_ERROR` | `Module '_SentryPrivate' not found` — see 🔴 P0 below |
+| Android | `1d1bfd74-76ad-48c7-ace6-2dc6812ec70b` | ❌ `EAS_BUILD_UNKNOWN_GRADLE_ERROR` | `Plugin [id: 'expo-module-gradle-plugin'] was not found` — see 🔴 P0 below |
 
-Typical EAS queue + build time is 15–25 min per platform. Grant: once
-the builds finish, follow `docs/wave11-testflight-checklist.md` §3 to
-submit the iOS build to TestFlight and §7 to promote the Android AAB
-to the Internal testing track.
+### 🔴 P0 — iOS: stale Podfile.lock missing Sentry (fixed on this branch)
 
-`eas submit` was **not** attempted from this session. It requires the
-App Store Connect API key (`.p8` + Key ID + Issuer ID) to be registered
-with EAS via `eas credentials` — that's an interactive, Grant-only
-step documented in `docs/wave11-testflight-checklist.md` §1.4.
+First iOS build errored after ~25 min with:
+
+```
+Module '_SentryPrivate' not found
+(in target 'Sentry' from project 'Pods')
+```
+
+Grep of `ios/Podfile.lock` before the fix returned **zero** `Sentry`
+lines, even though `@sentry/react-native@^8.7.0` is in `package.json`
+and `src/app/_layout.tsx:14` actively imports and initializes it.
+Someone added the JS packages without running `pod install`, so the JS
+bundle expects `Sentry` / `_SentryPrivate` Swift modules that were
+never linked into the Xcode project.
+
+**Fix on this branch (commit `613dcfd`):** `cd ios && pod install`.
+Installed six missing pods:
+
+- `Sentry (9.8.0)` + `RNSentry (8.7.0)`
+- `ExpoContacts (55.0.12)`
+- `ExpoWebBrowser (14.0.2)`
+- `react-native-receive-sharing-intent (2.0.0)`
+- `react-native-webview (13.12.5)`
+
+`Podfile.lock` +75 lines / 0 removals — no existing pods changed, only
+the 6 missing ones added. Xcode project.pbxproj also regenerated as
+part of the pod integration.
+
+### Attempt 2 (iOS only — pod fix in flight)
+
+After the pod install fix, a second iOS build was queued. See
+`/tmp/wave11-ios-build-v2.log` and the "Latest build" on the EAS
+dashboard:
+
+- https://expo.dev/accounts/windypro/projects/windy-pro-mobile/builds
+
+The Android error is unrelated to Sentry and is **still failing** — see
+the next finding.
+
+### 🔴 P0 — Android: expo-module-gradle-plugin missing (not yet fixed)
+
+Android build errored in ~3 min with a Gradle plugin resolution failure:
+
+```
+* What went wrong:
+Plugin [id: 'expo-module-gradle-plugin'] was not found in any of the
+following sources:
+- Gradle Core Plugins
+- Included Builds (None of the included builds contain this plugin)
+- Plugin Repositories (plugin dependency must include a version number)
+```
+
+Observations that narrow the cause:
+
+- `android/settings.gradle` already calls `useExpoModules()` via
+  `scripts/autolinking.gradle`, which is the standard Expo SDK 52 hook.
+- `node_modules/expo-modules-core/android/` exists with
+  `ExpoModulesCorePlugin.gradle` and a normal Android build tree.
+- But `android/settings.gradle` `pluginManagement` block only
+  `includeBuild`s the React Native gradle plugin — it does **not**
+  `includeBuild` the Expo gradle plugin. In Expo SDK 52 projects,
+  some variants require an explicit
+  `includeBuild(file("node_modules/expo-modules-core/android/ExpoModulesCorePlugin"))`
+  entry, or for the plugin to be contributed as a classpath dependency
+  in `android/build.gradle`.
+
+I did **not** push a speculative Gradle fix — this is a native-toolchain
+debug that benefits from a local `./gradlew :app:bundleRelease` run and
+Android SDK installed. Documenting as a P0 blocker on the Android
+launch track. Suggested next step for Grant or a follow-up Wave:
+
+1. Reproduce locally: `cd android && ./gradlew clean && ./gradlew :app:bundleRelease --stacktrace`
+2. Grep for the plugin id in `node_modules`:
+   `rg "expo-module-gradle-plugin" node_modules/expo-modules-core node_modules/expo-modules-autolinking`
+3. Compare `android/settings.gradle` `pluginManagement` against a fresh
+   `npx create-expo-app` SDK 52 scaffold.
+4. If node_modules were installed with a different expo version at some
+   point, `rm -rf node_modules && npm install` + re-run prebuild may
+   restore the expected plugin file layout.
+
+### Credentials (unchanged)
+
+- Apple Team `VXZ434QL89` (Grant Whitmer, Individual), dist cert valid
+  through 2027-03-03, provisioning profile `77S36KDMNM`.
+- Android keystore `SHSUDbnxEo (default)`.
+- Build numbers auto-incremented by EAS: iOS `buildNumber 11`, Android
+  `versionCode 11`.
+
+### `eas submit`
+
+Not attempted this session — only useful after a **successful** build,
+and we have none yet. Once the second iOS build succeeds, Grant can run
+`eas submit --platform ios --profile production --latest` (interactive)
+per `docs/wave11-testflight-checklist.md` §3.
 
 ---
 
