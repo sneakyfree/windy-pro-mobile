@@ -290,6 +290,109 @@ describe('identityApi.restoreSession', () => {
     });
 });
 
+describe('identityApi exp-claim handling', () => {
+    function futureJwt(offsetSeconds: number): string {
+        const exp = Math.floor(Date.now() / 1000) + offsetSeconds;
+        return makeJwt({ sub: 'u', email: 'a@b.c', exp });
+    }
+
+    it('restoreSession refreshes proactively when the stored JWT is expired and a refresh token exists', async () => {
+        const staleJwt = futureJwt(-3600);
+        const freshJwt = futureJwt(900);
+        (SecureStore.getItemAsync as jest.Mock)
+            .mockResolvedValueOnce(staleJwt)
+            .mockResolvedValueOnce('stored_rt')
+            .mockResolvedValueOnce('stored_uid')
+            .mockResolvedValueOnce('a@b.c')
+            .mockResolvedValueOnce('stored_identity');
+
+        mockFetch.mockResolvedValueOnce({
+            ok: true,
+            json: () => Promise.resolve({
+                access_token: freshJwt,
+                refresh_token: 'rt_rotated',
+                expires_in: 900,
+            }),
+        });
+
+        const ok = await identityApi.restoreSession();
+        expect(ok).toBe(true);
+        expect(identityApi.getToken()).toBe(freshJwt);
+        const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+        expect(body.grant_type).toBe('refresh_token');
+        expect(body.refresh_token).toBe('stored_rt');
+    });
+
+    it('restoreSession logs out if the stored JWT is expired and no refresh token exists', async () => {
+        (SecureStore.getItemAsync as jest.Mock)
+            .mockResolvedValueOnce(futureJwt(-3600))
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce('stored_uid')
+            .mockResolvedValueOnce('a@b.c')
+            .mockResolvedValueOnce('stored_identity');
+
+        const ok = await identityApi.restoreSession();
+        expect(ok).toBe(false);
+        expect(identityApi.getToken()).toBeNull();
+        expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('windy_jwt_token');
+    });
+
+    it('restoreSession logs out if the stored JWT is expired and refresh fails', async () => {
+        (SecureStore.getItemAsync as jest.Mock)
+            .mockResolvedValueOnce(futureJwt(-3600))
+            .mockResolvedValueOnce('bad_rt')
+            .mockResolvedValueOnce('stored_uid')
+            .mockResolvedValueOnce('a@b.c')
+            .mockResolvedValueOnce('stored_identity');
+
+        mockFetch.mockResolvedValueOnce({
+            ok: false, status: 400,
+            json: () => Promise.resolve({ error: 'invalid_grant' }),
+        });
+
+        const ok = await identityApi.restoreSession();
+        expect(ok).toBe(false);
+        expect(identityApi.getToken()).toBeNull();
+    });
+
+    it('isAuthenticated returns false for an expired token already in memory', async () => {
+        // Prime a not-yet-expired session so persistTokens runs, then monkey-patch.
+        mockFetch
+            .mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({
+                    device_code: 'dc', user_code: 'AAAA-BBBB',
+                    verification_uri: 'x', verification_uri_complete: 'x',
+                    expires_in: 900, interval: 1,
+                }),
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({
+                    access_token: futureJwt(-3600), // server lied: token actually expired
+                    refresh_token: 'rt',
+                    expires_in: 900,
+                }),
+            });
+        await identityApi.startDeviceFlow();
+        const outcome = await identityApi.pollForToken();
+        expect(outcome.success).toBe(true);
+        // But the JWT we stored is already past exp → isAuthenticated sees it.
+        expect(identityApi.isAuthenticated()).toBe(false);
+    });
+
+    it('isAuthenticated returns true when the token has no exp claim (trust server)', async () => {
+        (SecureStore.getItemAsync as jest.Mock)
+            .mockResolvedValueOnce(makeJwt({ sub: 'u', email: 'a@b.c' })) // no exp
+            .mockResolvedValueOnce('rt')
+            .mockResolvedValueOnce('uid')
+            .mockResolvedValueOnce('a@b.c')
+            .mockResolvedValueOnce('id');
+        await identityApi.restoreSession();
+        expect(identityApi.isAuthenticated()).toBe(true);
+    });
+});
+
 describe('identityApi SecureStore resilience', () => {
     async function primeDeviceFlow(): Promise<void> {
         mockFetch
