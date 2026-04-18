@@ -26,7 +26,14 @@ export interface HatchRequest {
     model_api_key?: string;
 }
 
-export type HatchStepKey = 'passport' | 'chat' | 'mail' | 'trust';
+export type HatchStepKey =
+    | 'eternitas'
+    | 'mail'
+    | 'chat'
+    | 'cloud'
+    | 'phone'
+    | 'birth_certificate';
+
 export type HatchStepState = 'pending' | 'in_progress' | 'done' | 'error';
 
 export interface HatchStepEvent {
@@ -35,6 +42,29 @@ export interface HatchStepEvent {
     state: HatchStepState;
     detail?: string;
 }
+
+/** Ordered list of the steps, mirrored by the ceremony UI. */
+export const HATCH_STEP_KEYS: readonly HatchStepKey[] = [
+    'eternitas', 'mail', 'chat', 'cloud', 'phone', 'birth_certificate',
+] as const;
+
+/**
+ * Maps the verb half of an SSE `event: <resource>.<verb>` name onto a
+ * step state. Server-side emits, e.g. `eternitas.registering` →
+ * in_progress, `eternitas.registered` → done.
+ */
+const STEP_VERB_TO_STATE: Record<string, HatchStepState> = {
+    registering: 'in_progress',
+    provisioning: 'in_progress',
+    assigning: 'in_progress',
+    generating: 'in_progress',
+    registered: 'done',
+    provisioned: 'done',
+    assigned: 'done',
+    ready: 'done',
+};
+
+const KNOWN_STEPS: ReadonlySet<HatchStepKey> = new Set(HATCH_STEP_KEYS);
 
 export interface HatchResultEvent {
     kind: 'result';
@@ -199,9 +229,22 @@ function streamSse(
 
 /**
  * Parse one SSE frame (a block of `field: value` lines terminated by a
- * blank line). We only care about the `data:` field — servers may send
- * the event kind either in the JSON payload (`{"kind": "step", ...}`) or
- * as a named event (`event: step\ndata: ...`). Both are handled.
+ * blank line). windy-pro emits events with a resource-scoped event
+ * name and a JSON data payload, e.g.
+ *
+ *   event: eternitas.registering
+ *   data: {"detail": "..."}
+ *
+ * Resource prefixes (eternitas, mail, chat, cloud, phone,
+ * birth_certificate) map onto HatchStepKey; verb suffixes
+ * (registering/provisioning/assigning/generating ↔ registered/
+ * provisioned/assigned/ready) map onto HatchStepState. A terminal
+ * `hatch.complete` event carries the identity bundle; `error` events
+ * carry a user-facing message.
+ *
+ * Backwards-compat: servers that send `{kind: "step"|"result"|"error"}`
+ * directly in the JSON payload (an older shape) are still accepted so
+ * the fallback path and dev fixtures keep working.
  */
 function parseSseFrame(frame: string): HatchEvent | null {
     const lines = frame.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -217,22 +260,46 @@ function parseSseFrame(frame: string): HatchEvent | null {
         if (field === 'event') eventName = value;
         else if (field === 'data') dataLines.push(value);
     }
-    if (dataLines.length === 0) return null;
     const dataStr = dataLines.join('\n');
-    // Try JSON payload first.
-    try {
-        const obj = JSON.parse(dataStr);
-        if (obj && typeof obj === 'object' && 'kind' in obj) return obj as HatchEvent;
-        // Apply `event:` name if the JSON omits `kind`.
-        if (eventName === 'step' && obj?.step) {
-            return { kind: 'step', step: obj.step, state: obj.state ?? 'in_progress', detail: obj.detail };
-        }
-        if (eventName === 'result') return { kind: 'result', ...obj };
-        if (eventName === 'error') return { kind: 'error', message: String(obj.message ?? 'Hatching failed') };
-    } catch {
-        // Non-JSON data — servers sometimes send a single word like `ping`.
-        if (eventName === 'error') return { kind: 'error', message: dataStr };
+    let data: any = null;
+    if (dataStr) {
+        try { data = JSON.parse(dataStr); } catch { /* keep as raw string */ }
     }
+
+    // Terminal success — `hatch.complete { passport_number, matrix_user_id, ... }`
+    if (eventName === 'hatch.complete') {
+        return { kind: 'result', ...(data && typeof data === 'object' ? data : {}) };
+    }
+
+    // Error — `event: error` with either JSON { message } or raw text.
+    if (eventName === 'error') {
+        const message = (data && typeof data === 'object' && (data.message || data.error))
+            || (typeof data === 'string' ? data : null)
+            || dataStr
+            || 'Hatching failed';
+        return { kind: 'error', message: String(message) };
+    }
+
+    // Resource.verb step events.
+    if (eventName && eventName.includes('.')) {
+        const dotIdx = eventName.indexOf('.');
+        const resource = eventName.slice(0, dotIdx);
+        const verb = eventName.slice(dotIdx + 1);
+        if (KNOWN_STEPS.has(resource as HatchStepKey) && verb in STEP_VERB_TO_STATE) {
+            return {
+                kind: 'step',
+                step: resource as HatchStepKey,
+                state: STEP_VERB_TO_STATE[verb],
+                detail: data && typeof data === 'object' ? data.detail : undefined,
+            };
+        }
+    }
+
+    // Backwards-compat: explicit {kind, ...} payload (legacy / test fixtures).
+    if (data && typeof data === 'object' && 'kind' in data) {
+        return data as HatchEvent;
+    }
+
     return null;
 }
 
@@ -250,7 +317,7 @@ async function legacyProvision(
 ): Promise<void> {
     const emit = (e: HatchEvent) => { try { opts.onEvent(e); } catch { /* noop */ } };
 
-    emit({ kind: 'step', step: 'passport', state: 'in_progress' });
+    emit({ kind: 'step', step: 'eternitas', state: 'in_progress' });
 
     try {
         const res = await fetchWithTimeout(`${API_BASE_URL}${LEGACY_PROVISION_ENDPOINT}`, {
@@ -275,13 +342,16 @@ async function legacyProvision(
 
         const data = await res.json();
 
-        emit({ kind: 'step', step: 'passport', state: data.passport_number ? 'done' : (data.pending ? 'pending' : 'error') });
-        await delay(600);
-        emit({ kind: 'step', step: 'chat', state: data.chat_provisioned ? 'done' : (data.pending ? 'pending' : 'error') });
+        // The legacy provision endpoint only covers Eternitas / chat / mail.
+        // Cloud, phone, and birth_certificate are added in the Wave-8 SSE
+        // flow, so in fallback mode we surface them as pending — the
+        // ceremony UI will show them as still-setting-up and the user
+        // gets routed through to the "alive" celebration anyway.
+        emit({ kind: 'step', step: 'eternitas', state: data.passport_number ? 'done' : (data.pending ? 'pending' : 'error') });
         await delay(500);
+        emit({ kind: 'step', step: 'chat', state: data.chat_provisioned ? 'done' : (data.pending ? 'pending' : 'error') });
+        await delay(400);
         emit({ kind: 'step', step: 'mail', state: 'done' });
-        await delay(300);
-        emit({ kind: 'step', step: 'trust', state: data.trust_score != null ? 'done' : 'pending' });
 
         emit({
             kind: 'result',

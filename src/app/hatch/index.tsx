@@ -22,7 +22,7 @@ import { getEcosystemStatus } from '@/services/ecosystem-status';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { API_BASE_URL } from '@/config/api';
 import { INPUT_LIMITS } from '@/utils/validation';
-import { startHatch, type HatchEvent, type HatchStepKey, type HatchStepState } from '@/services/hatchApi';
+import { startHatch, HATCH_STEP_KEYS, type HatchEvent, type HatchStepKey, type HatchStepState } from '@/services/hatchApi';
 
 type Step = 'name' | 'brain' | 'hatching' | 'alive';
 
@@ -45,18 +45,18 @@ const BRAIN_OPTIONS = [
 ];
 
 const STEP_LABELS: Record<HatchStepKey, string> = {
-    passport: 'Getting passport...',
-    chat: 'Connecting to chat...',
+    eternitas: 'Getting your passport...',
     mail: 'Setting up email...',
-    trust: 'Sealing integrity score...',
+    chat: 'Connecting to chat...',
+    cloud: 'Allocating cloud storage...',
+    phone: 'Assigning phone number...',
+    birth_certificate: 'Sealing birth certificate...',
 };
 
-const initialProgress: ProgressMap = {
-    passport: 'pending',
-    chat: 'pending',
-    mail: 'pending',
-    trust: 'pending',
-};
+const initialProgress: ProgressMap = HATCH_STEP_KEYS.reduce((acc, k) => {
+    acc[k] = 'pending';
+    return acc;
+}, {} as ProgressMap);
 
 export default function HatchScreen() {
     const router = useRouter();
@@ -280,7 +280,7 @@ export default function HatchScreen() {
         </ScrollView>
     );
 
-    const hasPartialFailure = progress.passport === 'error' || progress.chat === 'error';
+    const hasPartialFailure = progress.eternitas === 'error' || progress.chat === 'error';
 
     const renderHatchingStep = () => {
         const translateY = flyAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -15] });
@@ -293,7 +293,7 @@ export default function HatchScreen() {
                 <Text style={styles.stepTitle}>Hatching {agentName}...</Text>
 
                 <View style={styles.progressList}>
-                    {(Object.keys(STEP_LABELS) as HatchStepKey[]).map(key => (
+                    {HATCH_STEP_KEYS.map(key => (
                         <ProgressRow key={key} label={STEP_LABELS[key]} status={progress[key]} />
                     ))}
                 </View>
@@ -318,7 +318,7 @@ export default function HatchScreen() {
     };
 
     const chatReady = progress.chat === 'done' && result?.dm_room_id;
-    const partialSuccess = progress.passport === 'pending' || progress.chat === 'pending' || progress.chat === 'error' || !!result?.pending;
+    const partialSuccess = progress.eternitas === 'pending' || progress.chat === 'pending' || progress.chat === 'error' || !!result?.pending;
 
     const renderAliveStep = () => (
         <View style={styles.stepContent}>
