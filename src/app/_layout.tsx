@@ -395,7 +395,68 @@ export default function RootLayout() {
             try {
               const { router } = require('expo-router');
               if (parsed.path === 'hatch') router.push('/hatch');
+              else if (parsed.path === 'status' || parsed.path === 'agent') router.push('/(tabs)/fly');
               else router.push('/agent');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+
+        // Wave 8 — Clone deep links that parseWindyUrl doesn't cover.
+        // Supported:
+        //   windyclone://discover       → marketplace browse
+        //   windyclone://studio/{id}    → specific studio by id
+        // parseWindyUrl already handles the wave-3 windyclone://clone/{id}
+        // contract, so we only land here for the new wave-8 routes.
+        if (scheme === 'windyclone') {
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              if (parsed.path === 'discover') {
+                router.push('/(tabs)/clone-data');
+                return;
+              }
+              if (parsed.path?.startsWith('studio/')) {
+                const rawId = parsed.path.replace('studio/', '');
+                const id = sanitizeSessionId(rawId);
+                if (!id) {
+                  log.warn('deepLink', 'Rejected malicious windyclone studio deep link', { rawLen: rawId.length });
+                  router.push('/(tabs)/clone-data');
+                  return;
+                }
+                router.push({ pathname: '/clone-data', params: { studio: id } });
+                return;
+              }
+              // Default: drop the user into the clone dashboard.
+              router.push('/clone');
+            } catch (err) { log.warn('deepLink', 'Navigation error'); }
+          }, 300);
+          return;
+        }
+
+        // Wave 8 — Cloud deep links (dashboard + manual backup trigger).
+        //   windycloud://dashboard  → cloud sync + files
+        //   windycloud://backup     → trigger sync queue and land on dashboard
+        // parseWindyUrl already handles the wave-3 windycloud://file/{id}
+        // contract, so we only land here for the new wave-8 routes.
+        if (scheme === 'windycloud') {
+          if (parsed.path === 'backup') {
+            // Fire-and-forget — don't block navigation on the queue drain.
+            syncManager.processQueue().catch(() => {});
+          }
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              if (parsed.path === 'dashboard') {
+                router.push('/(tabs)/cloud');
+                return;
+              }
+              if (parsed.path === 'backup') {
+                router.push({ pathname: '/(tabs)/cloud', params: { backup: '1' } });
+                return;
+              }
+              // Unknown sub-path — land on the dashboard so the user isn't stuck.
+              router.push('/(tabs)/cloud');
             } catch (err) { log.warn('deepLink', 'Navigation error'); }
           }, 300);
           return;
