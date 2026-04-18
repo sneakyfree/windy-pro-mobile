@@ -405,14 +405,16 @@ export default function RootLayout() {
         // Wave 8 — Clone deep links that parseWindyUrl doesn't cover.
         // Supported:
         //   windyclone://discover       → marketplace browse
+        //   windyclone://dashboard      → legacy clone-data tab
         //   windyclone://studio/{id}    → specific studio by id
+        //   windyclone://order/{id}     → clone-data tab focused on an order
         // parseWindyUrl already handles the wave-3 windyclone://clone/{id}
         // contract, so we only land here for the new wave-8 routes.
         if (scheme === 'windyclone') {
           setTimeout(() => {
             try {
               const { router } = require('expo-router');
-              if (parsed.path === 'discover') {
+              if (parsed.path === 'discover' || parsed.path === 'dashboard') {
                 router.push('/(tabs)/clone-data');
                 return;
               }
@@ -425,6 +427,17 @@ export default function RootLayout() {
                   return;
                 }
                 router.push({ pathname: '/clone-data', params: { studio: id } });
+                return;
+              }
+              if (parsed.path?.startsWith('order/')) {
+                const rawId = parsed.path.replace('order/', '');
+                const id = sanitizeSessionId(rawId);
+                if (!id) {
+                  log.warn('deepLink', 'Rejected malicious windyclone order deep link', { rawLen: rawId.length });
+                  router.push('/(tabs)/clone-data');
+                  return;
+                }
+                router.push({ pathname: '/(tabs)/clone-data', params: { order: id } });
                 return;
               }
               // Default: drop the user into the clone dashboard.

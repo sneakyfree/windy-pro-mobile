@@ -49,12 +49,20 @@ function routeWave8(url: string): Nav | null {
     const scheme = (parsed as any).scheme || url.split('://')[0];
 
     if (scheme === 'windyclone') {
-        if (parsed.path === 'discover') return { pathname: '/(tabs)/clone-data' };
+        if (parsed.path === 'discover' || parsed.path === 'dashboard') {
+            return { pathname: '/(tabs)/clone-data' };
+        }
         if (parsed.path?.startsWith('studio/')) {
             const raw = parsed.path.replace('studio/', '');
             const id = sanitizeSessionId(raw);
             if (!id) return { pathname: '/(tabs)/clone-data' };
             return { pathname: '/clone-data', params: { studio: id } };
+        }
+        if (parsed.path?.startsWith('order/')) {
+            const raw = parsed.path.replace('order/', '');
+            const id = sanitizeSessionId(raw);
+            if (!id) return { pathname: '/(tabs)/clone-data' };
+            return { pathname: '/(tabs)/clone-data', params: { order: id } };
         }
         return { pathname: '/clone' };
     }
@@ -73,6 +81,26 @@ function routeWave8(url: string): Nav | null {
 describe('Wave 8 — windyclone deep links', () => {
     it('windyclone://discover routes to clone-data marketplace tab', () => {
         expect(routeWave8('windyclone://discover')).toEqual({ pathname: '/(tabs)/clone-data' });
+    });
+
+    it('windyclone://dashboard routes to the legacy clone-data tab', () => {
+        expect(routeWave8('windyclone://dashboard')).toEqual({ pathname: '/(tabs)/clone-data' });
+    });
+
+    it('windyclone://order/{id} routes to clone-data with a sanitized order param', () => {
+        expect(routeWave8('windyclone://order/ord-abc_123')).toEqual({
+            pathname: '/(tabs)/clone-data',
+            params: { order: 'ord-abc_123' },
+        });
+    });
+
+    it('windyclone://order/{id} rejects path traversal and falls back to dashboard', () => {
+        expect(routeWave8('windyclone://order/../secrets')).toEqual({ pathname: '/(tabs)/clone-data' });
+    });
+
+    it('windyclone://order/{id} rejects overly long ids', () => {
+        const long = 'a'.repeat(200);
+        expect(routeWave8(`windyclone://order/${long}`)).toEqual({ pathname: '/(tabs)/clone-data' });
     });
 
     it('windyclone://studio/{id} routes to studio detail with sanitized id', () => {
