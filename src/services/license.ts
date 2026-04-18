@@ -77,12 +77,18 @@ export const FEATURE_MATRIX: Record<LicenseTier, string[]> = {
     ],
 };
 
-/** Recording limits by tier (cloud recording — Bible v2) */
+/**
+ * Recording limits by tier, in seconds. Values must stay in sync with
+ * the customer-facing promise in APP_STORE_METADATA.md ("Plans") and
+ * the tier-contract test. account-server does not own this constant —
+ * there is no per-tier recording-duration configuration server-side,
+ * so this file is the mobile source of truth.
+ */
 export const RECORDING_LIMITS: Record<LicenseTier, number> = {
-    free: 300,          // 5 minutes (local only, no cloud)
-    pro: 900,           // 15 minutes cloud — Bible v2
-    translate: 1800,    // 30 minutes cloud — Bible v2
-    translate_pro: 3600, // 60 minutes cloud — Bible v2
+    free: 300,           // 5 minutes (local only, no cloud)
+    pro: 1800,           // 30 minutes — App Store promise: "Pro — 30-minute recordings"
+    translate: 1800,     // 30 minutes (same capture length as Pro; adds translation)
+    translate_pro: 3600, // 60 minutes
 };
 
 class LicenseService {
