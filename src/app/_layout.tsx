@@ -43,6 +43,7 @@ import { identityApi } from '@/services/identityApi';
 import { syncManager } from '@/services/sync-manager';
 import { parseWindyUrl } from '@/lib/parseWindyUrl';
 import { pendingDeepLink } from '@/state/pendingDeepLink';
+import { sanitizeSharedUrl, sanitizeSharedText } from '@/lib/shareIntentSanitizer';
 import { trustMonitor } from '@/services/trust-monitor';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkBanner } from '@/components/NetworkBanner';
@@ -370,10 +371,18 @@ export default function RootLayout() {
           return;
         }
 
-        // Share intent: app opened via Android SEND intent or share deep link
+        // Share intent: app opened via Android SEND intent or share deep link.
+        // sharedText and sharedUrl are untrusted — Android SEND lets any app
+        // on the device pass arbitrary strings. Validate before forwarding
+        // into the mail tab so a future renderer can't hit
+        // javascript://, data:, or overlong payloads.
         if (parsed.queryParams?.sharedText || parsed.queryParams?.sharedUrl) {
-          const sharedText = String(parsed.queryParams.sharedText ?? '');
-          const sharedUrl = String(parsed.queryParams.sharedUrl ?? '');
+          const sharedText = sanitizeSharedText(parsed.queryParams.sharedText) ?? '';
+          const sharedUrl = sanitizeSharedUrl(parsed.queryParams.sharedUrl) ?? '';
+          if (!sharedText && !sharedUrl) {
+            log.warn('deepLink', 'Rejected share intent — no valid params');
+            return;
+          }
           setTimeout(() => {
             try {
               const { router } = require('expo-router');

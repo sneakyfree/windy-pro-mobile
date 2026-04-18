@@ -3,7 +3,7 @@
 **Date:** 2026-03-18
 **Auditor:** Hostile QA (emulator-based)
 **App Version:** 2.0.0 (versionCode 10)
-**Package:** `uk.thewindstorm.windypro`
+**Package:** `ai.windyword.app`
 
 ---
 

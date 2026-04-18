@@ -1,17 +1,22 @@
-# 🚀 Windy Pro iOS — TestFlight Release Checklist
+# 🚀 Windy Word iOS — TestFlight Release Checklist
 
-## Pre-Submission (Automated — Done ✅)
+> **Superseded by `docs/eas-submission-checklist.md`** — that file is the
+> current Grant-runnable playbook (Wave-3/4 inclusive, Apple credentials
+> populated, iOS + Android in parallel). Keep this file for the historical
+> RC1 record only.
 
-- [x] Version: `1.0.0` / Build: `2`
-- [x] Bundle ID: `uk.thewindstorm.windypro`
+## Pre-Submission (Automated — Done ✅ for v1.0.0; Wave-3/4 re-run below)
+
+- [x] Version: `1.0.0` / Build: `2` (v1 release)
+- [x] Bundle ID: `ai.windyword.app`
 - [x] Deployment target: iOS 16.0
 - [x] Typecheck: 0 errors
-- [x] Tests: 157/157
+- [x] Tests at v1 release: 157/157 — see `docs/known-pre-existing-failures.md` for the current 787-total state
 - [x] Simulator build: succeeded (0 errors)
 - [x] Info.plist: 9 privacy descriptions + `ITSAppUsesNonExemptEncryption: false`
 - [x] VoiceOver accessibility: all screens labeled (Record, Translate, Camera, History, Settings, Subscription, Quick-Translate, Tabs)
 - [x] RevenueCat SDK linked: `RNPurchases` / `PurchasesHybridCommon 5.59.2`
-- [x] Associated Domains: `applinks:` + `appclips:windypro.thewindstorm.uk`
+- [x] Associated Domains: `applinks:windyword.ai` + `appclips:windyword.ai`
 - [x] RC1 tag: `v1.0.0-rc.1`
 - [x] Stability hardening: permission checks, error Alerts, deep link validation, offline handling
 - [x] CHANGELOG.md generated
@@ -31,7 +36,7 @@ Replace placeholders in `eas.json` → `submit.production.ios`:
 ```
 
 Find values:
-- **ascAppId**: App Store Connect → My Apps → Windy Pro → General → Apple ID
+- **ascAppId**: App Store Connect → My Apps → Windy Word → General → Apple ID
 - **appleTeamId**: developer.apple.com → Account → Membership → Team ID
 
 ## Step 2: Build for Production

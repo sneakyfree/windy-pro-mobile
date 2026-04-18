@@ -11,11 +11,15 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
+import * as Sharing from 'expo-sharing';
 import { colors, spacing, borderRadius } from '@/theme';
 import { typography } from '@/theme/typography';
 import { cloudApi, type CloudFile } from '@/services/cloudApi';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { createLogger } from '@/services/logger';
+
+const log = createLogger('CloudFiles');
 
 const PRODUCT_ICONS: Record<string, string> = {
     'audio': '🎤',
@@ -62,6 +66,7 @@ export default function CloudFilesScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [usage, setUsage] = useState<{ usedBytes: number; limitBytes: number; percentUsed: number; tierLabel: string } | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
     const loadFiles = useCallback(async () => {
         try {
@@ -92,7 +97,7 @@ export default function CloudFilesScreen() {
         ? files.filter(f => f.filename.toLowerCase().includes(searchQuery.toLowerCase()))
         : files;
 
-    const handleDelete = (file: CloudFile) => {
+    const handleDelete = useCallback((file: CloudFile) => {
         Alert.alert('Delete File', `Delete "${file.filename}"?`, [
             { text: 'Cancel', style: 'cancel' },
             {
@@ -102,31 +107,67 @@ export default function CloudFilesScreen() {
                 },
             },
         ]);
-    };
+    }, []);
 
-    const renderFile = useCallback(({ item }: { item: CloudFile }) => (
-        <Pressable
-            style={styles.fileRow}
-            onPress={() => {
-                // For now, show file info. Future: preview/download.
-                Alert.alert(item.filename, [
-                    `Size: ${formatBytes(item.size)}`,
-                    `Type: ${item.contentType}`,
-                    `Uploaded: ${formatDate(item.uploadedAt)}`,
-                ].join('\n'), [
-                    { text: 'Delete', style: 'destructive', onPress: () => handleDelete(item) },
-                    { text: 'OK' },
-                ]);
-            }}
-            accessibilityLabel={`${item.filename}, ${formatBytes(item.size)}`}
-        >
-            <Text style={styles.fileIcon}>{getFileIcon(item)}</Text>
-            <View style={styles.fileInfo}>
-                <Text style={styles.fileName} numberOfLines={1}>{item.filename}</Text>
-                <Text style={styles.fileMeta}>{formatBytes(item.size)} · {formatDate(item.uploadedAt)}</Text>
-            </View>
-        </Pressable>
-    ), []);
+    const handleDownload = useCallback(async (file: CloudFile) => {
+        setDownloadingId(file.id);
+        try {
+            const localPath = await cloudApi.downloadFile(file.id, file.filename);
+            if (!localPath) {
+                Alert.alert('Download failed', 'Could not download the file. Check your connection and try again.');
+                return;
+            }
+            const available = await Sharing.isAvailableAsync();
+            if (!available) {
+                Alert.alert('Saved', `The file was saved to app storage.\n\n${localPath}`);
+                return;
+            }
+            await Sharing.shareAsync(localPath, {
+                mimeType: file.contentType,
+                dialogTitle: file.filename,
+                UTI: file.contentType,
+            }).catch((err) => {
+                // User-cancelled share is not an error — swallow.
+                log.warn('handleDownload', 'share dismissed or failed', {
+                    message: err instanceof Error ? err.message : String(err),
+                });
+            });
+        } catch (err: unknown) {
+            Alert.alert('Download failed', err instanceof Error ? err.message : 'Unknown error');
+        } finally {
+            setDownloadingId(null);
+        }
+    }, []);
+
+    const renderFile = useCallback(({ item }: { item: CloudFile }) => {
+        const isDownloading = downloadingId === item.id;
+        return (
+            <Pressable
+                style={styles.fileRow}
+                disabled={isDownloading}
+                onPress={() => {
+                    Alert.alert(item.filename, [
+                        `Size: ${formatBytes(item.size)}`,
+                        `Type: ${item.contentType}`,
+                        `Uploaded: ${formatDate(item.uploadedAt)}`,
+                    ].join('\n'), [
+                        { text: 'Download', onPress: () => handleDownload(item) },
+                        { text: 'Delete', style: 'destructive', onPress: () => handleDelete(item) },
+                        { text: 'Cancel', style: 'cancel' },
+                    ]);
+                }}
+                accessibilityLabel={`${item.filename}, ${formatBytes(item.size)}`}
+                accessibilityHint="Open actions: download, delete"
+            >
+                <Text style={styles.fileIcon}>{getFileIcon(item)}</Text>
+                <View style={styles.fileInfo}>
+                    <Text style={styles.fileName} numberOfLines={1}>{item.filename}</Text>
+                    <Text style={styles.fileMeta}>{formatBytes(item.size)} · {formatDate(item.uploadedAt)}</Text>
+                </View>
+                {isDownloading && <ActivityIndicator color={colors.accent} />}
+            </Pressable>
+        );
+    }, [downloadingId, handleDownload, handleDelete]);
 
     if (!cloudApi.isAuthenticated()) {
         return (

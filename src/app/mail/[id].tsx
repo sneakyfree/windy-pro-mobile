@@ -9,7 +9,7 @@
  * A future wave can add GET /api/v1/message/{id} on windy-mail and replace
  * this with a native renderer.
  */
-import { useMemo } from 'react';
+import { useMemo, useRef, useState, useCallback } from 'react';
 import { View, StyleSheet, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,6 +31,10 @@ export default function MessageReadScreen() {
     const safeId = typeof id === 'string' && SAFE_ID_RE.test(id) ? id : null;
     const uri = safeId ? `${WINDY_MAIL_WEBVIEW_URL}/webmail/message/${safeId}` : null;
 
+    const webViewRef = useRef<WebView>(null);
+    const [error, setError] = useState(false);
+    const [loading, setLoading] = useState(true);
+
     const injectedJS = useMemo(() => {
         const token = identityApi.getToken();
         if (!token) return '';
@@ -42,6 +46,12 @@ export default function MessageReadScreen() {
                 true;
             })();
         `;
+    }, []);
+
+    const reload = useCallback(() => {
+        setError(false);
+        setLoading(true);
+        webViewRef.current?.reload();
     }, []);
 
     return (
@@ -57,26 +67,47 @@ export default function MessageReadScreen() {
                         <Text style={styles.backText}>← Inbox</Text>
                     </TouchableOpacity>
                 </View>
-                {uri ? (
-                    <WebView
-                        source={{ uri }}
-                        injectedJavaScriptBeforeContentLoaded={injectedJS}
-                        startInLoadingState
-                        renderLoading={() => (
-                            <View style={styles.center}>
-                                <ActivityIndicator color={colors.accent} />
-                            </View>
-                        )}
-                        style={styles.webview}
-                        // Lock the reader to windymail.ai so the injected JWT
-                        // can't follow a redirect off-domain and get stolen.
-                        originWhitelist={MAIL_ALLOWED_ORIGINS}
-                        onShouldStartLoadWithRequest={mailNavigationGuard}
-                    />
-                ) : (
+                {!uri ? (
                     <View style={styles.center}>
                         <Text style={styles.errorText}>Invalid message id.</Text>
                     </View>
+                ) : error ? (
+                    <View style={styles.center}>
+                        <Text style={styles.errorEmoji}>📧</Text>
+                        <Text style={styles.errorTitle}>Couldn't load this message</Text>
+                        <Text style={styles.errorSubtitle}>
+                            Check your connection and try again.
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.retryButton}
+                            onPress={reload}
+                            accessibilityRole="button"
+                            accessibilityLabel="Retry loading message"
+                        >
+                            <Text style={styles.retryText}>Retry</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <>
+                        <WebView
+                            ref={webViewRef}
+                            source={{ uri }}
+                            injectedJavaScriptBeforeContentLoaded={injectedJS}
+                            onLoadEnd={() => setLoading(false)}
+                            onError={() => { setLoading(false); setError(true); }}
+                            onHttpError={() => { setLoading(false); setError(true); }}
+                            style={styles.webview}
+                            // Lock the reader to windymail.ai so the injected JWT
+                            // can't follow a redirect off-domain and get stolen.
+                            originWhitelist={MAIL_ALLOWED_ORIGINS}
+                            onShouldStartLoadWithRequest={mailNavigationGuard}
+                        />
+                        {loading && (
+                            <View style={styles.loader}>
+                                <ActivityIndicator color={colors.accent} />
+                            </View>
+                        )}
+                    </>
                 )}
             </SafeAreaView>
         </ScreenErrorBoundary>
@@ -96,6 +127,40 @@ const styles = StyleSheet.create({
     backButton: { paddingVertical: 8, paddingHorizontal: 8, minHeight: 44, justifyContent: 'center' },
     backText: { color: colors.accent, fontSize: fontSizes.base, fontWeight: '600' },
     webview: { flex: 1, backgroundColor: colors.background },
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    loader: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: colors.background,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+    errorEmoji: { fontSize: 48, marginBottom: 16 },
+    errorTitle: {
+        fontSize: fontSizes.base,
+        fontWeight: '700',
+        color: colors.textPrimary,
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    errorSubtitle: {
+        fontSize: fontSizes.sm,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        marginBottom: 24,
+    },
     errorText: { color: colors.stateError, fontSize: fontSizes.base },
+    retryButton: {
+        backgroundColor: colors.accent,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    retryText: {
+        color: colors.background,
+        fontWeight: '700',
+        fontSize: fontSizes.base,
+    },
 });

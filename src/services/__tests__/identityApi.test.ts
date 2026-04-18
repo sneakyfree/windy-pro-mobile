@@ -289,3 +289,43 @@ describe('identityApi.restoreSession', () => {
         expect(identityApi.getUserId()).toBe('stored_uid');
     });
 });
+
+describe('identityApi SecureStore resilience', () => {
+    async function primeDeviceFlow(): Promise<void> {
+        mockFetch
+            .mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({
+                    device_code: 'dc_se', user_code: 'SSSS-TORE',
+                    verification_uri: 'x', verification_uri_complete: 'x',
+                    expires_in: 900, interval: 1,
+                }),
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({
+                    access_token: makeJwt({ sub: 's', email: 'e@f.g' }),
+                    refresh_token: 'rt',
+                    expires_in: 900,
+                }),
+            });
+        await identityApi.startDeviceFlow();
+        await identityApi.pollForToken();
+    }
+
+    it('persistTokens tolerates setItemAsync rejecting (keychain/storage full)', async () => {
+        (SecureStore.setItemAsync as jest.Mock).mockRejectedValue(new Error('Storage full'));
+        await expect(primeDeviceFlow()).resolves.not.toThrow();
+        // In-memory state is still set so the session is usable even though
+        // persistence failed — it just won't survive a relaunch.
+        expect(identityApi.getToken()).not.toBeNull();
+        expect(identityApi.getUserId()).toBe('s');
+    });
+
+    it('restoreSession returns false when getItemAsync throws (keychain unavailable)', async () => {
+        (SecureStore.getItemAsync as jest.Mock).mockRejectedValue(new Error('Keychain unavailable'));
+        const ok = await identityApi.restoreSession();
+        expect(ok).toBe(false);
+        expect(identityApi.getToken()).toBeNull();
+    });
+});
