@@ -1,0 +1,145 @@
+windy-pro-mobile — ENDPOINT INVENTORY (Wave-7 adversarial audit)
+
+Mobile is a client. It has two kinds of "endpoints":
+   A. In-app routes (expo-router files under src/app/).
+   B. External HTTP calls it makes to other ecosystem services.
+
+===============================================================================
+A — IN-APP ROUTES (expo-router, 38 total)
+===============================================================================
+
+Tabs (5 visible, 5 hidden-but-routable — src/app/(tabs)/_layout.tsx):
+  /(tabs)                       index.tsx            Word — main record screen
+  /(tabs)/chat                  chat.tsx             Chat WebView (windyword.ai chat)
+  /(tabs)/mail                  mail.tsx             Native inbox (Wave 3)
+  /(tabs)/cloud                 cloud.tsx            Cloud sync status
+  /(tabs)/settings              settings.tsx         Settings
+  /(tabs)/camera                camera.tsx           OCR camera (hidden)
+  /(tabs)/history               history.tsx          Recording history (hidden)
+  /(tabs)/ecosystem             ecosystem.tsx        Ecosystem dashboard (hidden)
+  /(tabs)/clone-data            clone-data.tsx       Clone data bundles (hidden)
+  /(tabs)/market                market.tsx           Pair marketplace (hidden)
+
+Auth (3):
+  /auth/login                   auth/login.tsx       Device-code entry point (Wave 3)
+  /auth/device-code             auth/device-code.tsx Poll + resume pending deep link
+  /auth/register                auth/register.tsx    Redirect to windyword.ai/signup
+
+Modals (17+ dynamic):
+  /session/[id]                 session/[id].tsx          Session detail
+  /mail/[id]                    mail/[id].tsx             Message reader (WebView, Wave 3)
+  /chat                         chat/index.tsx            Chat home
+  /chat/[roomId]                chat/[roomId].tsx         Conversation screen
+  /chat/onboarding              chat/onboarding.tsx       OTP+profile flow
+  /chat/profile                 chat/profile.tsx          Chat profile
+  /translate                    translate/index.tsx       Full translate screen
+  /quick-translate              quick-translate.tsx       Deep-link quick translate
+  /clone                        clone/index.tsx           Clone dashboard
+  /clone-data                   clone-data/index.tsx      Bundle list
+  /ocr                          ocr/index.tsx             OCR translate
+  /video                        video/index.tsx           Video recorder
+  /cloud                        cloud/index.tsx           Cloud storage modal
+  /cloud/files                  cloud/files.tsx           File browser
+  /subscription                 subscription/index.tsx    Paywall
+  /appstore                     appstore/index.tsx        About / changelog
+  /hatch                        hatch/index.tsx           Agent hatch wizard
+  /agent                        agent/index.tsx           Agent control
+  /onboarding                   onboarding/index.tsx      Welcome → permissions → engine
+  /market/marco-polo            market/marco-polo.tsx     Marco Polo detail
+  /market/pair-detail           market/pair-detail.tsx    Pair detail
+  /market/bundle-select         market/bundle-select.tsx  Bundle picker
+  /legal/privacy                legal/privacy.tsx         Privacy policy
+  /legal/terms                  legal/terms.tsx           Terms
+  /settings/trust               settings/trust.tsx        Eternitas passport (Wave 4)
+
+Auth gating (in-app — not strict; each screen decides):
+  /(tabs)/mail      loads native list only when identityApi.isAuthenticated()
+  /(tabs)/ecosystem shows "Sign in" CTA if not authed
+  /cloud/files      redirects to /auth/login when not authed
+  /hatch            requires identityApi session (calls agent-provision endpoint)
+  /settings/trust   reads ecosystem passport; empty state if not set
+  all other screens are unauthenticated-reachable (either show placeholder or
+  call a feature that degrades).
+
+Deep-link schemes registered in app.json (7):
+  windypro windyword windychat windymail windyfly windyclone windycloud
+
+Deep-link handlers in src/app/_layout.tsx (summary — see GAP_ANALYSIS.md):
+  windyword://recording/{id}    Wave-3, sanitized via parseWindyUrl
+  windyclone://clone/{id}       Wave-3, sanitized
+  windycloud://file/{id}        Wave-3, sanitized
+  windypro://license?key=       sanitized
+  windypro://session/{id}       sanitized (SAFE_ID_RE)
+  windypro://record|chat|hatch|cloud|files|clone|subscribe|video|settings|ecosystem|agent
+                                fixed-string whitelist
+  windypro://translate?text=...&from=&to=   sanitized (lang whitelist, text length)
+  windychat://room/{id}         NOT SANITIZED — see GAP_ANALYSIS P1-1
+  windymail://                  routes to tab, no params
+  windyfly://hatch|(default)    fixed-string
+  share intent (sharedText, sharedUrl)  params NOT validated before being
+                                        passed to the mail tab (see GAP_ANALYSIS P2-6)
+
+===============================================================================
+B — EXTERNAL HTTP CALLS (10 distinct hosts)
+===============================================================================
+
+1. windyword.ai  (API_BASE_URL)  — default; env EXPO_PUBLIC_API_URL overrides
+   POST  /api/v1/oauth/device                     identityApi.startDeviceFlow
+   POST  /api/v1/oauth/token                      identityApi.pollForToken / refresh
+   POST  /api/v1/license/activate                 license.ts, heartbeat.ts
+   POST  /api/stripe/checkout                     license.ts
+   POST  /api/v1/payments/create-checkout         CHECKOUT_API_URL
+   GET   /api/v1/identity/ecosystem-status        ecosystem-status.ts
+   POST  /api/v1/transcribe                       transcription.ts
+   WS    /ws/transcribe                           transcription.ts streaming
+   POST  /api/v1/translate/text                   translation.ts
+   POST  /api/v1/translate/speech                 speech-translation.ts
+   GET   /api/v1/translate/languages              translation.ts
+   POST  /api/v1/ocr/translate                    ocr.ts (cloud OCR)
+   POST  /api/v1/chat/register                    chatOnboarding.ts
+   POST  /api/v1/chat/verify                      chatOnboarding.ts
+   POST  /api/v1/chat/profile                     chatOnboarding.ts
+   GET   /api/v1/pairs/catalog.json               pairCatalog.ts
+   GET   /api/storage/health                      cloudApi.getHealth
+   GET   /api/storage/files                       cloudApi.listFiles
+   GET   /api/storage/files/{id}                  cloudApi.downloadFile
+   POST  /api/storage/files/upload                cloudApi.uploadFile
+   DELETE /api/storage/files/{id}                 cloudApi.deleteFile
+   GET   /health                                  cloudApi.getGatewayHealth, network-monitor
+   POST  /api/register-push-token                 push-notifications.ts
+   POST  /api/v1/analytics                        analytics.ts
+   (DEAD) POST /api/auth/register|login|refresh   storage-cloud.ts:89,151 — unreachable
+                                                  after Wave 3 (identityApi took over)
+
+2. mail.windymail.ai (WINDY_MAIL_URL)
+   GET   /api/v1/inbox                            mailApi.listInbox
+
+3. windymail.ai (WINDY_MAIL_WEBVIEW_URL — prod)
+   WebView /webmail/message/{id}                  mail/[id].tsx — JWT injected via
+                                                  localStorage (Wave 3, P1-2 below)
+
+4. chat.windyword.ai (WINDY_CHAT_WEBVIEW_URL — prod)
+   WebView /                                      (tabs)/chat.tsx — JWT injected;
+                                                  originWhitelist=['https://*','http://*']
+                                                  — see GAP_ANALYSIS P0-1
+
+5. chat.windypro.com (DEFAULT_CHAT_HOMESERVER)
+   Matrix client-server API                       chatClient.ts (matrix-js-sdk)
+
+6. api.eternitas.ai (ETERNITAS_URL)
+   GET  /api/v1/trust/{passport}                  trustApi.getTrust (public, no auth)
+   GET  /api/v1/registry/verify/{passport}        EternitasBadge.tsx (legacy)
+
+7. vision.googleapis.com
+   POST /v1/images:annotate?key={key}             ocr.ts (cloud OCR)
+
+8. huggingface.co
+   GET  /ggerganov/whisper.cpp/resolve/main/...   offline-packs.ts (model DL)
+
+9. apps.apple.com  (static link, no fetch)        appstore/index.tsx
+10. play.google.com (static link, no fetch)       appstore/index.tsx
+
+Dev-only hosts (conditional on __DEV__):
+   http://localhost:3000   WINDY_CHAT_WEBVIEW_URL
+   http://localhost:5173   WINDY_MAIL_WEBVIEW_URL
+   http://localhost:8200   ETERNITAS_URL

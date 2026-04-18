@@ -132,8 +132,8 @@ export default function AppStoreScreen() {
 
     const openStoreUrl = () => {
         const storeUrl = Platform.select({
-            ios: 'https://apps.apple.com/app/windy-pro/id6759985867',
-            android: 'https://play.google.com/store/apps/details?id=uk.thewindstorm.windypro',
+            ios: 'https://apps.apple.com/app/windy-word/id6759985867',
+            android: 'https://play.google.com/store/apps/details?id=ai.windyword.app',
             default: 'https://windyword.ai',
         });
         Linking.openURL(storeUrl);
