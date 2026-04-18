@@ -31,6 +31,7 @@ type Status =
 
 export default function DeviceCodeScreen() {
     const [status, setStatus] = useState<Status>({ kind: 'initializing' });
+    const [connectionTrouble, setConnectionTrouble] = useState(false);
     const activeRef = useRef(true);
 
     useEffect(() => {
@@ -45,11 +46,16 @@ export default function DeviceCodeScreen() {
 
     async function beginFlow(): Promise<void> {
         setStatus({ kind: 'initializing' });
+        setConnectionTrouble(false);
         try {
             const start = await identityApi.startDeviceFlow();
             if (!activeRef.current) return;
             setStatus({ kind: 'awaitingApproval', start });
-            const outcome = await identityApi.pollForToken();
+            const outcome = await identityApi.pollForToken({
+                onWarning: () => {
+                    if (activeRef.current) setConnectionTrouble(true);
+                },
+            });
             if (!activeRef.current) return;
             if (outcome.success) {
                 const pending = pendingDeepLink.consume();
@@ -112,6 +118,13 @@ export default function DeviceCodeScreen() {
                                 <ActivityIndicator color={colors.textSecondary} />
                                 <Text style={styles.waiting}>Waiting for approval…</Text>
                             </View>
+                            {connectionTrouble && (
+                                <View style={styles.troubleBanner}>
+                                    <Text style={styles.troubleText}>
+                                        Having trouble reaching the server — still trying.
+                                    </Text>
+                                </View>
+                            )}
                         </>
                     )}
 
@@ -186,6 +199,20 @@ const styles = StyleSheet.create({
     waitingRow: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
         marginTop: 24, gap: 10,
+    },
+    troubleBanner: {
+        marginTop: 16,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderRadius: 10,
+        backgroundColor: 'rgba(234,179,8,0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(234,179,8,0.45)',
+    },
+    troubleText: {
+        fontSize: fontSizes.sm,
+        color: '#eab308',
+        textAlign: 'center',
     },
     waiting: { fontSize: fontSizes.sm, color: colors.textSecondary },
     errorText: {
