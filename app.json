@@ -6,7 +6,15 @@
     "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
-    "scheme": ["windypro", "windyword", "windychat", "windymail", "windyfly", "windyclone", "windycloud"],
+    "scheme": [
+      "windypro",
+      "windyword",
+      "windychat",
+      "windymail",
+      "windyfly",
+      "windyclone",
+      "windycloud"
+    ],
     "userInterfaceStyle": "dark",
     "splash": {
       "image": "./src/assets/splash.png",
@@ -18,9 +26,9 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.windyword.app",
+      "bundleIdentifier": "uk.thewindstorm.windypro",
       "privacyPolicyUrl": "https://windyword.ai/privacy",
-      "buildNumber": "10",
+      "buildNumber": "14",
       "associatedDomains": [
         "applinks:windyword.ai",
         "appclips:windyword.ai"
@@ -46,8 +54,8 @@
         "foregroundImage": "./src/assets/adaptive-icon.png",
         "backgroundColor": "#0f172a"
       },
-      "package": "ai.windyword.app",
-      "versionCode": 10,
+      "package": "uk.thewindstorm.windypro",
+      "versionCode": 12,
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",
@@ -57,11 +65,19 @@
       "intentFilters": [
         {
           "action": "SEND",
-          "category": ["DEFAULT"],
+          "category": [
+            "DEFAULT"
+          ],
           "data": [
-            { "mimeType": "text/plain" },
-            { "mimeType": "text/*" },
-            { "mimeType": "image/*" }
+            {
+              "mimeType": "text/plain"
+            },
+            {
+              "mimeType": "text/*"
+            },
+            {
+              "mimeType": "image/*"
+            }
           ]
         }
       ],

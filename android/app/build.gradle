@@ -91,7 +91,7 @@ android {
         applicationId 'uk.thewindstorm.windypro'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10
+        versionCode 12
         versionName "2.0.0"
     }
     signingConfigs {
