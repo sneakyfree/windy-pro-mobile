@@ -16,29 +16,22 @@
 
 ---
 
-## Build attempt
+## Build attempt — summary
 
-Both platforms were kicked off from the local shell using the existing
-EAS login (`EXPO_TOKEN` already configured; `eas whoami` → `windypro`):
+Both platforms were kicked off using the existing EAS login. iOS ran
+through **four build attempts** as problems were debugged and fixed
+on this branch; the fourth succeeded. Android ran through two
+attempts — the Expo Gradle plugin issue has not been resolved and
+is documented below as a known blocker that needs on-workstation
+Android SDK debugging.
 
-```bash
-eas build --platform ios     --profile production --non-interactive
-eas build --platform android --profile production --non-interactive
-```
+### Final state
 
-### Outcome
-
-See the **"Build URLs"** section below for the live artifact links.
-
-EAS successfully resolved credentials, auto-bumped `buildNumber` /
-`versionCode` from `10` → `11`, and is queuing the binaries. The upload
-phase is slow over the current connection (~30 MB / platform); the
-builds themselves run server-side on EAS infrastructure and don't block
-this workstation further.
-
-Grant can follow live progress at:
-
-- https://expo.dev/accounts/windypro/projects/windy-pro-mobile/builds
+| Platform | Result | Artifact |
+| --- | --- | --- |
+| **iOS** | 🟢 `finished` (build `edfcb3e2`) | https://expo.dev/artifacts/eas/vou6VNmEjZgcxa7sphLqGg.ipa |
+| **iOS TestFlight submit** | 🟠 uploaded but ASC rejected silently | See "iOS submit" below |
+| **Android** | 🔴 `errored` (build `8ab2e254`) | Gradle plugin resolution — still open |
 
 ---
 
@@ -216,9 +209,9 @@ Unit-test coverage: `tests/deep-links.test.ts` + `tests/wave8-deep-links.test.ts
 
 ---
 
-## Build attempts — both failed, one already fixed
+## iOS build: four attempts, final green
 
-### Attempt 1
+### Attempt 1 — both platforms errored
 
 Both platforms uploaded successfully and queued on EAS. Both **errored
 during the native build phase**:
@@ -257,18 +250,92 @@ Installed six missing pods:
 the 6 missing ones added. Xcode project.pbxproj also regenerated as
 part of the pod integration.
 
-### Attempt 2 (iOS only — pod fix in flight)
+### Attempt 2 — iOS: same `_SentryPrivate` error
 
-After the pod install fix, a second iOS build was queued. See
-`/tmp/wave11-ios-build-v2.log` and the "Latest build" on the EAS
-dashboard:
+After `pod install` (commit `613dcfd`), the second iOS build
+(`357b16f7`) queued and errored with the identical `_SentryPrivate`
+missing-module error. Root cause went deeper: Sentry 9.x's Swift
+modules only link when CocoaPods is in **framework mode**.
 
-- https://expo.dev/accounts/windypro/projects/windy-pro-mobile/builds
+### Attempt 3 — iOS: `use_frameworks!` turned on
 
-The Android error is unrelated to Sentry and is **still failing** — see
-the next finding.
+Added `"ios.useFrameworks": "static"` to
+`ios/Podfile.properties.json` (commit `11a3c5a`). This flipped the
+whole Pods project into static-framework linking without requiring
+a Sentry downgrade (which would be a wider change). Third iOS
+build (`3e231af5`) errored with a **different** cascade:
 
-### 🔴 P0 — Android: expo-module-gradle-plugin missing (not yet fixed)
+```
+cannot find type 'ValueOrUndefined' in scope  (×60+)
+'WithHostingView' is not a member type of ExpoSwiftUI
+'ExpoContactAccessButton' does not conform to 'ExpoSwiftUIView'
+type 'FileSystemUtilities' has no member 'isReadableFile'
+cannot find 'StaticAsyncFunction' in scope
+```
+
+All of these are **SDK 53 APIs on an SDK 52 project**.
+
+Root cause: `expo-contacts` was pinned to `^55.0.12` (the SDK 53
+line), while every other expo-* package and `expo` itself are on
+SDK 52. `npx expo install expo-contacts --check` confirmed:
+
+```
+expo-contacts@55.0.12 - expected version: ~14.0.5
+```
+
+### Attempt 4 — iOS: version aligned, build green
+
+Commit `346e36c` downgraded `expo-contacts` to `~14.0.5`. Fourth
+iOS build (`edfcb3e2`) **finished successfully** in ~6 minutes:
+
+- IPA: https://expo.dev/artifacts/eas/vou6VNmEjZgcxa7sphLqGg.ipa
+- Build URL: https://expo.dev/accounts/windypro/projects/windy-pro-mobile/builds/edfcb3e2-8a77-4839-9b94-8886bf35ea3f
+- Version `2.0.0`, buildNumber `14` (auto-incremented)
+
+## iOS submit — ASC rejection
+
+With the green build in hand, I attempted `eas submit --platform ios
+--profile production --latest --non-interactive`. The EAS side
+succeeded: an **App Store Connect API Key was already registered**
+by Grant (`Key ID 94JUTA92US` — "[Expo] EAS Submit 163oUGsduw"), so
+no interactive Apple ID auth was needed. The IPA uploaded to ASC.
+
+Then the submission **silently errored at ASC**. All three retries
+produced the same outcome, with no error message surfaced in the
+CLI, no logFiles, and null error objects in the GraphQL API:
+
+```
+Submission details: https://expo.dev/accounts/windypro/projects/windy-pro-mobile/submissions/1e998036-4558-4422-acc9-41c7f650eedc
+- Submitting
+✖ Something went wrong when submitting your app to Apple App Store Connect.
+```
+
+This is the same shape as the **P1 finding flagged in the first
+version of this report**: the ASC App record (`ascAppId
+6759985867`) may not be registered against bundle ID
+`uk.thewindstorm.windypro`. Other plausible causes:
+
+- A pending Apple agreement (Paid Apps, Program License) blocks submissions
+- The app record is in "Removed from Sale" / paused state
+- `versionString 2.0.0` is already published on this app — duplicates silently fail on some ASC paths
+- Export Compliance / Encryption declaration missing
+
+**Action [Grant]:** open https://expo.dev/accounts/windypro/projects/windy-pro-mobile/submissions/1e998036-4558-4422-acc9-41c7f650eedc
+in a browser while signed into the `windypro` Expo account — the
+web UI often shows a detailed ASC error that the GraphQL API hides.
+Cross-reference with App Store Connect → Windy Word → App
+Information → Bundle ID. Follow
+`docs/wave11-testflight-checklist.md` §5.4 to recover if it's a
+bundle-ID mismatch.
+
+### 🔴 P0 — Android: expo-module-gradle-plugin missing (still open after retry)
+
+After the expo-contacts downgrade fixed iOS, I retried Android — build
+`8ab2e254` — and it **errored with the same Gradle plugin error**. The
+fix that unblocked iOS (expo-contacts alignment) was unrelated to this
+Android issue, so it's still open.
+
+
 
 Android build errored in ~3 min with a Gradle plugin resolution failure:
 
@@ -314,15 +381,10 @@ launch track. Suggested next step for Grant or a follow-up Wave:
 - Apple Team `VXZ434QL89` (Grant Whitmer, Individual), dist cert valid
   through 2027-03-03, provisioning profile `77S36KDMNM`.
 - Android keystore `SHSUDbnxEo (default)`.
-- Build numbers auto-incremented by EAS: iOS `buildNumber 11`, Android
-  `versionCode 11`.
-
-### `eas submit`
-
-Not attempted this session — only useful after a **successful** build,
-and we have none yet. Once the second iOS build succeeds, Grant can run
-`eas submit --platform ios --profile production --latest` (interactive)
-per `docs/wave11-testflight-checklist.md` §3.
+- ASC API Key already registered: `94JUTA92US` / "[Expo] EAS Submit 163oUGsduw"
+  — EAS submit can authenticate non-interactively.
+- Build numbers ended at: iOS `buildNumber 14` (four auto-increments
+  during the debug cycle), Android `versionCode 12`.
 
 ---
 
