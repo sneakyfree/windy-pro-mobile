@@ -33,7 +33,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>14</string>
+    <string>15</string>
     <key>LSMinimumSystemVersion</key>
     <string>15.1</string>
     <key>LSRequiresIPhoneOS</key>
@@ -47,6 +47,8 @@
     </dict>
     <key>NSCameraUsageDescription</key>
     <string>Windy Pro uses your camera for OCR translation and optional video recording.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>Windy Chat uses your contacts for contact discovery so you can find friends.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
     <string>Windy Pro tags recordings with location for easy searching. Location data stays on your device.</string>
     <key>NSLocationAlwaysUsageDescription</key>
