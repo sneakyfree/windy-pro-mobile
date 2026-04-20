@@ -92,7 +92,7 @@ export default function OnboardingScreen() {
         if (status !== 'granted') {
             Alert.alert(
                 'Microphone Required',
-                'Windy Pro needs microphone access to convert your speech to text.'
+                'Windy Word needs microphone access to convert your speech to text.'
             );
         }
         feedbackService.tap().catch(() => { });
@@ -276,8 +276,8 @@ export default function OnboardingScreen() {
                                                 } else {
                                                     WindyOverlay.openAccessibilitySettings();
                                                     Alert.alert(
-                                                        'Enable Windy Pro',
-                                                        'Find "Windy Pro" in the list and enable it to paste text at your cursor.',
+                                                        'Enable Windy Word',
+                                                        'Find "Windy Word" in the list and enable it to paste text at your cursor.',
                                                     );
                                                 }
                                             }

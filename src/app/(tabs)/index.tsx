@@ -1,6 +1,6 @@
 /**
  * 🧬 M1 + M2 — Main Record Screen
- * The core of Windy Pro: TAP → TALK → TEXT
+ * The core of Windy Word: TAP → TALK → TEXT
  * One screen, one button, one flow.
  *
  * RP-1.1: Real AudioCaptureService wired
@@ -163,7 +163,7 @@ export default function RecordScreen() {
                 if (status !== 'granted') {
                     Alert.alert(
                         'Microphone Access Required',
-                        'Windy Pro needs microphone access to record. Please enable it in Settings.',
+                        'Windy Word needs microphone access to record. Please enable it in Settings.',
                         [
                             { text: 'Cancel', style: 'cancel' },
                             {
@@ -496,7 +496,7 @@ export default function RecordScreen() {
         feedbackService.tap().catch(() => { });
         await Share.share({
             message: fullText,
-            title: 'Windy Pro Transcript',
+            title: 'Windy Word Transcript',
         });
     };
 
@@ -585,7 +585,7 @@ export default function RecordScreen() {
 
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>Windy Pro</Text>
+                    <Text style={styles.title}>Windy Word</Text>
                     <Text style={styles.subtitle}>Voice to Text, Your Way</Text>
                 </View>
 

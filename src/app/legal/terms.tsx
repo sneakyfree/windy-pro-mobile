@@ -14,16 +14,16 @@ export default function TermsOfServiceScreen() {
 
             <Text style={styles.heading}>License</Text>
             <Text style={styles.body}>
-                Windy Pro is licensed, not sold. Each license key grants you a
+                Windy Word is licensed, not sold. Each license key grants you a
                 perpetual, non-transferable right to use the software on up to 5
                 personal devices. One-time purchase, no subscription required.
             </Text>
 
             <Text style={styles.heading}>Acceptable Use</Text>
             <Text style={styles.body}>
-                You may use Windy Pro for any lawful purpose. You may not reverse
+                You may use Windy Word for any lawful purpose. You may not reverse
                 engineer, redistribute, or sublicense the software. Voice engine
-                models included with Windy Pro are subject to their respective
+                models included with Windy Word are subject to their respective
                 open-source licenses (open-source voice engine: MIT License).
             </Text>
 
@@ -37,7 +37,7 @@ export default function TermsOfServiceScreen() {
 
             <Text style={styles.heading}>Disclaimer</Text>
             <Text style={styles.body}>
-                Windy Pro is provided "as is" without warranty of any kind.
+                Windy Word is provided "as is" without warranty of any kind.
                 Transcription and translation accuracy depend on audio quality,
                 language, and environmental factors. We are not liable for
                 inaccuracies in transcriptions or translations.

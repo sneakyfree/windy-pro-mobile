@@ -34,12 +34,13 @@
         "appclips:windyword.ai"
       ],
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Windy Pro uses your microphone to convert speech to text. Audio is processed on your device and never sent to our servers.",
-        "NSSpeechRecognitionUsageDescription": "Windy Pro uses speech recognition to convert your voice to text.",
-        "NSCameraUsageDescription": "Windy Pro uses your camera for OCR translation and optional video recording.",
-        "NSLocationWhenInUseUsageDescription": "Windy Pro tags recordings with location for easy searching. Location data stays on your device.",
-        "NSPhotoLibraryUsageDescription": "Windy Pro saves exported recordings and translations to your photo library.",
-        "NSPhotoLibraryAddUsageDescription": "Windy Pro saves exported recordings to your photo library.",
+        "CFBundleDisplayName": "Windy Word",
+        "NSMicrophoneUsageDescription": "Windy Word uses your microphone to convert speech to text. Audio is processed on your device and never sent to our servers.",
+        "NSSpeechRecognitionUsageDescription": "Windy Word uses speech recognition to convert your voice to text.",
+        "NSCameraUsageDescription": "Windy Word uses your camera for OCR translation and optional video recording.",
+        "NSLocationWhenInUseUsageDescription": "Windy Word tags recordings with location for easy searching. Location data stays on your device.",
+        "NSPhotoLibraryUsageDescription": "Windy Word saves exported recordings and translations to your photo library.",
+        "NSPhotoLibraryAddUsageDescription": "Windy Word saves exported recordings to your photo library.",
         "UIBackgroundModes": [
           "audio",
           "fetch"
@@ -90,19 +91,19 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Windy Pro uses your camera for OCR translation and optional video recording."
+          "cameraPermission": "Windy Word uses your camera for OCR translation and optional video recording."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Windy Pro tags recordings with location for easy searching."
+          "locationWhenInUsePermission": "Windy Word tags recordings with location for easy searching."
         }
       ],
       [
         "expo-av",
         {
-          "microphonePermission": "Windy Pro needs microphone access to convert your speech to text."
+          "microphonePermission": "Windy Word needs microphone access to convert your speech to text."
         }
       ],
       "expo-asset",

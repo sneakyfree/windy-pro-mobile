@@ -215,7 +215,7 @@ class PushNotificationService {
 
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: '🌪️ Windy Pro Update',
+                title: '🌪️ Windy Word Update',
                 body: `Version ${version} is available with new features and improvements.`,
                 data: { type: 'update', version },
                 ...(Platform.OS === 'android' ? { channelId: 'updates' } : {}),

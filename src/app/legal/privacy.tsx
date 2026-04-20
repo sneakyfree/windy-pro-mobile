@@ -14,7 +14,7 @@ export default function PrivacyPolicyScreen() {
 
             <Text style={styles.heading}>Audio Data</Text>
             <Text style={styles.body}>
-                Windy Pro processes your voice recordings on your device by default.
+                Windy Word processes your voice recordings on your device by default.
                 Audio data is never sent to our servers unless you explicitly enable
                 cloud transcription or cloud sync. When you use cloud transcription,
                 audio is streamed to our servers, processed in real-time, and
@@ -38,7 +38,7 @@ export default function PrivacyPolicyScreen() {
 
             <Text style={styles.heading}>Analytics</Text>
             <Text style={styles.body}>
-                Windy Pro does not use third-party analytics, tracking pixels, or
+                Windy Word does not use third-party analytics, tracking pixels, or
                 advertising frameworks. We collect no personal data, no usage
                 statistics, no nothing. Your device, your data, your business.
             </Text>

@@ -90,7 +90,7 @@ export default function SessionDetailScreen() {
         try {
             await Share.share({
                 message: session.transcript,
-                title: `Windy Pro — ${new Date(session.createdAt).toLocaleDateString()}`,
+                title: `Windy Word — ${new Date(session.createdAt).toLocaleDateString()}`,
             });
         } catch (err) { console.warn("[Session] Error:", err);
             Alert.alert('Error', 'Could not open share sheet.');
@@ -115,7 +115,7 @@ export default function SessionDetailScreen() {
         };
         await Share.share({
             message: JSON.stringify(exportData, null, 2),
-            title: `Windy Pro Export — ${session.id}`,
+            title: `Windy Word Export — ${session.id}`,
         });
     };
 

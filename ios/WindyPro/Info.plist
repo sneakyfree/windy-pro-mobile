@@ -7,7 +7,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>Windy Pro</string>
+    <string>Windy Word</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -46,23 +46,23 @@
       <true/>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>Windy Pro uses your camera for OCR translation and optional video recording.</string>
+    <string>Windy Word uses your camera for OCR translation and optional video recording.</string>
     <key>NSContactsUsageDescription</key>
     <string>Windy Chat uses your contacts for contact discovery so you can find friends.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>Windy Pro tags recordings with location for easy searching. Location data stays on your device.</string>
+    <string>Windy Word tags recordings with location for easy searching. Location data stays on your device.</string>
     <key>NSLocationAlwaysUsageDescription</key>
-    <string>Windy Pro tags recordings with location for easy searching. Location data stays on your device.</string>
+    <string>Windy Word tags recordings with location for easy searching. Location data stays on your device.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Windy Pro tags recordings with location for easy searching.</string>
+    <string>Windy Word tags recordings with location for easy searching.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Windy Pro needs microphone access to convert your speech to text.</string>
+    <string>Windy Word needs microphone access to convert your speech to text.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Windy Pro uses speech recognition to convert your voice to text.</string>
+    <string>Windy Word uses speech recognition to convert your voice to text.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Windy Pro saves exported recordings and translations to your photo library.</string>
+    <string>Windy Word saves exported recordings and translations to your photo library.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Windy Pro saves exported recordings to your photo library.</string>
+    <string>Windy Word saves exported recordings to your photo library.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

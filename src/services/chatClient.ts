@@ -295,7 +295,7 @@ class ChatClient {
             const response = await tempClient.login('m.login.password', {
                 user: username,
                 password,
-                initial_device_display_name: 'Windy Pro Mobile',
+                initial_device_display_name: 'Windy Word Mobile',
             });
 
             this.session = {
