@@ -53,7 +53,8 @@
                 "appleId": "grantwhitmer3@gmail.com",
                 "appleTeamId": "VXZ434QL89",
                 "ascAppId": "6759985867",
-                "bundleIdentifier": "uk.thewindstorm.windypro"
+                "bundleIdentifier": "uk.thewindstorm.windypro",
+                "groups": ["Team (Expo)"]
             },
             "android": {
                 "track": "internal",
