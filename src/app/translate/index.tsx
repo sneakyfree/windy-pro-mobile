@@ -133,10 +133,10 @@ export default function TranslateScreen() {
     // iOS share sheet for translations
     const handleShareTurn = async (turn: ConversationTurn) => {
         try {
-            const shareText = `"${turn.original}"\n→ "${turn.translated}"\n\nTranslated with Windy Pro 🌪️`;
+            const shareText = `"${turn.original}"\n→ "${turn.translated}"\n\nTranslated with Windy Word 🌪️`;
             await Share.share({
                 message: shareText,
-                title: 'Windy Pro Translation',
+                title: 'Windy Word Translation',
             });
             feedbackService.tap();
         } catch (err) { console.warn("[Translate] User action:", err); }
@@ -261,7 +261,7 @@ export default function TranslateScreen() {
             if (isPermission) {
                 Alert.alert(
                     'Microphone Access Required',
-                    'Windy Pro needs microphone access to translate speech. Please enable it in Settings.',
+                    'Windy Word needs microphone access to translate speech. Please enable it in Settings.',
                     [
                         { text: 'Cancel', style: 'cancel' },
                         {

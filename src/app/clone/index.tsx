@@ -602,7 +602,7 @@ export default function CloneDashboardScreen() {
                             <View style={styles.infoStepContent}>
                                 <Text style={styles.infoStepTitle}>Record Naturally</Text>
                                 <Text style={styles.infoText}>
-                                    Use Windy Pro as you normally would — transcribe, translate, take notes.
+                                    Use Windy Word as you normally would — transcribe, translate, take notes.
                                 </Text>
                             </View>
                         </View>

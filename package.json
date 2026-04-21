@@ -1,7 +1,7 @@
 {
   "name": "windy-pro-mobile",
   "version": "0.1.0",
-  "description": "Windy Pro — Voice to Text, Your Way. iOS & Android.",
+  "description": "Windy Word — Voice to Text, Your Way. iOS & Android.",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",

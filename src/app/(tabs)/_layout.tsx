@@ -5,9 +5,25 @@
  * Hidden tabs: camera, history, clone-data, ecosystem, market
  */
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, Text } from 'react-native';
 import { colors, fontSizes } from '@/theme';
 import { useChatBadgeStore } from '@/stores/useChatBadgeStore';
+
+// Tabs use emoji-as-icon (rendered above the label) so the icon stays
+// readable at the larger tap-target sizes Grant asked for after build 16.
+const tabIcon = (emoji: string) => ({ focused }: { focused: boolean }) => (
+  <Text
+    style={{
+      fontSize: 22,
+      lineHeight: 26,
+      opacity: focused ? 1 : 0.85,
+    }}
+    accessibilityElementsHidden
+    importantForAccessibility="no-hide-descendants"
+  >
+    {emoji}
+  </Text>
+);
 
 export default function TabLayout() {
   const chatBadge = useChatBadgeStore(s => s.unreadCount);
@@ -15,20 +31,25 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        // Tab bar appearance
+        // Tab bar appearance — heights/sizes bumped after Grant's build 16
+        // feedback: "the nav buttons on the bottom are very, very small."
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-          paddingTop: 8,
+          height: Platform.OS === 'ios' ? 96 : 72,
+          paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+          paddingTop: 10,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: '600',
+          marginTop: 2,
+        },
+        tabBarIconStyle: {
+          marginBottom: 0,
         },
 
         // Header appearance
@@ -51,8 +72,8 @@ export default function TabLayout() {
         options={{
           title: 'Word',
           headerShown: false,
-          tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '🌪️ Word',
+          tabBarIcon: tabIcon('🌪️'),
+          tabBarLabel: 'Word',
           tabBarAccessibilityLabel: 'Word tab — voice to text',
         }}
       />
@@ -61,13 +82,13 @@ export default function TabLayout() {
         options={{
           title: 'Chat',
           headerShown: false,
-          tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '💬 Chat',
+          tabBarIcon: tabIcon('💬'),
+          tabBarLabel: 'Chat',
           tabBarBadge: chatBadge > 0 ? chatBadge : undefined,
           tabBarBadgeStyle: {
             backgroundColor: colors.accent,
             color: colors.background,
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: '700',
             minWidth: 18,
             height: 18,
@@ -84,8 +105,8 @@ export default function TabLayout() {
         options={{
           title: 'Fly',
           headerShown: false,
-          tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '🪰 Fly',
+          tabBarIcon: tabIcon('🪰'),
+          tabBarLabel: 'Fly',
           tabBarAccessibilityLabel: 'Fly tab — your Windy Fly agent',
         }}
       />
@@ -94,8 +115,8 @@ export default function TabLayout() {
         options={{
           title: 'Mail',
           headerShown: false,
-          tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '📧 Mail',
+          tabBarIcon: tabIcon('📧'),
+          tabBarLabel: 'Mail',
           tabBarAccessibilityLabel: 'Mail tab — Windy Mail inbox',
         }}
       />
@@ -104,8 +125,8 @@ export default function TabLayout() {
         options={{
           title: 'Cloud',
           headerShown: false,
-          tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '☁️ Cloud',
+          tabBarIcon: tabIcon('☁️'),
+          tabBarLabel: 'Cloud',
           tabBarAccessibilityLabel: 'Cloud tab — sync and storage',
         }}
       />
@@ -113,8 +134,8 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ focused }) => null,
-          tabBarLabel: '⚙️ More',
+          tabBarIcon: tabIcon('⚙️'),
+          tabBarLabel: 'More',
           tabBarAccessibilityLabel: 'Settings tab',
         }}
       />

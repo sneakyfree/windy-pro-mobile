@@ -70,7 +70,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
         const version = Constants.expoConfig?.version || '0.0.0';
         const buildId = Constants.expoConfig?.extra?.buildId || 'dev';
         return [
-            '=== Windy Pro Crash Report ===',
+            '=== Windy Word Crash Report ===',
             `Version: ${version} (${buildId})`,
             `Platform: ${Platform.OS} ${Platform.Version}`,
             `Timestamp: ${new Date().toISOString()}`,

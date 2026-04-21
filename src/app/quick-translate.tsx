@@ -210,7 +210,7 @@ export default function QuickTranslateScreen() {
                 {/* Footer */}
                 <View style={styles.footer}>
                     <Text style={styles.footerText}>
-                        🌪️ Powered by Windy Pro Translation Engine
+                        🌪️ Powered by Windy Word Translation Engine
                     </Text>
                 </View>
             </KeyboardAvoidingView>

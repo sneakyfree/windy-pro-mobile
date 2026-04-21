@@ -143,8 +143,8 @@ export default function AppStoreScreen() {
         feedbackService.tap().catch(() => { });
         const deepLink = Linking.createURL('/', { scheme: 'windypro' });
         await Share.share({
-            message: `🌪️ Check out Windy Pro — the best voice-to-text app!\n\nDownload: https://windyword.ai/download\n\n${deepLink}`,
-            title: 'Share Windy Pro',
+            message: `🌪️ Check out Windy Word — the best voice-to-text app!\n\nDownload: https://windyword.ai/download\n\n${deepLink}`,
+            title: 'Share Windy Word',
         });
     };
 
@@ -164,7 +164,7 @@ export default function AppStoreScreen() {
                     >
                         <Text style={styles.backText}>← Back</Text>
                     </Pressable>
-                    <Text style={styles.title}>About Windy Pro</Text>
+                    <Text style={styles.title}>About Windy Word</Text>
                     <View style={{ width: 40 }} />
                 </View>
 
@@ -173,7 +173,7 @@ export default function AppStoreScreen() {
                     <View style={styles.appIcon}>
                         <Text style={styles.appIconEmoji}>🌪️</Text>
                     </View>
-                    <Text style={styles.appName}>Windy Pro</Text>
+                    <Text style={styles.appName}>Windy Word</Text>
                     <Text style={styles.appTagline}>Voice to Text, Your Way</Text>
                     <Text style={styles.appVersion}>Version {CHANGELOG[0].version}</Text>
                 </Animated.View>
@@ -254,7 +254,7 @@ export default function AppStoreScreen() {
                     <View style={styles.rateCard}>
                         <Text style={styles.rateEmoji}>⭐</Text>
                         <View style={styles.rateContent}>
-                            <Text style={styles.rateTitle}>Enjoying Windy Pro?</Text>
+                            <Text style={styles.rateTitle}>Enjoying Windy Word?</Text>
                             <Text style={styles.rateSubtext}>
                                 Rate us on the {Platform.OS === 'ios' ? 'App Store' : 'Play Store'} — it really helps!
                             </Text>
@@ -270,11 +270,11 @@ export default function AppStoreScreen() {
 
                 {/* Share App */}
                 <Pressable style={styles.shareButton} onPress={handleShareApp}
-                    accessibilityLabel="Share Windy Pro" accessibilityRole="button"
+                    accessibilityLabel="Share Windy Word" accessibilityRole="button"
                 >
                     <Text style={styles.shareEmoji}>📤</Text>
                     <View style={styles.shareContent}>
-                        <Text style={styles.shareTitle}>Share Windy Pro</Text>
+                        <Text style={styles.shareTitle}>Share Windy Word</Text>
                         <Text style={styles.shareSubtext}>Send a download link to friends</Text>
                     </View>
                 </Pressable>

@@ -9,7 +9,7 @@
 /**
  * All available voice engine identifiers.
  * Local engines use Whisper models of varying sizes.
- * Cloud engines route to the Windy Pro API.
+ * Cloud engines route to the Windy Word API.
  *
  * | Engine ID         | Type  | Size    | RAM    | Quality |
  * |-------------------|-------|---------|--------|---------|

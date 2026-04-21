@@ -6,7 +6,7 @@
  * Navigation features, translation prefs, voice selection
  */
 import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, useEffect, memo } from 'react';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,6 +29,7 @@ import LanguagePickerSheet from '@/components/LanguagePickerSheet';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 import { getEcosystemStatus, PRODUCT_DISPLAY, getStatusLabel, getStatusColor, getStatusIcon, getProductSubtitle, type EcosystemStatus } from '@/services/ecosystem-status';
 import { cloudApi } from '@/services/cloudApi';
+import { identityApi } from '@/services/identityApi';
 import type { StorageUsage } from '@/types';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { syncManager } from '@/services/sync-manager';
@@ -67,6 +68,46 @@ export default function SettingsScreen() {
   const [loadErrors, setLoadErrors] = useState<string[]>([]);
   const [ecosystem, setEcosystem] = useState<EcosystemStatus | null>(settings.ecosystemStatus);
   const [cloudUsage, setCloudUsage] = useState<{ usedBytes: number; limitBytes: number; fileCount: number; tierLabel: string; percentUsed: number } | null>(null);
+  const [authedEmail, setAuthedEmail] = useState<string | null>(identityApi.getEmail());
+  const [authed, setAuthed] = useState<boolean>(identityApi.isAuthenticated());
+
+  useEffect(() => {
+    const unsub = identityApi.onChange(() => {
+      setAuthedEmail(identityApi.getEmail());
+      setAuthed(identityApi.isAuthenticated());
+    });
+    return unsub;
+  }, []);
+
+  const handleSignIn = useCallback(() => {
+    feedbackService.tap().catch(() => {});
+    router.push('/auth/device-code');
+  }, [router]);
+
+  const handleSignOut = useCallback(() => {
+    Alert.alert(
+      'Sign Out',
+      authedEmail
+        ? `Sign out of ${authedEmail}? Your local recordings stay on this device.`
+        : 'Sign out? Your local recordings stay on this device.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await identityApi.logout();
+              feedbackService.success().catch(() => {});
+            } catch (err) {
+              settingsLog.warn('signOut', 'logout failed');
+              Alert.alert('Error', 'Could not sign out cleanly. Try again.');
+            }
+          },
+        },
+      ],
+    );
+  }, [authedEmail]);
 
   const SERVER_URL_KEY = 'windy-server-url';
 
@@ -195,7 +236,7 @@ export default function SettingsScreen() {
       const sessions = await localStorageService.getSessions();
       const exportData = {
         exported: new Date().toISOString(),
-        app: 'Windy Pro',
+        app: 'Windy Word',
         version: Constants.expoConfig?.version || '1.0.0',
         sessions: sessions.map(s => ({
           id: s.id,
@@ -363,6 +404,30 @@ export default function SettingsScreen() {
 
           {/* Account Section */}
           <SettingsSection title="Account">
+            <SettingsRow
+              label="Signed in as"
+              value={authed ? (authedEmail || 'Signed in') : 'Not signed in'}
+              valueColor={authed ? colors.textPrimary : colors.textTertiary}
+            />
+            {authed ? (
+              <Pressable
+                style={styles.signOutButton}
+                onPress={handleSignOut}
+                accessibilityLabel="Sign out of your Windy account"
+                accessibilityRole="button"
+              >
+                <Text style={styles.signOutText}>Sign Out</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={styles.signInButton}
+                onPress={handleSignIn}
+                accessibilityLabel="Sign in to your Windy account"
+                accessibilityRole="button"
+              >
+                <Text style={styles.signInText}>Sign In</Text>
+              </Pressable>
+            )}
             <SettingsRow
               label="License"
               value={settings.licenseTier === 'free' ? 'Free' : formatTier(settings.licenseTier)}
@@ -896,9 +961,9 @@ export default function SettingsScreen() {
           {/* About */}
           <SettingsSection title="About">
             <Pressable style={styles.navRow} onPress={() => router.push('/appstore')}
-              accessibilityLabel="About Windy Pro" accessibilityRole="button"
+              accessibilityLabel="About Windy Word" accessibilityRole="button"
             >
-              <Text style={styles.navRowLabel}>🌪️ About Windy Pro</Text>
+              <Text style={styles.navRowLabel}>🌪️ About Windy Word</Text>
               <Text style={styles.chevron} importantForAccessibility="no">›</Text>
             </Pressable>
             <SettingsRow label="Version" value={`${appVersion} (Build ${buildNumber})`} />
@@ -972,7 +1037,7 @@ export default function SettingsScreen() {
           </SettingsSection>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Made with 🌪️ by Windy Pro</Text>
+            <Text style={styles.footerText}>Made with 🌪️ by Windy Word</Text>
             <Text style={styles.footerVersion}>v{appVersion} · {Platform.OS}</Text>
           </View>
 
@@ -1053,6 +1118,10 @@ const styles = StyleSheet.create({
   navRowLabel: { ...typography.body, color: colors.textPrimary },
   upgradeButton: { backgroundColor: colors.accent, margin: spacing.sm, paddingVertical: spacing.sm + 2, borderRadius: borderRadius.md, alignItems: 'center' },
   upgradeText: { ...typography.button, color: colors.background },
+  signOutButton: { margin: spacing.sm, paddingVertical: spacing.sm + 2, borderRadius: borderRadius.md, alignItems: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.borderLight },
+  signOutText: { ...typography.button, color: '#f87171' },
+  signInButton: { backgroundColor: colors.accent, margin: spacing.sm, paddingVertical: spacing.sm + 2, borderRadius: borderRadius.md, alignItems: 'center' },
+  signInText: { ...typography.button, color: colors.background },
 
   // Theme toggle
   themeRow: { flexDirection: 'row', gap: spacing.xs, padding: spacing.sm },

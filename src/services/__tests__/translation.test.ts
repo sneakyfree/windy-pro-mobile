@@ -416,7 +416,7 @@ describe('TranslationService', () => {
 
         it('exportAsText should include header and turns', () => {
             const text = translationService.exportAsText(mockTurns, 'en', 'es');
-            expect(text).toContain('Windy Pro Translation');
+            expect(text).toContain('Windy Word Translation');
             expect(text).toContain('Hello');
             expect(text).toContain('Hola');
             expect(text).toContain('Speaker A');
@@ -425,7 +425,7 @@ describe('TranslationService', () => {
 
         it('exportAsMarkdown should produce valid markdown', () => {
             const md = translationService.exportAsMarkdown(mockTurns, 'en', 'es');
-            expect(md).toContain('# Windy Pro Translation');
+            expect(md).toContain('# Windy Word Translation');
             expect(md).toContain('**');
             expect(md).toContain('> Hello');
         });

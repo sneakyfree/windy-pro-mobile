@@ -325,7 +325,7 @@ export default function RootLayout() {
           await setLicense(validation.tier, rawKey);
           Alert.alert(
             '🎉 License Activated',
-            `Welcome to Windy Pro ${formatTier(validation.tier)}!`
+            `Welcome to Windy Word ${formatTier(validation.tier)}!`
           );
           return;
         }

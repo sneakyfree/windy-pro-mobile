@@ -366,7 +366,7 @@ class TranslationService {
      * Export conversation as plain text
      */
     exportAsText(turns: ConversationTurn[], sourceLang: string, targetLang: string): string {
-        const header = `Windy Pro Translation — ${this.getLangName(sourceLang)} ↔ ${this.getLangName(targetLang)}\n` +
+        const header = `Windy Word Translation — ${this.getLangName(sourceLang)} ↔ ${this.getLangName(targetLang)}\n` +
             `Date: ${new Date().toLocaleString()}\n` +
             `Turns: ${turns.length}\n${'─'.repeat(40)}\n\n`;
 
@@ -384,7 +384,7 @@ class TranslationService {
      * Export conversation as Markdown
      */
     exportAsMarkdown(turns: ConversationTurn[], sourceLang: string, targetLang: string): string {
-        const header = `# Windy Pro Translation\n\n` +
+        const header = `# Windy Word Translation\n\n` +
             `**Languages:** ${this.getFlag(sourceLang)} ${this.getLangName(sourceLang)} ↔ ` +
             `${this.getFlag(targetLang)} ${this.getLangName(targetLang)}\n` +
             `**Date:** ${new Date().toLocaleString()}\n` +

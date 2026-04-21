@@ -367,7 +367,7 @@ export default function TranscriptionViewer({
                         style={[styles.exportBtn, styles.exportBtnPrimary]}
                         onPress={async () => {
                             const text = segments.filter(s => !s.isPartial).map(s => s.text).join(' ');
-                            await Share.share({ message: text, title: 'Windy Pro Transcript' });
+                            await Share.share({ message: text, title: 'Windy Word Transcript' });
                         }}
                     >
                         <Text style={[styles.exportBtnText, styles.exportBtnTextPrimary]}>📤 Share</Text>
