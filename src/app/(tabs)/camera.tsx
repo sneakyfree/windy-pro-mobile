@@ -18,6 +18,7 @@ import { ocrService, type OcrTranslation } from '@/services/ocr';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { feedbackService } from '@/services/feedback';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { useUsageLimits } from '@/hooks/useUsageLimits';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { EmptyState } from '@/components/EmptyState';
 import { useAccessibility } from '@/hooks/useAccessibility';
@@ -77,8 +78,14 @@ export default function CameraTab() {
     const getFlag = (code: string) => translationService.getFlag(code);
     const getName = (code: string) => translationService.getLangName(code);
 
+    const { requireUsage, recordUsage } = useUsageLimits();
+
     const handleCapture = useCallback(async () => {
         if (!cameraRef.current || capturing) return;
+
+        // Check daily OCR limit for free tier
+        const allowed = await requireUsage('ocr', 'OCR scans');
+        if (!allowed) return;
 
         setCapturing(true);
         setError(null);
@@ -109,6 +116,7 @@ export default function CameraTab() {
 
             setResult(ocrResult);
             setHistory((prev) => [ocrResult, ...prev.slice(0, 19)]); // Keep last 20
+            await recordUsage('ocr');
             feedbackService.success();
             announce('Translation ready');
 

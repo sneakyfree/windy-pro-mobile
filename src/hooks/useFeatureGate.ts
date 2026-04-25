@@ -1,11 +1,11 @@
 /**
  * 🧬 RP-5.3 — Feature Gating Hook
- * Central hook for checking feature access by license tier
+ * Central hook for checking feature access by license tier.
+ * Routes upgrade prompts to the in-app /subscription paywall.
  */
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { licenseService } from '@/services/license';
 import { Alert } from 'react-native';
-import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
 
 type Feature =
     | 'translate'
@@ -19,20 +19,22 @@ type Feature =
 
 /** Maps features to the minimum tier required */
 const FEATURE_TIERS: Record<Feature, string[]> = {
-    'translate': ['pro', 'team', 'enterprise'],
-    'cloud-sync': ['pro', 'team', 'enterprise'],
-    'cloud-pro-engine': ['pro', 'team', 'enterprise'],
-    'cloud-realtime-engine': ['team', 'enterprise'],
-    'large-model': ['pro', 'team', 'enterprise'],
-    'video-capture': ['pro', 'team', 'enterprise'],
-    'voice-clone': ['pro', 'team', 'enterprise'],
-    'unlimited-recording': ['pro', 'team', 'enterprise'],
+    'translate': ['pro', 'translate', 'translate_pro', 'team', 'enterprise'],
+    'cloud-sync': ['pro', 'translate', 'translate_pro', 'team', 'enterprise'],
+    'cloud-pro-engine': ['pro', 'translate', 'translate_pro', 'team', 'enterprise'],
+    'cloud-realtime-engine': ['translate_pro', 'team', 'enterprise'],
+    'large-model': ['pro', 'translate', 'translate_pro', 'team', 'enterprise'],
+    'video-capture': ['pro', 'translate', 'translate_pro', 'team', 'enterprise'],
+    'voice-clone': ['pro', 'translate', 'translate_pro', 'team', 'enterprise'],
+    'unlimited-recording': ['pro', 'translate', 'translate_pro', 'team', 'enterprise'],
 };
 
 /** Recording duration limits per tier (seconds) */
 export const RECORDING_LIMITS: Record<string, number> = {
     'free': 5 * 60,       // 5 minutes
     'pro': 60 * 60,       // 1 hour
+    'translate': 60 * 60, // 1 hour
+    'translate_pro': 4 * 60 * 60, // 4 hours
     'team': 4 * 60 * 60,  // 4 hours
     'enterprise': Infinity,
 };
@@ -58,10 +60,9 @@ export function useFeatureGate() {
             [
                 { text: 'Later', style: 'cancel' },
                 {
-                    text: 'Upgrade',
-                    onPress: async () => {
-                        const url = await licenseService.getPurchaseUrl('');
-                        Linking.openURL(url);
+                    text: 'View Plans',
+                    onPress: () => {
+                        router.push('/subscription');
                     },
                 },
             ]

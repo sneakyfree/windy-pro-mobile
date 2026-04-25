@@ -13,6 +13,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView, Platform, Share, Alert, 
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import { CameraView } from 'expo-camera';
@@ -41,6 +42,7 @@ import HatchPromptCard from '@/components/HatchPromptCard';
 const WAVEFORM_BARS = 40;
 
 export default function RecordScreen() {
+    const router = useRouter();
     const {
         state,
         sessionId,
@@ -427,7 +429,7 @@ export default function RecordScreen() {
             const transcriptText = useTranscriptStore.getState().segments.map(s => s.text).join(' ').trim();
             if (transcriptText.length > 0) {
                 await Clipboard.setStringAsync(transcriptText);
-                feedbackService.success().catch(() => {});
+                feedbackService.success().catch(() => { });
                 announce('Transcript ready, copied to clipboard');
             }
         } catch (err: unknown) {
@@ -859,6 +861,35 @@ export default function RecordScreen() {
                         </Pressable>
                     </View>
                 )}
+
+                {/* Quick-Access Shortcuts */}
+                {state === 'idle' && (
+                    <View style={styles.quickActions}>
+                        <Pressable
+                            style={styles.quickActionBtn}
+                            onPress={() => router.push('/translate')}
+                            accessibilityLabel="Open voice translation"
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.quickActionEmoji}>🌐</Text>
+                            <Text style={styles.quickActionText}>Voice Translate</Text>
+                            {licenseTier === 'free' && (
+                                <View style={styles.proBadgeInline}>
+                                    <Text style={styles.proBadgeText}>PRO</Text>
+                                </View>
+                            )}
+                        </Pressable>
+                        <Pressable
+                            style={styles.quickActionBtn}
+                            onPress={() => router.push('/camera')}
+                            accessibilityLabel="Open camera OCR"
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.quickActionEmoji}>📷</Text>
+                            <Text style={styles.quickActionText}>Camera OCR</Text>
+                        </Pressable>
+                    </View>
+                )}
             </SafeAreaView>
         </ScreenErrorBoundary>
     );
@@ -1202,5 +1233,45 @@ const styles = StyleSheet.create({
         ...typography.bodySmall,
         fontWeight: '500' as const,
         color: colors.stateProcessing,
+    },
+
+    // Quick-action shortcut row
+    quickActions: {
+        flexDirection: 'row' as const,
+        justifyContent: 'center' as const,
+        gap: spacing.md,
+        paddingHorizontal: spacing.screenPadding,
+        marginTop: spacing.md,
+        marginBottom: spacing.lg,
+    },
+    quickActionBtn: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        backgroundColor: colors.surface,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
+        borderRadius: borderRadius.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        gap: 6,
+    },
+    quickActionEmoji: {
+        fontSize: 16,
+    },
+    quickActionText: {
+        ...typography.bodySmall,
+        color: colors.textPrimary,
+        fontWeight: '600' as const,
+    },
+    proBadgeInline: {
+        backgroundColor: colors.accent,
+        borderRadius: 4,
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+    },
+    proBadgeText: {
+        fontSize: 8,
+        fontWeight: '800' as const,
+        color: colors.background,
     },
 });

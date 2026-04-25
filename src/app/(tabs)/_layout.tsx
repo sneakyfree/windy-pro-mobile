@@ -5,28 +5,41 @@
  * Hidden tabs: camera, history, clone-data, ecosystem, market
  */
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet, Text } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { colors, fontSizes } from '@/theme';
 import { useChatBadgeStore } from '@/stores/useChatBadgeStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 
 // Tabs use emoji-as-icon (rendered above the label) so the icon stays
 // readable at the larger tap-target sizes Grant asked for after build 16.
-const tabIcon = (emoji: string) => ({ focused }: { focused: boolean }) => (
-  <Text
-    style={{
-      fontSize: 22,
-      lineHeight: 26,
-      opacity: focused ? 1 : 0.85,
-    }}
-    accessibilityElementsHidden
-    importantForAccessibility="no-hide-descendants"
-  >
-    {emoji}
-  </Text>
+const tabIcon = (emoji: string, showProBadge?: boolean) => ({ focused }: { focused: boolean }) => (
+  <View style={{ position: 'relative' }}>
+    <Text
+      style={{
+        fontSize: 22,
+        lineHeight: 26,
+        opacity: focused ? 1 : 0.85,
+      }}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      {emoji}
+    </Text>
+    {showProBadge && (
+      <View style={{
+        position: 'absolute', top: -4, right: -14,
+        backgroundColor: colors.accent, borderRadius: 4,
+        paddingHorizontal: 3, paddingVertical: 1,
+      }}>
+        <Text style={{ fontSize: 8, fontWeight: '800', color: colors.background }}>PRO</Text>
+      </View>
+    )}
+  </View>
 );
 
 export default function TabLayout() {
   const chatBadge = useChatBadgeStore(s => s.unreadCount);
+  const isFree = useSettingsStore(s => s.licenseTier) === 'free';
 
   return (
     <Tabs
@@ -105,9 +118,9 @@ export default function TabLayout() {
         options={{
           title: 'Fly',
           headerShown: false,
-          tabBarIcon: tabIcon('🪰'),
+          tabBarIcon: tabIcon('🪰', isFree),
           tabBarLabel: 'Fly',
-          tabBarAccessibilityLabel: 'Fly tab — your Windy Fly agent',
+          tabBarAccessibilityLabel: isFree ? 'Fly tab — PRO feature' : 'Fly tab — your Windy Fly agent',
         }}
       />
       <Tabs.Screen
@@ -125,9 +138,9 @@ export default function TabLayout() {
         options={{
           title: 'Cloud',
           headerShown: false,
-          tabBarIcon: tabIcon('☁️'),
+          tabBarIcon: tabIcon('☁️', isFree),
           tabBarLabel: 'Cloud',
-          tabBarAccessibilityLabel: 'Cloud tab — sync and storage',
+          tabBarAccessibilityLabel: isFree ? 'Cloud tab — PRO feature' : 'Cloud tab — sync and storage',
         }}
       />
       <Tabs.Screen

@@ -23,6 +23,7 @@ import {
 } from '@/services/translation';
 import { feedbackService } from '@/services/feedback';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { useUsageLimits } from '@/hooks/useUsageLimits';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useAccessibility } from '@/hooks/useAccessibility';
 import { SpeechWaveform } from '@/components/SpeechWaveform';
@@ -42,9 +43,16 @@ const MAX_HISTORY = 50;
 
 export default function TranslateScreen() {
     const router = useRouter();
-    const { requireFeature } = useFeatureGate();
+    const { requireFeature, tier } = useFeatureGate();
+    const { requireUsage, recordUsage, checkLimit, isPaid } = useUsageLimits();
     const haptic = useHaptic();
     const { announce } = useAccessibility();
+    const [remainingTranslations, setRemainingTranslations] = useState<number | null>(null);
+
+    // Load remaining count on mount and when tier changes
+    useEffect(() => {
+        checkLimit('translation').then(({ remaining }) => setRemainingTranslations(remaining));
+    }, [tier]);
 
     // State
     const [sourceLang, setSourceLang] = useState('en');
@@ -299,6 +307,13 @@ export default function TranslateScreen() {
                 return;
             }
 
+            // Check daily usage limit for free tier
+            const allowed = await requireUsage('translation', 'translations');
+            if (!allowed) {
+                setProcessing(false);
+                return;
+            }
+
             // Determine speaker direction
             let speaker = activeSpeaker;
             let fromLang = speaker === 'A' ? sourceLang : targetLang;
@@ -357,7 +372,9 @@ export default function TranslateScreen() {
             haptic.success();
             announce(`Translation complete. ${result.translated}`);
 
-            // Track analytics + rating prompt
+            // Record usage + track analytics + rating prompt
+            const newRemaining = await recordUsage('translation');
+            setRemainingTranslations(newRemaining);
             analyticsService.trackTranslation(fromLang, toLang);
             ratingPromptService.recordTranslation();
 
