@@ -1,7 +1,8 @@
 /**
  * 🧬 Camera Tab — OCR Translation
  * Point camera at text → extract → translate → overlay
- * Supports: English, Spanish, French, German, Mandarin
+ * Supports: All 15 Tier-1 languages
+ * Features: Capture, Live Scan, Gallery Import, Flash Toggle, Clipboard Copy
  */
 import {
     View, Text, StyleSheet, Pressable, Platform,
@@ -9,6 +10,8 @@ import {
 } from 'react-native';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { typography } from '@/theme/typography';
 import { ocrService, type OcrTranslation } from '@/services/ocr';
@@ -34,6 +37,8 @@ export default function CameraTab() {
     const [history, setHistory] = useState<OcrTranslation[]>([]);
     const [showHistory, setShowHistory] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [flashOn, setFlashOn] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     // Live scan mode
     const [liveMode, setLiveMode] = useState(false);
@@ -118,6 +123,58 @@ export default function CameraTab() {
         }
     }, [capturing, targetLang]);
 
+    // ─── Gallery Import ────────────────────────────────────────
+
+    const handleGalleryImport = useCallback(async () => {
+        if (capturing) return;
+
+        try {
+            const pickerResult = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: 'images',
+                base64: true,
+                quality: 0.7,
+            });
+
+            if (pickerResult.canceled || !pickerResult.assets?.[0]?.base64) return;
+
+            setCapturing(true);
+            setError(null);
+            setResult(null);
+            feedbackService.tap();
+
+            const ocrResult = await ocrService.extractAndTranslate(
+                pickerResult.assets[0].base64,
+                targetLang
+            );
+
+            if (!ocrResult.original.text.trim()) {
+                setError('No text detected in image. Try a clearer photo.');
+                feedbackService.error();
+                return;
+            }
+
+            setResult(ocrResult);
+            setHistory((prev) => [ocrResult, ...prev.slice(0, 19)]);
+            feedbackService.success();
+            translationService.speak(ocrResult.translated, targetLang);
+        } catch (err: unknown) {
+            console.error('[OCR Gallery] Error:', err);
+            setError(err instanceof Error ? err.message : 'Failed to process image.');
+            feedbackService.error();
+        } finally {
+            setCapturing(false);
+        }
+    }, [capturing, targetLang]);
+
+    // ─── Clipboard Copy ────────────────────────────────────────
+
+    const handleCopy = useCallback(async (text: string) => {
+        await Clipboard.setStringAsync(text);
+        setCopied(true);
+        feedbackService.tap();
+        setTimeout(() => setCopied(false), 2000);
+    }, []);
+
     // ─── Live Scan Mode ────────────────────────────────────────
 
     const startLiveScan = useCallback(() => {
@@ -143,7 +200,8 @@ export default function CameraTab() {
                         setDetectedLang(ocrResult.fromLang);
                     }
                 }
-            } catch (err) { console.warn("[Camera] Error:", err);
+            } catch (err) {
+                console.warn("[Camera] Error:", err);
                 // Ignore transient errors in live mode
             } finally {
                 scanningRef.current = false;
@@ -249,7 +307,7 @@ export default function CameraTab() {
         <ScreenErrorBoundary screenName="Camera">
             <View style={styles.container}>
                 {/* Camera */}
-                <CameraView ref={cameraRef} style={styles.camera} facing="back">
+                <CameraView ref={cameraRef} style={styles.camera} facing="back" enableTorch={flashOn}>
                     {/* Camera Overlay */}
                     <View style={styles.cameraOverlay}>
                         {/* Top bar */}
@@ -265,7 +323,14 @@ export default function CameraTab() {
                                 </Text>
                             </Pressable>
                             <Text style={styles.topTitle}>📷 Camera Translate</Text>
-                            <View style={{ width: 44 }} />
+                            <Pressable
+                                style={[styles.flashBtn, flashOn && styles.flashBtnActive]}
+                                onPress={() => { setFlashOn(f => !f); feedbackService.tap(); }}
+                                accessibilityLabel={flashOn ? 'Turn off flash' : 'Turn on flash'}
+                                accessibilityRole="button"
+                            >
+                                <Text style={styles.flashBtnText}>{flashOn ? '🔦' : '💡'}</Text>
+                            </Pressable>
                         </View>
 
                         {/* Crosshair targeting box */}
@@ -339,9 +404,14 @@ export default function CameraTab() {
                         {error ? (
                             <View style={styles.errorBanner}>
                                 <Text style={styles.errorText}>⚠️ {error}</Text>
-                                <Pressable onPress={() => setError(null)} accessibilityLabel="Dismiss error" accessibilityRole="button">
-                                    <Text style={styles.errorDismiss}>✕</Text>
-                                </Pressable>
+                                <View style={styles.errorActions}>
+                                    <Pressable onPress={handleCapture} style={styles.retryBtn} accessibilityLabel="Retry capture" accessibilityRole="button">
+                                        <Text style={styles.retryBtnText}>↻ Retry</Text>
+                                    </Pressable>
+                                    <Pressable onPress={() => setError(null)} accessibilityLabel="Dismiss error" accessibilityRole="button">
+                                        <Text style={styles.errorDismiss}>✕</Text>
+                                    </Pressable>
+                                </View>
                             </View>
                         ) : !result && !liveMode ? (
                             <Text style={styles.hint}>Point at text and tap the button below</Text>
@@ -378,7 +448,7 @@ export default function CameraTab() {
                                     </Text>
                                 </View>
 
-                                {/* TTS + dismiss */}
+                                {/* TTS + Copy + dismiss */}
                                 <View style={styles.overlayActions}>
                                     <Pressable
                                         style={styles.overlayActionBtn}
@@ -387,6 +457,14 @@ export default function CameraTab() {
                                         accessibilityRole="button"
                                     >
                                         <Text style={styles.overlayActionText}>🔊 Listen</Text>
+                                    </Pressable>
+                                    <Pressable
+                                        style={styles.overlayActionBtn}
+                                        onPress={() => handleCopy(result.translated)}
+                                        accessibilityLabel={copied ? 'Copied to clipboard' : 'Copy translation'}
+                                        accessibilityRole="button"
+                                    >
+                                        <Text style={styles.overlayActionText}>{copied ? '✅ Copied' : '📋 Copy'}</Text>
                                     </Pressable>
                                     <Pressable style={styles.overlayActionBtn} onPress={dismissResult} accessibilityLabel="Dismiss translation" accessibilityRole="button">
                                         <Text style={styles.overlayActionText}>✕ Dismiss</Text>
@@ -467,6 +545,17 @@ export default function CameraTab() {
                                 <Text style={styles.freezeBtnText}>❄️ Freeze</Text>
                             </Pressable>
                         )}
+
+                        {/* Gallery import */}
+                        <Pressable
+                            style={styles.galleryBtn}
+                            onPress={handleGalleryImport}
+                            disabled={capturing || liveMode}
+                            accessibilityLabel="Import image from gallery for OCR"
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.galleryBtnText}>🖼️ Gallery</Text>
+                        </Pressable>
                     </View>
                 </View>
             </View>
@@ -507,6 +596,9 @@ const styles = StyleSheet.create({
     topTitle: { ...typography.button, color: '#fff', textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4 },
     historyBtn: { backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
     historyBtnText: { ...typography.bodySmall, color: '#fff' },
+    flashBtn: { backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16 },
+    flashBtnActive: { backgroundColor: 'rgba(250,204,21,0.4)', borderWidth: 1, borderColor: '#facc15' },
+    flashBtnText: { fontSize: 18 },
 
     // Crosshair
     crosshair: {
@@ -531,7 +623,10 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(239,68,68,0.9)', padding: 12, borderRadius: borderRadius.md,
     },
     errorText: { ...typography.bodySmall, color: '#fff', flex: 1 },
-    errorDismiss: { ...typography.body, color: '#fff', paddingLeft: 12 },
+    errorActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    retryBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    retryBtnText: { ...typography.bodySmall, fontWeight: '600', color: '#fff' },
+    errorDismiss: { ...typography.body, color: '#fff', paddingLeft: 4 },
 
     // Translation overlay
     translationOverlay: {
@@ -588,6 +683,13 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: '#3b82f6',
     },
     freezeBtnText: { ...typography.bodySmall, fontWeight: '600', color: '#3b82f6' },
+    galleryBtn: {
+        backgroundColor: colors.surface, borderRadius: borderRadius.lg,
+        paddingVertical: 14, paddingHorizontal: 16,
+        alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1, borderColor: colors.borderLight,
+    },
+    galleryBtnText: { ...typography.bodySmall, fontWeight: '600', color: colors.textPrimary },
 
     // Live overlays
     boundingBoxContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },

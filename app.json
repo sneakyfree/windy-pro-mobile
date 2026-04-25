@@ -27,7 +27,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "uk.thewindstorm.windypro",
-      "privacyPolicyUrl": "https://windyword.ai/privacy",
       "buildNumber": "17",
       "associatedDomains": [
         "applinks:windyword.ai",
