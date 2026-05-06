@@ -118,12 +118,12 @@ B — EXTERNAL HTTP CALLS (10 distinct hosts)
    WebView /webmail/message/{id}                  mail/[id].tsx — JWT injected via
                                                   localStorage (Wave 3, P1-2 below)
 
-4. chat.windyword.ai (WINDY_CHAT_WEBVIEW_URL — prod)
+4. chat.windychat.ai (WINDY_CHAT_WEBVIEW_URL — prod)
    WebView /                                      (tabs)/chat.tsx — JWT injected;
                                                   originWhitelist=['https://*','http://*']
                                                   — see GAP_ANALYSIS P0-1
 
-5. chat.windypro.com (DEFAULT_CHAT_HOMESERVER)
+5. chat.windychat.ai (DEFAULT_CHAT_HOMESERVER)
    Matrix client-server API                       chatClient.ts (matrix-js-sdk)
 
 6. api.eternitas.ai (ETERNITAS_URL)
