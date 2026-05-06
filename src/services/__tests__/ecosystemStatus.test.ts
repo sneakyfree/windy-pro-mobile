@@ -80,15 +80,15 @@ describe('getProductSubtitle', () => {
     it('returns matrix user ID for chat', () => {
         const product: EcosystemProduct = {
             status: 'active',
-            matrix_user_id: '@user:chat.windypro.com',
+            matrix_user_id: '@user:chat.windychat.ai',
         };
-        expect(getProductSubtitle('windy_chat', product)).toBe('@user:chat.windypro.com');
+        expect(getProductSubtitle('windy_chat', product)).toBe('@user:chat.windychat.ai');
     });
 
     it('shows offline indicator for chat', () => {
         const product: EcosystemProduct = {
             status: 'active',
-            matrix_user_id: '@user:chat.windypro.com',
+            matrix_user_id: '@user:chat.windychat.ai',
             online: false,
         };
         expect(getProductSubtitle('windy_chat', product)).toContain('offline');
@@ -180,7 +180,7 @@ describe('getEcosystemStatus', () => {
                 windy_chat: {
                     provisioned: true,
                     health: 'ok',
-                    matrix_user_id: '@user:chat.windypro.com',
+                    matrix_user_id: '@user:chat.windychat.ai',
                     status: 'active',
                 },
                 windy_mail: {
@@ -221,7 +221,7 @@ describe('getEcosystemStatus', () => {
         expect(result!.tier).toBe('pro');
 
         // Chat: matrix_user_id passed through
-        expect(result!.products.windy_chat.matrix_user_id).toBe('@user:chat.windypro.com');
+        expect(result!.products.windy_chat.matrix_user_id).toBe('@user:chat.windychat.ai');
         expect(result!.products.windy_chat.healthy).toBe(true);
 
         // Mail: 'address' → 'email_address'

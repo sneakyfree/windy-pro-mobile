@@ -43,7 +43,7 @@ export default function ChatProfileScreen() {
         try {
             const { getChatHomeserver } = require('@/config/api');
             return getChatHomeserver();
-        } catch { return 'https://chat.windypro.com'; }
+        } catch { return 'https://chat.windychat.ai'; }
     });
     const [isRegister, setIsRegister] = useState(false);
     const [authLoading, setAuthLoading] = useState(false);

@@ -24,7 +24,7 @@ your Chat app actually emits? Check fixtures from a live chat session.
 Also confirm no current `windychat://room/...` URLs in SMS templates,
 mail signatures, or onboarding flows use a shape the sanitizer rejects.
 
-**Post-merge smoke** — send yourself a `windychat://room/!realRoom:chat.windypro.com`
+**Post-merge smoke** — send yourself a `windychat://room/!realRoom:chat.windychat.ai`
 link via SMS, tap it, confirm it opens the correct Matrix room (not the
 `/(tabs)/chat` fallback). Then try `windychat://room/..%2Fauth%2Flogin`
 and confirm it falls back without routing.

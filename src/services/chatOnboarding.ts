@@ -2,7 +2,7 @@
  * 🧬 K2 — Windy Chat Onboarding Service
  * WhatsApp-style phone/email verification flow.
  * Users never see Matrix usernames — accounts are auto-provisioned
- * on chat.windypro.com behind the scenes.
+ * on chat.windychat.ai behind the scenes.
  *
  * Flow:
  *   1. requestVerification(phone/email) → server sends 6-digit OTP

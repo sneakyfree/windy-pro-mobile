@@ -35,7 +35,7 @@ interface ChatModuleConfig {
     getUserEmail(): string | null;
 
     // Server config
-    homeserverUrl: string;       // Matrix homeserver (default: chat.windypro.com)
+    homeserverUrl: string;       // Matrix homeserver (default: chat.windychat.ai)
     apiBaseUrl: string;          // Account server for K2 onboarding
 
     // User preferences
@@ -141,7 +141,7 @@ For standalone without translation: messages display as-is in original language.
 
 ### Agent Detection
 
-Agent rooms are identified by the pattern `@windy_*:chat.windypro.com` in 2-member DMs. The standalone app can:
+Agent rooms are identified by the pattern `@windy_*:chat.windychat.ai` in 2-member DMs. The standalone app can:
 - Keep this pattern for Windy ecosystem agents
 - Extend with custom patterns for other bot systems
 

@@ -235,7 +235,7 @@ in Windy Word?" → Yes → the right screen opens.
 | --- | --- |
 | `windypro://record` | Home / record screen |
 | `windyword://recording/smoke-001` | History or playback for `smoke-001` |
-| `windychat://room/!abc:chat.windypro.com` | Chat room `!abc` (or chat tab if room missing) |
+| `windychat://room/!abc:chat.windychat.ai` | Chat room `!abc` (or chat tab if room missing) |
 | `windymail://inbox` | Mail tab WebView |
 | `windyfly://status` | Fly tab |
 | `windyclone://discover` | Clone-data tab |

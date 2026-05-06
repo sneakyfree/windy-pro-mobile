@@ -1184,7 +1184,7 @@ const AGENT_USER_PATTERN = /^@windy_[^:]+:chat\.windypro\.com$/;
 
 /**
  * Check if a chat room is an agent DM (Windy Fly bot).
- * Detects rooms with exactly 2 members where one matches @windy_*:chat.windypro.com.
+ * Detects rooms with exactly 2 members where one matches @windy_*:chat.windychat.ai.
  */
 export function isAgentRoom(room: ChatRoom): boolean {
     if (!room.members || room.members.length !== 2) return false;

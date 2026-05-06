@@ -146,7 +146,7 @@ For EAS builds:
 | Service | URL | Purpose |
 |---------|-----|---------|
 | API_BASE_URL | `https://windypro.thewindstorm.uk` | Account server (identity hub, all v1 APIs) |
-| CHAT_HOMESERVER | `https://chat.windypro.com` | Matrix homeserver (Synapse) |
+| CHAT_HOMESERVER | `https://chat.windychat.ai` | Matrix homeserver (Synapse) |
 | WINDY_MAIL_URL | `https://mail.windymail.ai` | Webmail interface |
 | WHISPER_MODEL_CDN | HuggingFace default | Whisper GGML model downloads |
 | GOOGLE_VISION_API | `https://vision.googleapis.com/...` | Google Cloud Vision |

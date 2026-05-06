@@ -65,7 +65,7 @@ export const ENDPOINTS = {
 } as const;
 
 /** Windy Chat Matrix homeserver — default, overridable from settings */
-export const DEFAULT_CHAT_HOMESERVER = 'https://chat.windypro.com';
+export const DEFAULT_CHAT_HOMESERVER = 'https://chat.windychat.ai';
 
 /** Windy Mail webmail URL (external browser flow) */
 export const WINDY_MAIL_URL = 'https://mail.windymail.ai';

@@ -43,8 +43,8 @@ describe('Agent Hatch API Flow', () => {
                 passport_number: 'ET-TEST-001',
                 eternitas_provisioned: true,
                 chat_provisioned: true,
-                matrix_user_id: '@agent_ET-TEST-001:chat.windypro.com',
-                dm_room_id: '!room:chat.windypro.com',
+                matrix_user_id: '@agent_ET-TEST-001:chat.windychat.ai',
+                dm_room_id: '!room:chat.windychat.ai',
             }),
         });
 
@@ -69,7 +69,7 @@ describe('Agent Hatch API Flow', () => {
         const data = await res.json();
         expect(data.passport_number).toBe('ET-TEST-001');
         expect(data.chat_provisioned).toBe(true);
-        expect(data.dm_room_id).toBe('!room:chat.windypro.com');
+        expect(data.dm_room_id).toBe('!room:chat.windychat.ai');
     });
 
     it('handles provision failure', async () => {
