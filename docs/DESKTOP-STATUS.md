@@ -8,7 +8,7 @@
 - **Windows .exe:** 242 MB
 - **Universal Linux installer:** install-windy-pro.sh (23 KB)
 - **macOS .dmg:** Pending (OC5 iMac was asleep during build attempt)
-- **Download site:** https://windypro.thewindstorm.uk
+- **Download site:** https://windyword.ai
 
 ### What's Built and Working
 

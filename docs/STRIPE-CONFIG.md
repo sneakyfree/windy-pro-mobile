@@ -10,7 +10,7 @@
 | Publishable Key | pk_test_51T5nu2BXIOBasDQiC2i6QgA774AU5IYq4GLVJolubhNmSwGkN82BTGwY3rjnb3gexTbzttkzgOnZYZ7l82EP5dGG00AzhmNIEZ |
 | Secret Key | sk_test_51T5nu2BXIOBasDQiLItF0DhS8A49YClDwdiiYYv1LsTlij5SeU4HgLAn2fVYHej2M4syiIlYXNN3OjBdWalI03fV00s2nCXSZW |
 | Webhook Secret | whsec_xZ8cdMhT6xunaUKafa1VQ7zRqUVls4ZZ |
-| Webhook URL | https://windypro.thewindstorm.uk/stripe/webhook |
+| Webhook URL | https://windyword.ai/stripe/webhook |
 
 ## Products & Pricing
 
@@ -46,7 +46,7 @@
 
 ### Recommended: Web-Based Licensing
 1. User taps "Upgrade" in app
-2. App opens windypro.thewindstorm.uk/pricing in browser
+2. App opens windyword.ai/pricing in browser
 3. User completes Stripe checkout on website
 4. Webhook fires → generates license key → emails to user
 5. User enters license key in app

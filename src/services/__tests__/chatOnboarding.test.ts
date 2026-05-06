@@ -23,7 +23,7 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 jest.mock('@/config/api', () => ({
-    API_BASE_URL: 'https://test.windypro.com',
+    API_BASE_URL: 'https://test.windyword.ai',
     ENDPOINTS: {
         CHAT_REGISTER: '/api/v1/chat/register',
         CHAT_VERIFY_OTP: '/api/v1/chat/verify',

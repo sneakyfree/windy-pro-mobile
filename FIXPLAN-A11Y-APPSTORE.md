@@ -25,7 +25,7 @@
 "ios": {
   "supportsTablet": true,
   "bundleIdentifier": "ai.windyword.app",
-  "privacyPolicyUrl": "https://windypro.thewindstorm.uk/privacy",
+  "privacyPolicyUrl": "https://windyword.ai/privacy",
 ```
 
 ---

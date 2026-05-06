@@ -160,7 +160,7 @@ if [[ -n "$DEVICE" ]]; then
                     for url in \
                         "windypro://record" \
                         "windyword://recording/smoke-001" \
-                        "windychat://room/!smoke:chat.windypro.com" \
+                        "windychat://room/!smoke:chat.windychat.ai" \
                         "windymail://inbox" \
                         "windyfly://status" \
                         "windyclone://discover" \
@@ -195,7 +195,7 @@ if [[ -n "$DEVICE" ]]; then
                     for url in \
                         "windypro://record" \
                         "windyword://recording/smoke-001" \
-                        "windychat://room/!smoke:chat.windypro.com" \
+                        "windychat://room/!smoke:chat.windychat.ai" \
                         "windymail://inbox" \
                         "windyfly://status" \
                         "windyclone://discover" \

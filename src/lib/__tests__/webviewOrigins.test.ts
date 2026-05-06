@@ -14,8 +14,8 @@ import { buildOriginWhitelist, buildNavigationGuard } from '../webviewOrigins';
 
 describe('buildOriginWhitelist', () => {
     it('returns the primary origin', () => {
-        const list = buildOriginWhitelist('https://chat.windyword.ai');
-        expect(list).toContain('https://chat.windyword.ai');
+        const list = buildOriginWhitelist('https://chat.windychat.ai');
+        expect(list).toContain('https://chat.windychat.ai');
     });
 
     it('strips paths and queries from the input url', () => {
@@ -40,7 +40,7 @@ describe('buildOriginWhitelist', () => {
 describe('buildNavigationGuard', () => {
     beforeEach(() => { mockOpenURL.mockClear(); });
 
-    const allowed = ['https://chat.windyword.ai'];
+    const allowed = ['https://chat.windychat.ai'];
     const guard = buildNavigationGuard(allowed);
 
     function req(url: string) {
@@ -57,14 +57,14 @@ describe('buildNavigationGuard', () => {
     }
 
     it('allows navigations on the whitelisted origin', () => {
-        expect(guard(req('https://chat.windyword.ai/room/123'))).toBe(true);
+        expect(guard(req('https://chat.windychat.ai/room/123'))).toBe(true);
         expect(mockOpenURL).not.toHaveBeenCalled();
     });
 
     it('allows non-http(s) schemes (e.g. about:blank, mailto:)', () => {
         expect(guard(req('about:blank'))).toBe(true);
         expect(guard(req('mailto:foo@example.com'))).toBe(true);
-        expect(guard(req('blob:https://chat.windyword.ai/abc'))).toBe(true);
+        expect(guard(req('blob:https://chat.windychat.ai/abc'))).toBe(true);
         expect(mockOpenURL).not.toHaveBeenCalled();
     });
 
@@ -75,13 +75,13 @@ describe('buildNavigationGuard', () => {
     });
 
     it('blocks a protocol-relative escape attempt', () => {
-        const result = guard(req('https://chat.windyword.ai.evil.com/'));
+        const result = guard(req('https://chat.windychat.ai.evil.com/'));
         expect(result).toBe(false);
         expect(mockOpenURL).toHaveBeenCalled();
     });
 
     it('blocks a subdomain that is not exactly whitelisted', () => {
-        const result = guard(req('https://evil.chat.windyword.ai/'));
+        const result = guard(req('https://evil.chat.windychat.ai/'));
         expect(result).toBe(false);
         expect(mockOpenURL).toHaveBeenCalled();
     });

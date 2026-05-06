@@ -13,7 +13,7 @@ try {
 export const API_BASE_URL: string =
     (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL)
         || (_expoExtra.apiBaseUrl as string)
-        || 'https://windyword.ai';
+        || 'https://account.windyword.ai';
 
 // ─── Endpoint paths (relative to API_BASE_URL) ────────────────
 
@@ -78,7 +78,7 @@ export const WINDY_MAIL_WEBVIEW_URL: string = __DEV__
 /** Windy Chat WebView URL — localhost in dev, production in release */
 export const WINDY_CHAT_WEBVIEW_URL: string = __DEV__
     ? 'http://localhost:3000'
-    : 'https://chat.windyword.ai';
+    : 'https://chat.windychat.ai';
 
 /**
  * Get the current chat homeserver URL.

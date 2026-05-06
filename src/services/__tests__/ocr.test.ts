@@ -19,7 +19,7 @@ jest.mock('../translation', () => ({
 
 jest.mock('@/config/api', () => ({
     ENDPOINTS: { OCR_TRANSLATE: '/api/v1/ocr/translate' },
-    apiUrl: jest.fn((path: string) => `https://test.windypro.com${path}`),
+    apiUrl: jest.fn((path: string) => `https://test.windyword.ai${path}`),
     GOOGLE_VISION_API: 'https://vision.googleapis.com/v1/images:annotate',
     GOOGLE_VISION_API_KEY: '',
 }));

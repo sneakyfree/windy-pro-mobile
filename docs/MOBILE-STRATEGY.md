@@ -120,7 +120,7 @@ Users are giving us access to their **microphone, camera, and files.** Trust is 
 **Problem:** App stores take 15-30% of in-app purchases.
 
 **Solution options:**
-1. **Web-based subscription** (recommended for v1): User buys on windypro.thewindstorm.uk, enters license key in app. Apple allows this post-Epic ruling but may give friction during review.
+1. **Web-based subscription** (recommended for v1): User buys on windyword.ai, enters license key in app. Apple allows this post-Epic ruling but may give friction during review.
 2. **Higher mobile pricing**: If using StoreKit/Google Billing, increase prices to offset platform fee.
 3. **Hybrid**: Free features in app, paid features via web link. App acts as funnel to website.
 4. **RevenueCat**: Cross-platform purchase SDK that handles both stores + Stripe, with analytics. $0 until $2.5k MRR.

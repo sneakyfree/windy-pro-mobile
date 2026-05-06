@@ -89,13 +89,13 @@ describe('parseSseFrame — terminal events', () => {
     it('maps hatch.complete to a result event with the identity bundle', () => {
         const frame = [
             'event: hatch.complete',
-            'data: {"passport_number":"ET-12345","matrix_user_id":"@fly:windypro.com","dm_room_id":"!dm:windypro.com","trust_score":88}',
+            'data: {"passport_number":"ET-12345","matrix_user_id":"@fly:windyword.ai","dm_room_id":"!dm:windyword.ai","trust_score":88}',
         ].join('\n');
         expect(parseSseFrame(frame)).toEqual({
             kind: 'result',
             passport_number: 'ET-12345',
-            matrix_user_id: '@fly:windypro.com',
-            dm_room_id: '!dm:windypro.com',
+            matrix_user_id: '@fly:windyword.ai',
+            dm_room_id: '!dm:windyword.ai',
             trust_score: 88,
         });
     });
