@@ -58,7 +58,7 @@ const mockMatrixClient = {
     setDisplayName: jest.fn().mockResolvedValue(undefined),
     getAccountData: jest.fn().mockReturnValue(null),
     searchUserDirectory: jest.fn().mockResolvedValue({ results: [] }),
-    createRoom: jest.fn().mockResolvedValue({ room_id: '!newroom:chat.windypro.com' }),
+    createRoom: jest.fn().mockResolvedValue({ room_id: '!newroom:chat.windychat.ai' }),
     setAccountData: jest.fn().mockResolvedValue(undefined),
     initCrypto: undefined,  // Crypto not available in test
     sendTyping: jest.fn().mockResolvedValue(undefined),
@@ -96,9 +96,9 @@ function mockFetchResponse(status: number, body: Record<string, unknown>) {
 
 const MOCK_CREDENTIALS = {
     accessToken: 'syt_test_token_abc123',
-    userId: '@user_phone_abc:chat.windypro.com',
+    userId: '@user_phone_abc:chat.windychat.ai',
     deviceId: 'DEVICE_TEST_001',
-    homeserverUrl: 'https://chat.windypro.com',
+    homeserverUrl: 'https://chat.windychat.ai',
 };
 
 // ─── Tests ──────────────────────────────────────────────────────
@@ -179,7 +179,7 @@ describe('Windy Chat — Mobile Smoke Tests', () => {
             expect(result.credentials).toBeDefined();
             expect(result.credentials!.accessToken).toBe('syt_test_token_abc123');
             expect(result.credentials!.userId).toContain('@user_phone');
-            expect(result.credentials!.homeserverUrl).toBe('https://chat.windypro.com');
+            expect(result.credentials!.homeserverUrl).toBe('https://chat.windychat.ai');
         });
 
         it('should reject wrong OTP code', async () => {
@@ -267,15 +267,15 @@ describe('Windy Chat — Mobile Smoke Tests', () => {
         it('should restore session from SecureStore', async () => {
             // Seed the secure store as if a previous login persisted credentials
             mockSecureStore['windy_matrix_token'] = 'syt_restored_token';
-            mockSecureStore['windy_matrix_user'] = '@restored:chat.windypro.com';
-            mockSecureStore['windy_matrix_server'] = 'https://chat.windypro.com';
+            mockSecureStore['windy_matrix_user'] = '@restored:chat.windychat.ai';
+            mockSecureStore['windy_matrix_server'] = 'https://chat.windychat.ai';
             mockSecureStore['windy_matrix_device'] = 'DEVICE_RESTORED';
 
             const restored = await chatClient.restoreSession();
 
             expect(restored).toBe(true);
             expect(chatClient.isLoggedIn()).toBe(true);
-            expect(chatClient.getUserId()).toBe('@restored:chat.windypro.com');
+            expect(chatClient.getUserId()).toBe('@restored:chat.windychat.ai');
         });
 
         it('should return false when no session exists', async () => {
@@ -320,12 +320,12 @@ describe('Windy Chat — Mobile Smoke Tests', () => {
             mockMatrixClient.searchUserDirectory.mockResolvedValueOnce({
                 results: [
                     {
-                        user_id: '@alice:chat.windypro.com',
+                        user_id: '@alice:chat.windychat.ai',
                         display_name: 'Alice',
-                        avatar_url: 'mxc://chat.windypro.com/avatar1',
+                        avatar_url: 'mxc://chat.windychat.ai/avatar1',
                     },
                     {
-                        user_id: '@bob:chat.windypro.com',
+                        user_id: '@bob:chat.windychat.ai',
                         display_name: 'Bob',
                         avatar_url: null,
                     },
@@ -336,7 +336,7 @@ describe('Windy Chat — Mobile Smoke Tests', () => {
 
             expect(contacts).toHaveLength(2);
             expect(contacts[0].displayName).toBe('Alice');
-            expect(contacts[0].userId).toBe('@alice:chat.windypro.com');
+            expect(contacts[0].userId).toBe('@alice:chat.windychat.ai');
             expect(contacts[1].displayName).toBe('Bob');
         });
 
@@ -358,10 +358,10 @@ describe('Windy Chat — Mobile Smoke Tests', () => {
         it('should get contacts from joined rooms', async () => {
             mockMatrixClient.getRooms.mockReturnValueOnce([
                 {
-                    roomId: '!room1:chat.windypro.com',
+                    roomId: '!room1:chat.windychat.ai',
                     getJoinedMembers: () => [
                         { userId: MOCK_CREDENTIALS.userId, name: 'Me' },
-                        { userId: '@friend:chat.windypro.com', name: 'Friend', getAvatarUrl: () => null },
+                        { userId: '@friend:chat.windychat.ai', name: 'Friend', getAvatarUrl: () => null },
                     ],
                 },
             ]);
@@ -369,7 +369,7 @@ describe('Windy Chat — Mobile Smoke Tests', () => {
             const contacts = chatClient.getContacts();
 
             expect(contacts).toHaveLength(1);
-            expect(contacts[0].userId).toBe('@friend:chat.windypro.com');
+            expect(contacts[0].userId).toBe('@friend:chat.windychat.ai');
             expect(contacts[0].displayName).toBe('Friend');
         });
     });

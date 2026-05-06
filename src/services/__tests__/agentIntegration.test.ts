@@ -29,7 +29,7 @@ describe('isAgentRoom', () => {
 
     function mockRoom(members: string[]): ChatRoom {
         return {
-            roomId: `!room-${Math.random().toString(36).slice(2)}:chat.windypro.com`,
+            roomId: `!room-${Math.random().toString(36).slice(2)}:chat.windychat.ai`,
             name: 'Test Room',
             members,
             lastMessage: undefined,
@@ -40,12 +40,12 @@ describe('isAgentRoom', () => {
     }
 
     it('identifies agent DM with @windy_* member', () => {
-        const room = mockRoom(['@user:chat.windypro.com', '@windy_testbot:chat.windypro.com']);
+        const room = mockRoom(['@user:chat.windychat.ai', '@windy_testbot:chat.windychat.ai']);
         expect(isAgentRoom(room)).toBe(true);
     });
 
     it('rejects room with regular user only', () => {
-        const room = mockRoom(['@user:chat.windypro.com', '@other:chat.windypro.com']);
+        const room = mockRoom(['@user:chat.windychat.ai', '@other:chat.windychat.ai']);
         expect(isAgentRoom(room)).toBe(false);
     });
 
@@ -61,22 +61,22 @@ describe('isAgentRoom', () => {
 
     it('rejects group chat with agent member (3+ members)', () => {
         const room = mockRoom([
-            '@user1:chat.windypro.com',
-            '@user2:chat.windypro.com',
-            '@windy_bot:chat.windypro.com',
+            '@user1:chat.windychat.ai',
+            '@user2:chat.windychat.ai',
+            '@windy_bot:chat.windychat.ai',
         ]);
         expect(isAgentRoom(room)).toBe(false);
     });
 
     it('rejects single-member room with agent', () => {
-        const room = mockRoom(['@windy_bot:chat.windypro.com']);
+        const room = mockRoom(['@windy_bot:chat.windychat.ai']);
         expect(isAgentRoom(room)).toBe(false);
     });
 
     it('matches various agent name formats', () => {
-        expect(isAgentRoom(mockRoom(['@me:x.com', '@windy_fly_agent:chat.windypro.com']))).toBe(true);
-        expect(isAgentRoom(mockRoom(['@me:x.com', '@windy_a:chat.windypro.com']))).toBe(true);
-        expect(isAgentRoom(mockRoom(['@me:x.com', '@windy_grant-bot-123:chat.windypro.com']))).toBe(true);
+        expect(isAgentRoom(mockRoom(['@me:x.com', '@windy_fly_agent:chat.windychat.ai']))).toBe(true);
+        expect(isAgentRoom(mockRoom(['@me:x.com', '@windy_a:chat.windychat.ai']))).toBe(true);
+        expect(isAgentRoom(mockRoom(['@me:x.com', '@windy_grant-bot-123:chat.windychat.ai']))).toBe(true);
     });
 
     it('rejects similar but wrong domains', () => {
@@ -98,7 +98,7 @@ describe('Agent room sorting', () => {
         const rooms: ChatRoom[] = [
             { roomId: 'r1', name: 'Alice', members: ['@alice:x.com', '@me:x.com'], lastMessageTime: 5000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
             { roomId: 'r2', name: 'Bob', members: ['@bob:x.com', '@me:x.com'], lastMessageTime: 3000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
-            { roomId: 'r3', name: 'Agent', members: ['@windy_fly:chat.windypro.com', '@me:x.com'], lastMessageTime: 1000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
+            { roomId: 'r3', name: 'Agent', members: ['@windy_fly:chat.windychat.ai', '@me:x.com'], lastMessageTime: 1000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
             { roomId: 'r4', name: 'Charlie', members: ['@charlie:x.com', '@me:x.com'], lastMessageTime: 4000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
             { roomId: 'r5', name: 'Diana', members: ['@diana:x.com', '@me:x.com'], lastMessageTime: 2000, unreadCount: 0, lastMessage: undefined, isDirect: true } as ChatRoom,
         ];
@@ -224,7 +224,7 @@ describe('Ecosystem status creator_name', () => {
                 windy_chat: { status: 'active' as const },
                 windy_mail: { status: 'not_provisioned' as const },
                 windy_cloud: { status: 'active' as const },
-                windy_fly: { status: 'active' as const, agent_name: 'FlyBot', matrix_user_id: '@windy_fly:chat.windypro.com' },
+                windy_fly: { status: 'active' as const, agent_name: 'FlyBot', matrix_user_id: '@windy_fly:chat.windychat.ai' },
                 windy_clone: { status: 'active' as const },
                 windy_traveler: { status: 'active' as const },
                 eternitas: { status: 'not_provisioned' as const },

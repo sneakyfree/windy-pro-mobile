@@ -272,7 +272,7 @@ server-side association files hosted on windyword.ai.
 ```bash
 # iOS simulator
 xcrun simctl openurl booted windypro://record
-xcrun simctl openurl booted windychat://room/\!abc:chat.windypro.com
+xcrun simctl openurl booted windychat://room/\!abc:chat.windychat.ai
 xcrun simctl openurl booted windyclone://discover
 xcrun simctl openurl booted windycloud://dashboard
 xcrun simctl openurl booted windyfly://status

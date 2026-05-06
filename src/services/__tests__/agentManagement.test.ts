@@ -42,8 +42,8 @@ describe('Agent Management Data', () => {
                 passport_id: 'ET-AGENT-001',
                 trust_score: 95,
                 clearance_level: 4,
-                matrix_user_id: '@windy_jarvis:chat.windypro.com',
-                room_id: '!room:chat.windypro.com',
+                matrix_user_id: '@windy_jarvis:chat.windychat.ai',
+                room_id: '!room:chat.windychat.ai',
             };
 
             const subtitle = getProductSubtitle('windy_fly', product);

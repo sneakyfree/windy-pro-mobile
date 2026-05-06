@@ -417,7 +417,7 @@ Paste each URL as its own line in a new Note, tap each:
 ```
 windypro://record
 windyword://recording/smoke-001
-windychat://room/!abc:chat.windypro.com
+windychat://room/!abc:chat.windychat.ai
 windymail://inbox
 windyfly://status
 windyclone://discover

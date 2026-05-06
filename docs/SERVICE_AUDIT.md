@@ -59,7 +59,7 @@ _Scope: All 37 service modules in `src/services/`_
 **Dependencies:** `expo-secure-store`, `matrix-js-sdk` (dynamic require), `./logger`
 **API Endpoints:** All Matrix Client-Server API via SDK — login, register, sync, send, presence, user search.
 **Hardcoded Config:**
-- **`DEFAULT_HOMESERVER = 'https://matrix.org'`** — should be `CHAT_HOMESERVER` from `@/config/api` (`https://chat.windypro.com`). Mismatch with chatOnboarding.ts.
+- **`DEFAULT_HOMESERVER = 'https://matrix.org'`** — should be `CHAT_HOMESERVER` from `@/config/api` (`https://chat.windychat.ai`). Mismatch with chatOnboarding.ts.
 
 **Gaps:** `sdk` and `client` typed as `any`. Pending message queue is in-memory only (lost on app kill). `isDirectRoom()` uses `members.length <= 2` heuristic.
 
@@ -502,7 +502,7 @@ _Scope: All 37 service modules in `src/services/`_
 
 | Service | URL | Used By |
 |---------|-----|---------|
-| Matrix Homeserver | `https://chat.windypro.com` | chatOnboarding (via config) |
+| Matrix Homeserver | `https://chat.windychat.ai` | chatOnboarding (via config) |
 | Matrix Homeserver (default) | `https://matrix.org` | chatClient (hardcoded default) |
 | HuggingFace CDN | `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/` | engine-download |
 | Windy CDN (models) | `https://windypro.thewindstorm.uk/models/` | windy-tune, offline-packs |
@@ -548,7 +548,7 @@ _Scope: All 37 service modules in `src/services/`_
 
 13. **Tier naming mismatch:** `pairCatalog.ts` uses `'free'|'pro'|'ultra'|'max'` while `license.ts` uses `'free'|'pro'|'translate'|'translate_pro'`. Feature gating bugs likely.
 
-14. **Matrix homeserver default mismatch:** `chatClient.ts` defaults to `https://matrix.org` but the Windy homeserver is `https://chat.windypro.com`. Any code path using the default connects to the wrong server.
+14. **Matrix homeserver default mismatch:** `chatClient.ts` defaults to `https://matrix.org` but the Windy homeserver is `https://chat.windychat.ai`. Any code path using the default connects to the wrong server.
 
 15. **In-memory queues lost on app kill:** cloudApi upload queue, chatClient pending messages, network-monitor translation queue — none persisted.
 

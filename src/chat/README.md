@@ -93,7 +93,7 @@ This document maps every chat-related file and its dependencies, to make it easy
 - Can be completely removed for standalone (messages show as-is)
 
 ### Agent Detection
-- `isAgentRoom(room)` checks for 2-member DM with `@windy_*:chat.windypro.com`
+- `isAgentRoom(room)` checks for 2-member DM with `@windy_*:chat.windychat.ai`
 - Agent rooms sorted to top of contact list
 - Pinned agent card with Eternitas badge, trust score
 - "Just hatched" banner when new agent DM appears

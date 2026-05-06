@@ -29,9 +29,9 @@ jest.mock('@/config/api', () => ({
         CHAT_VERIFY_OTP: '/api/v1/chat/verify',
         CHAT_SET_PROFILE: '/api/v1/chat/profile',
     },
-    CHAT_HOMESERVER: 'https://chat.windypro.com',
-    DEFAULT_CHAT_HOMESERVER: 'https://chat.windypro.com',
-    getChatHomeserver: jest.fn(() => 'https://chat.windypro.com'),
+    CHAT_HOMESERVER: 'https://chat.windychat.ai',
+    DEFAULT_CHAT_HOMESERVER: 'https://chat.windychat.ai',
+    getChatHomeserver: jest.fn(() => 'https://chat.windychat.ai'),
 }));
 
 jest.mock('@/services/chatClient', () => ({
@@ -190,9 +190,9 @@ describe('ChatOnboardingService', () => {
                 json: async () => ({
                     credentials: {
                         accessToken: 'tok-abc',
-                        userId: '@user:chat.windypro.com',
+                        userId: '@user:chat.windychat.ai',
                         deviceId: 'DEV123',
-                        homeserverUrl: 'https://chat.windypro.com',
+                        homeserverUrl: 'https://chat.windychat.ai',
                     },
                 }),
             });
@@ -200,7 +200,7 @@ describe('ChatOnboardingService', () => {
             const result = await chatOnboarding.verifyOtp('sess-1', '123456');
             expect(result.success).toBe(true);
             expect(result.credentials?.accessToken).toBe('tok-abc');
-            expect(result.credentials?.userId).toBe('@user:chat.windypro.com');
+            expect(result.credentials?.userId).toBe('@user:chat.windychat.ai');
         });
 
         it('should use CHAT_HOMESERVER as fallback homeserverUrl', async () => {
@@ -209,7 +209,7 @@ describe('ChatOnboardingService', () => {
                 json: async () => ({
                     credentials: {
                         accessToken: 'tok-abc',
-                        userId: '@user:chat.windypro.com',
+                        userId: '@user:chat.windychat.ai',
                         deviceId: 'DEV123',
                         // No homeserverUrl in response
                     },
@@ -217,7 +217,7 @@ describe('ChatOnboardingService', () => {
             });
 
             const result = await chatOnboarding.verifyOtp('sess-1', '654321');
-            expect(result.credentials?.homeserverUrl).toBe('https://chat.windypro.com');
+            expect(result.credentials?.homeserverUrl).toBe('https://chat.windychat.ai');
         });
 
         it('should handle invalid OTP error (400)', async () => {
@@ -293,17 +293,17 @@ describe('ChatOnboardingService', () => {
     describe('completeOnboarding', () => {
         const validCreds = {
             accessToken: 'tok-abc',
-            userId: '@user:chat.windypro.com',
+            userId: '@user:chat.windychat.ai',
             deviceId: 'DEV123',
-            homeserverUrl: 'https://chat.windypro.com',
+            homeserverUrl: 'https://chat.windychat.ai',
         };
 
         it('should reject empty credentials', async () => {
             const result = await chatOnboarding.completeOnboarding({
                 accessToken: '',
-                userId: '@user:chat.windypro.com',
+                userId: '@user:chat.windychat.ai',
                 deviceId: 'DEV123',
-                homeserverUrl: 'https://chat.windypro.com',
+                homeserverUrl: 'https://chat.windychat.ai',
             });
             expect(result.success).toBe(false);
             expect(result.error).toContain('Invalid credentials');
@@ -311,7 +311,7 @@ describe('ChatOnboardingService', () => {
 
         it('should skip login if already authenticated as same user', async () => {
             (chatClient.isLoggedIn as jest.Mock).mockReturnValue(true);
-            (chatClient.getUserId as jest.Mock).mockReturnValue('@user:chat.windypro.com');
+            (chatClient.getUserId as jest.Mock).mockReturnValue('@user:chat.windychat.ai');
 
             const result = await chatOnboarding.completeOnboarding(validCreds);
             expect(result.success).toBe(true);
@@ -330,9 +330,9 @@ describe('ChatOnboardingService', () => {
             expect(result.success).toBe(true);
             expect(chatClient.loginWithCredentials).toHaveBeenCalledWith(
                 'tok-abc',
-                '@user:chat.windypro.com',
+                '@user:chat.windychat.ai',
                 'DEV123',
-                'https://chat.windypro.com',
+                'https://chat.windychat.ai',
             );
         });
 

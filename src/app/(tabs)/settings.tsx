@@ -62,7 +62,7 @@ export default function SettingsScreen() {
   const [licenseKeyDisplay, setLicenseKeyDisplay] = useState<string | null>(null);
   const [targetLangPickerVisible, setTargetLangPickerVisible] = useState(false);
   const [serverUrl, setServerUrl] = useState(getTranscriptionServerUrl());
-  const [chatHomeserver, setChatHomeserver] = useState(settings.chatHomeserver || 'https://chat.windypro.com');
+  const [chatHomeserver, setChatHomeserver] = useState(settings.chatHomeserver || 'https://chat.windychat.ai');
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadErrors, setLoadErrors] = useState<string[]>([]);
@@ -924,7 +924,7 @@ export default function SettingsScreen() {
                 onChangeText={setChatHomeserver}
                 accessibilityLabel="Matrix chat homeserver URL"
                 onEndEditing={() => {
-                  const url = chatHomeserver.trim() || 'https://chat.windypro.com';
+                  const url = chatHomeserver.trim() || 'https://chat.windychat.ai';
                   const urlCheck = validateUrl(url);
                   if (!urlCheck.valid) {
                     Alert.alert('Invalid URL', urlCheck.error);
@@ -935,7 +935,7 @@ export default function SettingsScreen() {
                   feedbackService.success();
                   Alert.alert('Chat Server Updated', `Chat homeserver set to:\n${url}`);
                 }}
-                placeholder="https://chat.windypro.com"
+                placeholder="https://chat.windychat.ai"
                 placeholderTextColor={colors.textTertiary}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -945,7 +945,7 @@ export default function SettingsScreen() {
               <Pressable
                 style={styles.serverResetBtn}
                 onPress={() => {
-                  const def = 'https://chat.windypro.com';
+                  const def = 'https://chat.windychat.ai';
                   setChatHomeserver(def);
                   settings.setChatHomeserver('');
                   feedbackService.tap();
