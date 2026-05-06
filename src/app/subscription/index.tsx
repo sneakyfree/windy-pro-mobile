@@ -73,7 +73,7 @@ const PLANS: PlanInfo[] = [
     {
         id: 'pro',
         tier: 'pro',
-        name: 'Windy Pro',
+        name: 'Windy Word',
         badge: 'POPULAR',
         badgeColor: colors.accent,
         color: colors.accent,
@@ -348,7 +348,7 @@ export default function SubscriptionScreen() {
                 transform: [{ translateY: heroAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }],
             }]}>
                 <Text style={styles.heroEmoji} importantForAccessibility="no">🌪️</Text>
-                <Text style={styles.heroTitle} accessibilityRole="header">Unlock Windy Pro</Text>
+                <Text style={styles.heroTitle} accessibilityRole="header">Unlock Windy Word</Text>
                 <Text style={styles.heroSubtitle}>
                     Choose the plan that fits your workflow
                 </Text>
