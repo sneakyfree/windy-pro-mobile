@@ -193,7 +193,7 @@ export default function ChatTab() {
                     // Style
                     style={styles.webview}
                     containerStyle={styles.webviewContainer}
-                    // Lock the WebView to chat.windyword.ai so the injected
+                    // Lock the WebView to chat.windychat.ai so the injected
                     // JWT can't follow a redirect off-domain and get stolen.
                     originWhitelist={CHAT_ALLOWED_ORIGINS}
                     onShouldStartLoadWithRequest={chatNavigationGuard}

@@ -34,7 +34,7 @@ jest.mock('../logger', () => ({
 }));
 
 jest.mock('@/config/api', () => ({
-    PAIR_CATALOG_URL: 'https://test.windypro.com/api/v1/pairs/catalog.json',
+    PAIR_CATALOG_URL: 'https://test.windyword.ai/api/v1/pairs/catalog.json',
 }));
 
 // Bundled fallback data

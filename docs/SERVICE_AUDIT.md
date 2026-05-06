@@ -245,10 +245,10 @@ _Scope: All 37 service modules in `src/services/`_
 **Purpose:** Downloads and manages offline language translation packs (12 languages). Progress tracking, on-disk verification, metadata persistence.
 **Dependencies:** `expo-file-system`, `@react-native-async-storage/async-storage`, `./logger`
 **API Endpoints:**
-- `GET https://windypro.thewindstorm.uk/models/{code}/model-v{version}.bin`
+- `GET https://windyword.ai/models/{code}/model-v{version}.bin`
 
 **Hardcoded Config:**
-- **`PACK_BASE_URL = 'https://windypro.thewindstorm.uk/models'`** — should use `@/config/api`.
+- **`PACK_BASE_URL = 'https://windyword.ai/models'`** — should use `@/config/api`.
 
 **Gaps:** No integrity verification. No encryption (unlike pairManager). No retry logic. Overlaps significantly with pairManager.ts — potential dead code.
 
@@ -267,10 +267,10 @@ _Scope: All 37 service modules in `src/services/`_
 **Purpose:** Loads, caches, validates, queries translation pair catalog. 3-tier loading: CDN -> AsyncStorage cache (24h TTL) -> bundled JSON fallback.
 **Dependencies:** `expo-secure-store`, `@react-native-async-storage/async-storage`, `./logger`, `../../shared/pair-catalog.json`, `../../shared/pair-bundles.json`
 **API Endpoints:**
-- `GET https://windypro.thewindstorm.uk/api/v1/pairs/catalog.json`
+- `GET https://windyword.ai/api/v1/pairs/catalog.json`
 
 **Hardcoded Config:**
-- **`CDN_CATALOG_URL = 'https://windypro.thewindstorm.uk/api/v1/pairs/catalog.json'`** — should use `@/config/api`.
+- **`CDN_CATALOG_URL = 'https://windyword.ai/api/v1/pairs/catalog.json'`** — should use `@/config/api`.
 
 **Gaps:** No timeout on CDN fetch. Bundles always from bundled JSON (never CDN). **Tier naming mismatch:** `PairTier = 'free'|'pro'|'ultra'|'max'` vs `LicenseTier = 'free'|'pro'|'translate'|'translate_pro'`.
 
@@ -440,10 +440,10 @@ _Scope: All 37 service modules in `src/services/`_
 **Purpose:** Intelligent engine auto-configuration. Device hardware detection (RAM, Neural Engine, NPU), 8-engine registry (6 on-device Whisper + 2 cloud), optimal engine recommendation, model download with progress.
 **Dependencies:** `react-native`, `expo-device`, `expo-file-system`, `@react-native-async-storage/async-storage`, `@/types`, `./logger`
 **API Endpoints:**
-- `GET https://windypro.thewindstorm.uk/models/{engineId}.bin` — CDN model download
+- `GET https://windyword.ai/models/{engineId}.bin` — CDN model download
 
 **Hardcoded Config:**
-- **`ENGINE_CDN_BASE = 'https://windypro.thewindstorm.uk/models'`** — should use `@/config/api`.
+- **`ENGINE_CDN_BASE = 'https://windyword.ai/models'`** — should use `@/config/api`.
 
 **Gaps:**
 - **Critical path mismatch** with whisper-manager (downloads to `models/`, whisper looks in `windy/engines/`).
@@ -463,7 +463,7 @@ _Scope: All 37 service modules in `src/services/`_
 
 ## Complete Endpoint Map
 
-### Windy Pro Backend (`https://windypro.thewindstorm.uk`)
+### Windy Pro Backend (`https://windyword.ai`)
 
 | Method | Path | Service(s) | Auth |
 |--------|------|-----------|------|
@@ -505,8 +505,8 @@ _Scope: All 37 service modules in `src/services/`_
 | Matrix Homeserver | `https://chat.windychat.ai` | chatOnboarding (via config) |
 | Matrix Homeserver (default) | `https://matrix.org` | chatClient (hardcoded default) |
 | HuggingFace CDN | `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/` | engine-download |
-| Windy CDN (models) | `https://windypro.thewindstorm.uk/models/` | windy-tune, offline-packs |
-| Windy CDN (catalog) | `https://windypro.thewindstorm.uk/api/v1/pairs/catalog.json` | pairCatalog |
+| Windy CDN (models) | `https://windyword.ai/models/` | windy-tune, offline-packs |
+| Windy CDN (catalog) | `https://windyword.ai/api/v1/pairs/catalog.json` | pairCatalog |
 | Google Cloud Vision | `https://vision.googleapis.com/v1/images:annotate` | ocr |
 | RevenueCat | via SDK | subscription |
 
@@ -534,7 +534,7 @@ _Scope: All 37 service modules in `src/services/`_
 
 ### P2 — Config / Hardcoding
 
-8. **`API_BASE_URL` not from environment:** `src/config/api.ts` hardcodes `'https://windypro.thewindstorm.uk'` — no env var switching for dev/staging/prod.
+8. **`API_BASE_URL` not from environment:** `src/config/api.ts` hardcodes `'https://windyword.ai'` — no env var switching for dev/staging/prod.
 
 9. **Scattered hardcoded URLs:** HuggingFace CDN (`engine-download.ts`), Windy CDN (`windy-tune.ts`, `offline-packs.ts`), pair catalog CDN (`pairCatalog.ts`), Google Vision (`ocr.ts`) all hardcoded outside centralized config.
 

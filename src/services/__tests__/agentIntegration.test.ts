@@ -81,7 +81,7 @@ describe('isAgentRoom', () => {
 
     it('rejects similar but wrong domains', () => {
         expect(isAgentRoom(mockRoom(['@me:x.com', '@windy_bot:other.server.com']))).toBe(false);
-        expect(isAgentRoom(mockRoom(['@me:x.com', '@windy_bot:windypro.com']))).toBe(false);
+        expect(isAgentRoom(mockRoom(['@me:x.com', '@windy_bot:windyword.ai']))).toBe(false);
     });
 });
 

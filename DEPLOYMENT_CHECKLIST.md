@@ -145,7 +145,7 @@ For EAS builds:
 **Current configuration** (`src/config/api.ts`):
 | Service | URL | Purpose |
 |---------|-----|---------|
-| API_BASE_URL | `https://windypro.thewindstorm.uk` | Account server (identity hub, all v1 APIs) |
+| API_BASE_URL | `https://windyword.ai` | Account server (identity hub, all v1 APIs) |
 | CHAT_HOMESERVER | `https://chat.windychat.ai` | Matrix homeserver (Synapse) |
 | WINDY_MAIL_URL | `https://mail.windymail.ai` | Webmail interface |
 | WHISPER_MODEL_CDN | HuggingFace default | Whisper GGML model downloads |

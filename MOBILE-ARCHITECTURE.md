@@ -249,7 +249,7 @@ src/
 | Field | Detail |
 |-------|--------|
 | **Purpose** | Intelligent engine recommendation + model download manager |
-| **API Calls** | CDN download `https://windypro.thewindstorm.uk/models/{engine}.bin` |
+| **API Calls** | CDN download `https://windyword.ai/models/{engine}.bin` |
 | **Depends On** | `expo-device`, `expo-file-system`, `async-storage` |
 | **Status** | **Complete** — device profiling, 8-engine registry, resumable downloads, progress tracking |
 

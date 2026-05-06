@@ -137,7 +137,7 @@ eas submit --platform android --profile production
 2. Build: `eas build --platform android --profile production`
 3. Submit: `eas submit --platform android`
 4. In Play Console: set up store listing, screenshots, and content rating
-5. Host `assetlinks.json` at `https://windypro.thewindstorm.uk/.well-known/assetlinks.json`
+5. Host `assetlinks.json` at `https://windyword.ai/.well-known/assetlinks.json`
 6. Release to internal → closed → open → production tracks
 
 ### iOS (App Store)
@@ -162,7 +162,7 @@ npx expo-doctor               # Expo health check
 | `windypro://license?key=XXX` | Activate license |
 | `windypro://clone` | Voice clone |
 | `windypro://settings` | Settings |
-| `https://windypro.thewindstorm.uk/app/*` | HTTPS App Links |
+| `https://windyword.ai/app/*` | HTTPS App Links |
 
 ## License
 

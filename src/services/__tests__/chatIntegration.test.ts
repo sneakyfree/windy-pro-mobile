@@ -151,7 +151,7 @@ describe('Windy Chat — Mobile Smoke Tests', () => {
             mockFetchResponse(200, { sessionId: 'sess_email_001', expiresIn: 600 });
 
             const result = await chatOnboarding.requestVerification({
-                identifier: 'grant@windypro.com',
+                identifier: 'grant@windyword.ai',
                 type: 'email',
             });
 

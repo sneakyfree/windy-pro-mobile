@@ -54,9 +54,9 @@ Grant installed build 16 and tested hands-on. Direct quotes:
 
 ### P1 — Required for grandma test
 
-4. **Hatch CTA never tested on-device against live AWS backends.** The Wave 8 Grandma Ribbon shipped the CTA but build 16 has not been verified end-to-end against the live `https://windyword.ai/api/...` endpoints. Walk through: open app → sign in → tap hatch CTA → verify it provisions an agent against `pro.windyword.ai`'s `/api/v1/agent/credentials/issue` and deep-links into Fly. Search `src/services/hatchApi.ts` for the call sites.
+4. **Hatch CTA never tested on-device against live AWS backends.** The Wave 8 Grandma Ribbon shipped the CTA but build 16 has not been verified end-to-end against the live `https://windyword.ai/api/...` endpoints. Walk through: open app → sign in → tap hatch CTA → verify it provisions an agent against `account.windyword.ai`'s `/api/v1/agent/credentials/issue` and deep-links into Fly. Search `src/services/hatchApi.ts` for the call sites.
 
-5. **Backend URL config is fragile.** `eas.json` hardcodes `EXPO_PUBLIC_API_URL=https://windyword.ai`. The Wave 13 service mesh actually lives on subdomains (`pro.windyword.ai`, `cloud.windyword.ai`, `chat.windyword.ai`, `fly.windyword.ai`). Verify whether `windyword.ai/api/...` correctly proxies to the right backends, or whether the mobile app needs its own URL map. Check `src/config/api.ts` and `src/services/cloudApi.ts` for any hardcoded hostnames.
+5. **Backend URL config is fragile.** `eas.json` hardcodes `EXPO_PUBLIC_API_URL=https://windyword.ai`. The Wave 13 service mesh actually lives on subdomains (`account.windyword.ai`, `cloud.windycloud.com`, `chat.windychat.ai`, `windyfly.ai`). Verify whether `windyword.ai/api/...` correctly proxies to the right backends, or whether the mobile app needs its own URL map. Check `src/config/api.ts` and `src/services/cloudApi.ts` for any hardcoded hostnames.
 
 ### P2 — Cleanup / hygiene
 
@@ -70,7 +70,7 @@ Grant installed build 16 and tested hands-on. Direct quotes:
 
 - **Grant's role:** Founder, non-developer, gets exhausted by drag-and-drop and screenshot work. Use APIs/CLIs you have access to (EAS, ASC if there's a key in `~/.config/expo`, gh, etc.) before asking him for anything.
 - **TestFlight pipeline is solved.** Don't re-debug it. If a new build needs to ship: `cd windy-pro-mobile && eas build --platform ios --profile production` → `eas submit --platform ios --latest` → wait ~10 min → ASC: Apps → Windy Pro → TestFlight → iOS Builds → click new build → "Provide Export Compliance" (None of the algorithms above) → Groups (+) → Team (Expo). Grant's iPhone will see it after force-quitting TestFlight.
-- **Pro account-server lives on AWS** at `pro.windyword.ai` (Phase 1 of Wave 13). Identity, JWKS, /credentials/issue + /credentials/verify all live there. Mobile app should be hitting it.
+- **Pro account-server lives on AWS** at `account.windyword.ai` (Phase 1 of Wave 13). Identity, JWKS, /credentials/issue + /credentials/verify all live there. Mobile app should be hitting it.
 - **Apple Developer:** Team ID `VXZ434QL89`, Apple ID `grantwhitmer3@gmail.com`. ASC App ID `6759985867`. Bundle ID `uk.thewindstorm.windypro`.
 - **Branching policy:** Per `windy-pro-mobile/CLAUDE.md`, all changes go through PR against `main`. No direct commits except `docs/*`.
 

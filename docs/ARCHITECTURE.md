@@ -35,7 +35,7 @@ Shared Stripe account for both platforms:
 
 - **Account:** WindyPro Sandbox (acct_1T5nu2BXIOBasDQi)
 - **Products:** Pro ($49), Translate ($79 or $8.99/mo), Windy Max ($149)
-- **Webhook:** https://windypro.thewindstorm.uk/stripe/webhook
+- **Webhook:** https://windyword.ai/stripe/webhook
 - **Coupons:** WINDYFRIEND (25% off), WINDYBETA (50% off)
 
 **Mobile consideration:** iOS App Store and Google Play Store both take a 15-30% cut on in-app purchases. Options:
@@ -44,10 +44,10 @@ Shared Stripe account for both platforms:
 3. Higher mobile pricing to offset platform fees
 4. Web-based subscription management (user subscribes on website, app checks license)
 
-**Recommendation:** Option 4 (web-based subscription) for initial launch. Avoids App Store payment complexity. User buys on windypro.thewindstorm.uk, enters license key in app.
+**Recommendation:** Option 4 (web-based subscription) for initial launch. Avoids App Store payment complexity. User buys on windyword.ai, enters license key in app.
 
 ### Website
-- **URL:** https://windypro.thewindstorm.uk
+- **URL:** https://windyword.ai
 - **Hosted on:** Kit 0 VPS via Cloudflare
 - **Serves:** Downloads, documentation, payment portal
 - **Will also serve:** App Store / Play Store links for mobile
@@ -167,7 +167,7 @@ Clone pipeline monitors total hours accumulated
 - `POST /stripe/webhook` — Stripe payment events
 
 ### Admin Dashboard
-- `https://windypro.thewindstorm.uk/admin` — Super admin panel (built 28 Feb)
+- `https://windyword.ai/admin` — Super admin panel (built 28 Feb)
 - Manages users, billing, alerts, migration, reports
 
 ## Network Architecture

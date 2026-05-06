@@ -1050,7 +1050,7 @@ CODONS:
 │   │   Promise<TranscriptSegment[]> 🔲
 │   │   │
 │   │   │  WebSocket streaming to WindyCloud API
-│   │   │  Server: wss://windypro.thewindstorm.uk/ws/transcribe
+│   │   │  Server: wss://windyword.ai/ws/transcribe
 │   │   │  Backend: NVIDIA 5090 (32GB VRAM) via Kit 0 VPS gateway
 │   │   │
 │   │   ├── Open WebSocket connection
@@ -1399,7 +1399,7 @@ CODONS:
 │   │   │   └── Latency target: < 200ms per sentence
 │   │   │
 │   │   ├── CLOUD (Windy Translate — requires internet):
-│   │   │   ├── POST https://windypro.thewindstorm.uk/api/translate
+│   │   │   ├── POST https://windyword.ai/api/translate
 │   │   │   ├── Body: { text, source: from, target: to }
 │   │   │   ├── Response: { translated, confidence }
 │   │   │   └── Latency target: < 500ms
@@ -1703,7 +1703,7 @@ CODONS:
 │   │       └── storageQuota: from license tier
 │   │
 │   └── WindyCloud Configuration (MinIO):
-│       ├── Endpoint: https://windypro.thewindstorm.uk/storage
+│       ├── Endpoint: https://windyword.ai/storage
 │       ├── Gateway: Kit 0 VPS (72.60.118.54)
 │       ├── Cluster: 5 nodes, 1,831 GB total
 │       │   ├── OC5 iMac: 786 GB
@@ -1846,7 +1846,7 @@ CODONS:
 │   │       └── Priority cloud processing
 │   │
 │   ├── async validateLicense(key: string): Promise<LicenseValidation> 🔲
-│   │   ├── POST https://windypro.thewindstorm.uk/api/license/validate
+│   │   ├── POST https://windyword.ai/api/license/validate
 │   │   ├── Body: { key, deviceId: Constants.deviceId }
 │   │   ├── Response: LicenseValidation object
 │   │   ├── Cache validation result locally (24h expiry)
@@ -1858,7 +1858,7 @@ CODONS:
 │   │
 │   └── async openPurchasePage(): Promise<void> 🔲
 │       ├── Web-based Stripe checkout (avoid App Store commissions):
-│       │   ├── Open: https://windypro.thewindstorm.uk/pricing?device={deviceId}
+│       │   ├── Open: https://windyword.ai/pricing?device={deviceId}
 │       │   ├── User completes purchase in browser
 │       │   ├── License key delivered via redirect URL + email
 │       │   └── App detects license key from deep link redirect
