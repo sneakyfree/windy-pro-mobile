@@ -149,7 +149,7 @@ class SubscriptionService {
 
             const mapped = [{
                 identifier: offerings.current.identifier,
-                title: 'Windy Pro',
+                title: 'Windy Word',
                 description: 'Choose your plan',
                 packages: offerings.current.availablePackages.map((pkg) => ({
                     identifier: pkg.identifier,

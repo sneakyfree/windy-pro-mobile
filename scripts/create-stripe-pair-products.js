@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Stripe Product & Price Creator for Windy Pro Pair Marketplace
+ * Stripe Product & Price Creator for Windy Word Pair Marketplace
  * DNA Strand L4
  *
  * Reads shared/pair-catalog.json and shared/pair-bundles.json,
@@ -51,19 +51,19 @@ if (!DRY_RUN) {
 
 /**
  * Build a human-readable product name for a translation pair.
- * e.g. "Windy Pro — English ↔ Spanish Engine"
+ * e.g. "Windy Word — English ↔ Spanish Engine"
  */
 function pairProductName(pair) {
-  return `Windy Pro — ${pair.sourceName} ↔ ${pair.targetName} Engine`;
+  return `Windy Word — ${pair.sourceName} ↔ ${pair.targetName} Engine`;
 }
 
 /**
  * Build a human-readable product name for a bundle.
- * e.g. "Windy Pro — Traveler Bundle (25 pairs)"
+ * e.g. "Windy Word — Traveler Bundle (25 pairs)"
  */
 function bundleProductName(bundle) {
   const pairLabel = bundle.pairCount === -1 ? 'Unlimited' : `${bundle.pairCount} pairs`;
-  return `Windy Pro — ${bundle.name} Bundle (${pairLabel})`;
+  return `Windy Word — ${bundle.name} Bundle (${pairLabel})`;
 }
 
 /**
@@ -96,7 +96,7 @@ async function createProductAndPrice({ name, unitAmount, metadata }) {
 // ---------------------------------------------------------------------------
 async function main() {
   console.log('');
-  console.log('🚀  Windy Pro — Stripe Pair Marketplace Product Creator');
+  console.log('🚀  Windy Word — Stripe Pair Marketplace Product Creator');
   console.log('─'.repeat(56));
   if (DRY_RUN) console.log('⚠️   Running in DRY-RUN mode — no Stripe calls will be made.\n');
   if (UPDATE)  console.log('📝  --update flag set — JSON files will be updated with price IDs.\n');

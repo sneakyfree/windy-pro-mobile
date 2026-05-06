@@ -71,7 +71,7 @@ export function useUsageLimits() {
 
         Alert.alert(
             '🔓 Daily Limit Reached',
-            `You've used all ${limit} free ${featureLabel} for today. Upgrade to Windy Pro for unlimited access.`,
+            `You've used all ${limit} free ${featureLabel} for today. Upgrade to Windy Word for unlimited access.`,
             [
                 { text: 'Later', style: 'cancel' },
                 { text: 'View Plans', onPress: () => router.push('/subscription') },

@@ -56,7 +56,7 @@ export function useFeatureGate() {
 
         Alert.alert(
             '🔒 Upgrade Required',
-            `${featureLabel || feature} requires Windy Pro. Upgrade to unlock this feature.`,
+            `${featureLabel || feature} requires Windy Word. Upgrade to unlock this feature.`,
             [
                 { text: 'Later', style: 'cancel' },
                 {
