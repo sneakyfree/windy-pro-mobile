@@ -37,7 +37,7 @@ and confirm it falls back without routing.
 (`(tabs)/chat.tsx:193`) and the Mail reader WebView
 (`mail/[id].tsx:57`). Both WebViews pre-inject the account-server JWT
 into `localStorage` before content load, so unlimited origin was a
-real token-theft surface. The fix is correct, but if `chat.windyword.ai`
+real token-theft surface. The fix is correct, but if `chat.windychat.ai`
 ever legitimately redirects (an OAuth federation bounce, a CDN auth
 handshake, a tracking domain), the Chat tab will break until reverted.
 Mail is lower risk because `windymail.ai` has no known redirect chain.
@@ -46,7 +46,7 @@ Mail is lower risk because `windymail.ai` has no known redirect chain.
 `src/lib/webviewOrigins.ts` (non-http(s) URLs pass through; anything
 http(s) either matches the whitelist or gets opened in the system
 browser via `Linking.openURL`). Confirm the chat web app doesn't embed
-third-party iframes or load hard-coded resources from non-`chat.windyword.ai`
+third-party iframes or load hard-coded resources from non-`chat.windychat.ai`
 hosts.
 
 **Post-merge smoke** — Chat tab: send a voice message (mic grant still
