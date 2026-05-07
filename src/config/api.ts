@@ -118,7 +118,27 @@ export const GOOGLE_VISION_API_KEY: string =
 /** Windy CDN URL for translation pair model binaries */
 export const PAIR_CDN_BASE = `${API_BASE_URL}/pairs`;
 
-/** Push token registration path */
+/** Chat-side canonical push-gateway base URL (per ADR-006). All push
+ * notification fanout (Mail unread badge, Cloud upload notifications,
+ * Code deploy status, in-chat events, etc.) flows through windy-chat's
+ * push-gateway. Mobile registers its FCM/APNs token there directly so
+ * cross-service publishers reach it without a Pro hop.
+ *
+ * Pro's legacy /api/register-push-token endpoint stays as a 308 redirect
+ * shim during the transition; old mobile builds keep working until they
+ * update through the store.
+ */
+export const CHAT_PUSH_BASE_URL = 'https://chat.windychat.ai';
+
+/** Canonical push-token registration endpoint (per ADR-006). Resolves
+ * to https://chat.windychat.ai/api/v1/push/devices. */
+export const PUSH_TOKEN_ENDPOINT_URL = `${CHAT_PUSH_BASE_URL}/api/v1/push/devices`;
+
+/**
+ * @deprecated Use PUSH_TOKEN_ENDPOINT_URL. Kept for transition only;
+ * Pro account-server now 308-redirects /api/register-push-token to the
+ * canonical chat endpoint, so old mobile builds still work.
+ */
 export const PUSH_TOKEN_ENDPOINT = '/api/register-push-token';
 
 /** CDN URL for translation pair model binaries (download) */

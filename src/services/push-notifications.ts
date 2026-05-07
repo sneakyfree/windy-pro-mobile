@@ -8,12 +8,18 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { createLogger } from './logger';
-import { API_BASE_URL, PUSH_TOKEN_ENDPOINT, apiUrl } from '@/config/api';
+import { API_BASE_URL, PUSH_TOKEN_ENDPOINT_URL } from '@/config/api';
 import { fetchWithTimeout } from '@/utils/fetch-timeout';
 
 const log = createLogger('PushNotifications');
 
-const REGISTER_TOKEN_URL = apiUrl(PUSH_TOKEN_ENDPOINT);
+// Per ADR-006: register FCM/APNs token at the canonical chat-side
+// push-gateway endpoint, not at Pro. Cross-service publishers (Mail,
+// Cloud, Code, etc.) all publish to chat's push-gateway, so the token
+// must live in chat's device-token store, not Pro's. The legacy
+// account.windyword.ai/api/register-push-token endpoint stays as a
+// 308 redirect shim; old mobile builds keep working until they update.
+const REGISTER_TOKEN_URL = PUSH_TOKEN_ENDPOINT_URL;
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
