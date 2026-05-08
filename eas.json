@@ -33,8 +33,7 @@
             "env": {
                 "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
                 "EXPO_PUBLIC_API_URL": "https://windyword.ai",
-                "GOOGLE_VISION_API_KEY": "@google-vision-api-key",
-                "FCM_SERVER_KEY": "@fcm-server-key"
+                "GOOGLE_VISION_API_KEY": "@google-vision-api-key"
             },
             "android": {
                 "buildType": "app-bundle",
