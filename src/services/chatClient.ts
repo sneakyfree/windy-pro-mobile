@@ -1180,7 +1180,7 @@ class ChatClient {
 export const chatClient = new ChatClient();
 
 /** Pattern for Windy agent Matrix user IDs */
-const AGENT_USER_PATTERN = /^@windy_[^:]+:chat\.windypro\.com$/;
+const AGENT_USER_PATTERN = /^@windy_[^:]+:chat\.windychat\.ai$/;
 
 /**
  * Check if a chat room is an agent DM (Windy Fly bot).
