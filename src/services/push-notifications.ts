@@ -75,11 +75,15 @@ class PushNotificationService {
                 await this.setupAndroidChannels();
             }
 
-            // Get push token
-            const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-            const tokenData = await Notifications.getExpoPushTokenAsync({
-                projectId: projectId || undefined,
-            });
+            // Get native device push token (APNs hex on iOS, FCM token on Android).
+            // The chat push-gateway dispatches directly via APNs/FCM, not via Expo
+            // Push Service, so we need the underlying device token, not an
+            // ExponentPushToken[...] (which the gateway would reject).
+            const tokenData = await Notifications.getDevicePushTokenAsync();
+            if (typeof tokenData.data !== 'string') {
+                log.warn('Unexpected_token_shape', 'Web push token in native app context');
+                return null;
+            }
             this.token = tokenData.data;
 
             // Register with backend
