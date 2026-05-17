@@ -130,9 +130,14 @@ export const PAIR_CDN_BASE = `${API_BASE_URL}/pairs`;
  */
 export const CHAT_PUSH_BASE_URL = 'https://chat.windychat.ai';
 
-/** Canonical push-token registration endpoint (per ADR-006). Resolves
- * to https://chat.windychat.ai/api/v1/push/devices. */
-export const PUSH_TOKEN_ENDPOINT_URL = `${CHAT_PUSH_BASE_URL}/api/v1/push/devices`;
+/** Canonical push-token registration endpoint. Resolves to
+ * https://chat.windychat.ai/api/v1/chat/push/register.
+ *
+ * 2026-05-17: previously pointed to /api/v1/push/devices which does
+ * not exist server-side. Real route is /api/v1/chat/push/register
+ * (server.js:370). Mismatch silently 404'd every device registration.
+ */
+export const PUSH_TOKEN_ENDPOINT_URL = `${CHAT_PUSH_BASE_URL}/api/v1/chat/push/register`;
 
 /**
  * @deprecated Use PUSH_TOKEN_ENDPOINT_URL. Kept for transition only;

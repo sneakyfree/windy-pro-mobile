@@ -21,6 +21,26 @@ const log = createLogger('PushNotifications');
 // 308 redirect shim; old mobile builds keep working until they update.
 const REGISTER_TOKEN_URL = PUSH_TOKEN_ENDPOINT_URL;
 
+/** Extract the `sub` claim from a JWT without pulling in a dep.
+ * JWT payload is the middle segment, base64url-encoded JSON. Returns
+ * null if malformed, no sub, or no base64 decoder available. */
+function extractSubFromJwt(jwt: string): string | null {
+    try {
+        const parts = jwt.split('.');
+        if (parts.length < 2) return null;
+        // base64url → base64 (atob doesn't grok the url-safe alphabet).
+        let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const pad = payload.length % 4;
+        if (pad) payload += '='.repeat(4 - pad);
+        // Hermes / RN >=0.74 have atob globally.
+        if (typeof globalThis.atob !== 'function') return null;
+        const decoded = JSON.parse(globalThis.atob(payload));
+        return typeof decoded?.sub === 'string' ? decoded.sub : null;
+    } catch {
+        return null;
+    }
+}
+
 // Configure notification behavior
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -154,28 +174,50 @@ class PushNotificationService {
     }
 
     /**
-     * Register push token with backend
+     * Register push token with backend.
+     *
+     * Server contract (windy-chat/services/push-gateway/server.js:370,
+     * route POST /api/v1/chat/push/register):
+     *   body: { pushkey, userId, platform, appId?, deviceName? }
+     *   - pushkey   = native device token (FCM/APNs)
+     *   - userId    = MUST match authenticated user (cross-checked
+     *                 against JWT-extracted user id; 403 if mismatch).
+     *                 Extracted here from the JWT's `sub` claim.
+     *   - platform  = "android" | "ios" | "web"
+     *   - appId     = optional, informational (DB display only;
+     *                 routing uses APNS_BUNDLE_ID env on the server)
+     *   - deviceName = optional, human-readable
      */
     private async registerTokenWithBackend(token: string): Promise<void> {
         try {
-            // Get auth token for backend registration
             let authToken = '';
             try {
                 const SecureStore = require('expo-secure-store');
                 authToken = await SecureStore.getItemAsync('windy_jwt_token') || '';
             } catch { /* SecureStore unavailable */ }
 
+            if (!authToken) {
+                log.warn('Backend_registration', 'No JWT in SecureStore — skipping push-token registration');
+                return;
+            }
+
+            const userId = extractSubFromJwt(authToken);
+            if (!userId) {
+                log.warn('Backend_registration', 'Could not extract sub claim from JWT — skipping registration');
+                return;
+            }
+
             await fetchWithTimeout(REGISTER_TOKEN_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+                    'Authorization': `Bearer ${authToken}`,
                 },
                 body: JSON.stringify({
-                    token,
+                    pushkey: token,
+                    userId,
                     platform: Platform.OS,
-                    device: Device.modelName || 'unknown',
-                    version: Constants.expoConfig?.version || '1.0.0',
+                    deviceName: Device.modelName || 'unknown',
                 }),
             });
         } catch (err: unknown) {
