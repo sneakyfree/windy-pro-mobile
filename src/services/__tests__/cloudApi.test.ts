@@ -13,7 +13,7 @@ jest.mock('expo-secure-store', () => ({
     deleteItemAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     uploadAsync: jest.fn(),
     downloadAsync: jest.fn(),
     makeDirectoryAsync: jest.fn().mockResolvedValue(undefined),
@@ -45,7 +45,7 @@ jest.mock('../identityApi', () => ({
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { cloudApi, AuthFlowDeprecatedError } from '../cloudApi';
 import { identityApi } from '../identityApi';
 

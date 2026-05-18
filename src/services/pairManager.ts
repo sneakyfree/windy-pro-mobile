@@ -29,7 +29,7 @@
  *    at 10K+ customers. Models will be fingerprinted per-license before CDN
  *    delivery. See MODEL_PROTECTION_SPEC.md for implementation plan.
  */
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 // Graceful import: expo-crypto may not be available in dev builds

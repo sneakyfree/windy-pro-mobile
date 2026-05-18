@@ -18,7 +18,7 @@
  *     AuthFlowDeprecatedError. Callers must use identityApi.startDeviceFlow()
  *     via the /auth/login → /auth/device-code screens.
  */
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { API_BASE_URL, ENDPOINTS, apiUrl } from '@/config/api';
 import type { LicenseTier } from '@/types';
 import { identityApi } from './identityApi';

@@ -8,7 +8,7 @@ import { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { typography } from '@/theme/typography';
 import { localStorageService } from '@/services/storage-local';

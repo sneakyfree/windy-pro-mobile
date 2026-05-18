@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { CameraView, Camera } from 'expo-camera';
 import { Audio, Video, ResizeMode } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { videoCaptureService } from '@/services/video-capture';

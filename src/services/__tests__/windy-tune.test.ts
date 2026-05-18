@@ -19,7 +19,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
         removeItem: jest.fn().mockResolvedValue(undefined),
     },
 }));
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     documentDirectory: '/mock/documents/',
     makeDirectoryAsync: jest.fn().mockResolvedValue(undefined),
     deleteAsync: jest.fn().mockResolvedValue(undefined),

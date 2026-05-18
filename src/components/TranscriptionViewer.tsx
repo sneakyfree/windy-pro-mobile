@@ -6,7 +6,7 @@
 import { View, Text, StyleSheet, FlatList, ScrollView, Pressable, Alert, Share, Animated } from 'react-native';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import * as Clipboard from 'expo-clipboard';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { feedbackService } from '@/services/feedback';

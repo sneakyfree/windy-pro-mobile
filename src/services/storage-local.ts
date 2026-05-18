@@ -3,7 +3,7 @@
  * RP-3.1: Full CRUD implementation with expo-sqlite
  */
 import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { Session, SessionSummary, SessionFilter, StorageUsage, AudioQuality } from '@/types';
 import { createLogger } from './logger';
 

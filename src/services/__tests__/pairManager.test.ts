@@ -4,7 +4,7 @@
 
 // ── Mocks ─────────────────────────────────────────────────────
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     documentDirectory: '/mock/documents/',
     getInfoAsync: jest.fn(async () => ({ exists: false })),
     makeDirectoryAsync: jest.fn(),
@@ -89,7 +89,7 @@ jest.mock('expo-constants', () => ({
 }));
 
 import { pairManager, PAIR_LIMITS, StorageFullError, InvalidInputError } from '../pairManager';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { licenseService } from '../license';

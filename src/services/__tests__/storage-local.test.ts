@@ -18,7 +18,7 @@ jest.mock('expo-sqlite', () => ({
     })),
 }));
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     documentDirectory: '/mock/documents/',
     makeDirectoryAsync: jest.fn(),
     moveAsync: jest.fn(),
@@ -43,7 +43,7 @@ jest.mock('@/stores/useSettingsStore', () => ({
 }));
 
 import { localStorageService } from '../storage-local';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { Session } from '@/types';
 
 // ── Helpers ───────────────────────────────────────────────────

@@ -697,7 +697,7 @@ export default function ChatOnboardingScreen() {
         </View>
     );
 
-    const stepRenderers: Record<OnboardingStep, () => JSX.Element> = {
+    const stepRenderers: Record<OnboardingStep, () => React.JSX.Element> = {
         1: renderStep1,
         2: renderStep2,
         3: renderStep3,

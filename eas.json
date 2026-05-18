@@ -1,11 +1,11 @@
 {
     "cli": {
-        "version": ">= 13.0.0",
+        "version": ">= 16.0.0",
         "appVersionSource": "local"
     },
     "build": {
         "base": {
-            "node": "22.0.0",
+            "node": "22.13.0",
             "env": {
                 "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
             }
@@ -33,7 +33,8 @@
             "env": {
                 "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
                 "EXPO_PUBLIC_API_URL": "https://windyword.ai",
-                "GOOGLE_VISION_API_KEY": "@google-vision-api-key"
+                "GOOGLE_VISION_API_KEY": "@google-vision-api-key",
+                "SENTRY_DISABLE_AUTO_UPLOAD": "true"
             },
             "android": {
                 "buildType": "app-bundle",

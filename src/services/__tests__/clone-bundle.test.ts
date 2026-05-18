@@ -29,7 +29,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     },
 }));
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     getInfoAsync: jest.fn(),
     uploadAsync: jest.fn(),
     deleteAsync: jest.fn().mockResolvedValue(undefined),
@@ -70,7 +70,7 @@ jest.mock('../logger', () => ({
 
 import { cloneBundleService, type CloneBundle } from '../clone-bundle';
 import { networkMonitor } from '../network-monitor';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const mockNetwork = networkMonitor as unknown as { isOnline: boolean };
 const mockFs = FileSystem as unknown as {

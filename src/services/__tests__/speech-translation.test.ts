@@ -50,7 +50,7 @@ const mockUploadAsync = jest.fn();
 const mockDeleteAsync = jest.fn();
 const mockGetInfoAsync = jest.fn();
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     uploadAsync: (...args: unknown[]) => mockUploadAsync(...args),
     deleteAsync: (...args: unknown[]) => mockDeleteAsync(...args),
     getInfoAsync: (...args: unknown[]) => mockGetInfoAsync(...args),

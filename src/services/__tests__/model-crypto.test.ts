@@ -53,7 +53,7 @@ jest.mock('expo-device', () => ({
 }));
 
 // Mock expo-file-system (only for isEncrypted)
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     readAsStringAsync: jest.fn(),
     EncodingType: { Base64: 'base64' },
 }));

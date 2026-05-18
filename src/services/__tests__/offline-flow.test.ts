@@ -86,7 +86,7 @@ jest.mock('../cloudApi', () => ({
 }));
 
 // expo-file-system
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     documentDirectory: '/mock/docs/',
     cacheDirectory: '/mock/cache/',
     getInfoAsync: jest.fn(() => Promise.resolve({ exists: true, size: 1024 })),

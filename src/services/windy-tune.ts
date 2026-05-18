@@ -6,7 +6,7 @@
  */
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { DeviceProfile, EngineConfig, EngineId, WindyTuneResult } from '@/types';
 import { createLogger } from './logger';

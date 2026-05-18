@@ -5,7 +5,7 @@
 
 // Mock expo-file-system
 const mockDeleteAsync = jest.fn().mockResolvedValue(undefined);
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     deleteAsync: (...args: unknown[]) => mockDeleteAsync(...args),
 }));
 

@@ -3,7 +3,7 @@
  * RP-2.2: Cloud transcription via HTTP POST (primary) + WebSocket (streaming)
  * Routes audio to on-device (whisper.rn) or cloud
  */
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type {
     EngineId,
     TranscriptSegment,

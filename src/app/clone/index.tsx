@@ -7,7 +7,7 @@ import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Alert, Animate
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
