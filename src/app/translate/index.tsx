@@ -876,7 +876,7 @@ export default function TranslateScreen() {
 function SplitSpeakerPanel({ speaker, lang, otherLang, turns, isActive, isRecording, processing, onPressIn, onPressOut, scrollRef, getFlag, getName }: {
     speaker: 'A' | 'B'; lang: string; otherLang: string; turns: ConversationTurn[];
     isActive: boolean; isRecording: boolean; processing: boolean;
-    onPressIn: () => void; onPressOut: () => void; scrollRef: React.RefObject<ScrollView>;
+    onPressIn: () => void; onPressOut: () => void; scrollRef: React.RefObject<ScrollView | null>;
     getFlag: (c: string) => string; getName: (c: string) => string;
 }) {
     const bgColor = speaker === 'A' ? colors.background : '#0d1f17';

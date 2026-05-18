@@ -12,7 +12,7 @@
  * Persists to: FileSystem.documentDirectory/logs/windy.log
  * Auto-rotates at 2MB. Redacts tokens/keys automatically.
  */
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // ─── Config ──────────────────────────────────────────────────
 

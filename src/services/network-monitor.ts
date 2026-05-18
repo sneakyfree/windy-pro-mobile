@@ -3,7 +3,7 @@
  * Detects connectivity to windyword.ai and manages a translation queue
  * for offline fallback. Queued items are processed on reconnect.
  */
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { ENDPOINTS, apiUrl } from '@/config/api';
 import { createLogger } from './logger';
 

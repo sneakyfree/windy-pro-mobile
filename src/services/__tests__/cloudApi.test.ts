@@ -45,7 +45,7 @@ jest.mock('../identityApi', () => ({
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { cloudApi, AuthFlowDeprecatedError } from '../cloudApi';
 import { identityApi } from '../identityApi';
 

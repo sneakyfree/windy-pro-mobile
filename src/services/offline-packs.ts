@@ -3,7 +3,7 @@
  * Download + store offline translation models
  * Tracks download progress, storage usage, and pack management
  */
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from './logger';
 import { WINDY_CDN_BASE } from '@/config/api';

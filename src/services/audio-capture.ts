@@ -4,7 +4,7 @@
  * Produces WAV files for transcription.
  */
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { RecordingConfig, RecordingResult, AudioQuality, QualityLabel } from '@/types';
 import { createLogger } from './logger';
 

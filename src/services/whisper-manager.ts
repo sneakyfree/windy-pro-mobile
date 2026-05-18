@@ -3,7 +3,7 @@
  * Wraps whisper.rn for on-device transcription.
  * Handles model loading, transcription with segment callbacks, and cleanup.
  */
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { TranscriptSegment } from '@/types';
 import { createLogger } from './logger';
 

@@ -15,7 +15,7 @@
  *    at 10K+ customers. Models will be fingerprinted per-license before CDN delivery.
  */
 import * as SecureStore from 'expo-secure-store';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { createLogger } from './logger';

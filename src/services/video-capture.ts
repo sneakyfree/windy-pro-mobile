@@ -9,7 +9,7 @@
  *   - Permission handling
  */
 import { Camera, CameraView } from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { createLogger } from './logger';
 
 const log = createLogger('VideoCapture');

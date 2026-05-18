@@ -2,7 +2,7 @@
  * 🧬 RP-2.4 — Engine Download Manager
  * Downloads whisper.cpp GGML models from HuggingFace CDN
  */
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import Constants from 'expo-constants';
 import type { EngineId } from '@/types';
 import { WHISPER_MODEL_CDN } from '@/config/api';

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Windy Word",
     "slug": "windy-pro-mobile",
-    "description": "Your voice, unlimited. Record, transcribe, translate, and clone your voice \u2014 all from your phone.",
+    "description": "Your voice, unlimited. Record, transcribe, translate, and clone your voice — all from your phone.",
     "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
@@ -27,7 +27,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "uk.thewindstorm.windypro",
-      "buildNumber": "18",
+      "buildNumber": "19",
       "associatedDomains": [
         "applinks:windyword.ai",
         "appclips:windyword.ai"
@@ -55,7 +55,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "uk.thewindstorm.windypro",
-      "versionCode": 13,
+      "versionCode": 14,
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",
@@ -143,7 +143,9 @@
             "deploymentTarget": "15.1"
           }
         }
-      ]
+      ],
+      "@sentry/react-native",
+      "expo-web-browser"
     ],
     "extra": {
       "revenueCatIosKey": "PRODUCTION_KEY_REQUIRED_CONTACT_GRANT",

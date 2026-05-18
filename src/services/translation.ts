@@ -4,7 +4,7 @@
  * Includes TTS output, language detection, and conversation export.
  */
 import * as Speech from 'expo-speech';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import type { LicenseTier } from '@/types';
 import { ENDPOINTS, apiUrl } from '@/config/api';

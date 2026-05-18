@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import Constants from 'expo-constants';
 import { colors, spacing, borderRadius } from '@/theme';
