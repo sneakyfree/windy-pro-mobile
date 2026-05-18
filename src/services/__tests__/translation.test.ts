@@ -32,7 +32,7 @@ const mockGetInfoAsync = jest.fn();
 const mockMakeDirectoryAsync = jest.fn();
 const mockWriteAsStringAsync = jest.fn();
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     uploadAsync: (...args: unknown[]) => mockUploadAsync(...args),
     getInfoAsync: (...args: unknown[]) => mockGetInfoAsync(...args),
     makeDirectoryAsync: (...args: unknown[]) => mockMakeDirectoryAsync(...args),

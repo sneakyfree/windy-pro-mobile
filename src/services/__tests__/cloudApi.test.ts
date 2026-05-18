@@ -13,7 +13,7 @@ jest.mock('expo-secure-store', () => ({
     deleteItemAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     uploadAsync: jest.fn(),
     downloadAsync: jest.fn(),
     makeDirectoryAsync: jest.fn().mockResolvedValue(undefined),

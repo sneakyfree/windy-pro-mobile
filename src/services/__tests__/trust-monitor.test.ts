@@ -32,8 +32,21 @@ jest.mock('react-native', () => {
                 mockAppStateListeners.forEach(l => l(state));
             },
         },
+        Platform: { OS: 'ios', select: (obj: Record<string, unknown>) => obj.ios ?? obj.default },
     };
 });
+
+jest.mock('expo-file-system/legacy', () => ({
+    documentDirectory: '/mock/doc/',
+    cacheDirectory: '/mock/cache/',
+    getInfoAsync: jest.fn(() => Promise.resolve({ exists: false })),
+    writeAsStringAsync: jest.fn(() => Promise.resolve()),
+    readAsStringAsync: jest.fn(() => Promise.resolve('')),
+    deleteAsync: jest.fn(() => Promise.resolve()),
+    moveAsync: jest.fn(() => Promise.resolve()),
+    makeDirectoryAsync: jest.fn(() => Promise.resolve()),
+    EncodingType: { UTF8: 'utf8', Base64: 'base64' },
+}));
 
 jest.mock('expo-notifications', () => ({
     scheduleNotificationAsync: (...args: unknown[]) => mockScheduleNotification(...args),

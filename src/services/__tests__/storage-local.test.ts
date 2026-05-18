@@ -18,7 +18,7 @@ jest.mock('expo-sqlite', () => ({
     })),
 }));
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     documentDirectory: '/mock/documents/',
     makeDirectoryAsync: jest.fn(),
     moveAsync: jest.fn(),

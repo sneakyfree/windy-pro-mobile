@@ -4,7 +4,7 @@
 
 // ── Mocks ─────────────────────────────────────────────────────
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     documentDirectory: '/mock/documents/',
     getInfoAsync: jest.fn(async () => ({ exists: false })),
     makeDirectoryAsync: jest.fn(),

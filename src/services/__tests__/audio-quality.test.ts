@@ -2,6 +2,21 @@
  * 🧪 Unit tests for scoreAudioQuality()
  * Tests audio quality scoring logic used by the clone pipeline
  */
+jest.mock('expo-av', () => ({
+    Audio: { Recording: jest.fn(), RecordingOptionsPresets: { HIGH_QUALITY: {} } },
+}));
+jest.mock('expo-file-system/legacy', () => ({
+    documentDirectory: '/mock/doc/',
+    cacheDirectory: '/mock/cache/',
+    getInfoAsync: jest.fn(() => Promise.resolve({ exists: false })),
+    writeAsStringAsync: jest.fn(() => Promise.resolve()),
+    readAsStringAsync: jest.fn(() => Promise.resolve('')),
+    deleteAsync: jest.fn(() => Promise.resolve()),
+    moveAsync: jest.fn(() => Promise.resolve()),
+    makeDirectoryAsync: jest.fn(() => Promise.resolve()),
+    EncodingType: { UTF8: 'utf8', Base64: 'base64' },
+}));
+
 import { scoreAudioQuality } from '../audio-capture';
 import type { AudioQuality } from '@/types';
 

@@ -9,7 +9,7 @@ jest.mock('expo-secure-store', () => ({
     deleteItemAsync: jest.fn(),
 }));
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     readAsStringAsync: jest.fn().mockResolvedValue(
         // Fake base64 audio data (~48KB to produce 3 chunks of 16KB)
         'A'.repeat(65536)

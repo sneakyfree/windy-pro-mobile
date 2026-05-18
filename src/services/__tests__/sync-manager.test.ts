@@ -17,7 +17,7 @@ jest.mock('@react-native-community/netinfo', () => ({
     NetInfoStateType: { wifi: 'wifi', cellular: 'cellular', ethernet: 'ethernet' },
 }));
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     getInfoAsync: jest.fn(() => Promise.resolve({ exists: true, size: 1024 })),
     uploadAsync: jest.fn(() => Promise.resolve({ status: 200, body: '{}' })),
     readAsStringAsync: jest.fn(() => Promise.resolve('base64data')),

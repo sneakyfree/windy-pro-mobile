@@ -29,7 +29,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     },
 }));
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
     getInfoAsync: jest.fn(),
     uploadAsync: jest.fn(),
     deleteAsync: jest.fn().mockResolvedValue(undefined),
