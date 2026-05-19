@@ -439,7 +439,7 @@ export default function SettingsScreen() {
                 accessibilityRole="button"
                 accessibilityHint="Opens subscription page"
               >
-                <Text style={styles.upgradeText}>⚡ Upgrade to Pro — $4.99/mo</Text>
+                <Text style={styles.upgradeText}>⚡ Upgrade to Pro — $19/mo</Text>
               </Pressable>
             )}
           </SettingsSection>
