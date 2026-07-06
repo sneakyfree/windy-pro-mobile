@@ -150,7 +150,14 @@ class TranscriptionService {
             }
 
             log.warn('Local_failed_no_cloud_fallback', 'Local transcription failed. Cloud fallback is off — staying local.', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
-            throw err;
+            // Native-module rejections can be plain objects — rethrowing
+            // them raw renders "[object Object]" in every caller's catch.
+            if (err instanceof Error) throw err;
+            throw new Error(
+                typeof err === 'object' && err !== null
+                    ? JSON.stringify(err).slice(0, 300)
+                    : String(err),
+            );
         }
     }
 

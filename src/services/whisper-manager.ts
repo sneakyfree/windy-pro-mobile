@@ -40,10 +40,20 @@ type InitWhisperFn = (options: { filePath: string | number }) => Promise<Whisper
  */
 export const WINDY_NANO_MODEL_FILE = 'ggml-tiny-q5_1.bin';
 
-function nanoAsset(): string | number {
+async function nanoAssetPath(): Promise<string> {
     // Isolated so tests can run without the 32 MB file (jest maps *.bin
-    // to a stub) and so a missing asset degrades to the download path.
-    return require('@/assets/models/ggml-tiny-q5_1.bin');
+    // to a stub). expo-asset resolves the Metro asset id to a real file
+    // in EVERY mode (dev server, release bundle) — passing the raw asset
+    // id straight to whisper.rn fails in release builds ("Failed to load
+    // the model", found live on the iOS simulator build).
+    const { Asset } = require('expo-asset');
+    const asset = Asset.fromModule(require('@/assets/models/ggml-tiny-q5_1.bin'));
+    if (!asset.localUri) {
+        await asset.downloadAsync();
+    }
+    const uri: string = asset.localUri || asset.uri;
+    if (!uri) throw new Error('Bundled Windy Nano model asset could not be resolved');
+    return uri;
 }
 
 class WhisperManager {
@@ -71,7 +81,7 @@ class WhisperManager {
 
             let source: string | number;
             if (modelFileName === WINDY_NANO_MODEL_FILE) {
-                source = nanoAsset();
+                source = await nanoAssetPath();
             } else {
                 const dir = FileSystem.documentDirectory + 'windy/engines/';
                 const modelPath = dir + modelFileName;
