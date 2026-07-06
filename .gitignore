@@ -43,3 +43,6 @@ coverage/
 *.aab
 *.ipa
 *.tar.gz
+
+# Bundled GGML models — fetched by scripts/fetch-models.js (postinstall), never committed
+src/assets/models/*.bin

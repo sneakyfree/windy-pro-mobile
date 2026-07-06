@@ -29,7 +29,22 @@ interface WhisperSegment {
     t1: number;  // centiseconds
 }
 
-type InitWhisperFn = (options: { filePath: string }) => Promise<WhisperContext>;
+type InitWhisperFn = (options: { filePath: string | number }) => Promise<WhisperContext>;
+
+/**
+ * The bundled Windy Nano model — whisper.cpp tiny multilingual, q5_1
+ * quantized (~32 MB). Shipped INSIDE the app as a Metro asset ("standard
+ * for everyone", consolidation plan 2026-07-05); the file itself is
+ * fetched at install/build time by scripts/fetch-models.js and is NOT in
+ * git. whisper.rn accepts the Metro asset id (a number) as filePath.
+ */
+export const WINDY_NANO_MODEL_FILE = 'ggml-tiny-q5_1.bin';
+
+function nanoAsset(): string | number {
+    // Isolated so tests can run without the 32 MB file (jest maps *.bin
+    // to a stub) and so a missing asset degrades to the download path.
+    return require('@/assets/models/ggml-tiny-q5_1.bin');
+}
 
 class WhisperManager {
     private ctx: WhisperContext | null = null;
@@ -37,8 +52,9 @@ class WhisperManager {
     private loading = false;
 
     /**
-     * Load a GGML model file from the engines directory.
-     * No-ops if the same model is already loaded.
+     * Load a GGML model. The bundled Windy Nano loads straight from the
+     * app package; every other engine loads from the engines directory
+     * (download-on-unlock). No-ops if the same model is already loaded.
      */
     async loadModel(modelFileName: string): Promise<void> {
         if (this.currentModel === modelFileName && this.ctx) return;
@@ -53,13 +69,19 @@ class WhisperManager {
                 this.currentModel = null;
             }
 
-            const dir = FileSystem.documentDirectory + 'windy/engines/';
-            const modelPath = dir + modelFileName;
+            let source: string | number;
+            if (modelFileName === WINDY_NANO_MODEL_FILE) {
+                source = nanoAsset();
+            } else {
+                const dir = FileSystem.documentDirectory + 'windy/engines/';
+                const modelPath = dir + modelFileName;
 
-            // Verify model exists
-            const info = await FileSystem.getInfoAsync(modelPath);
-            if (!info.exists) {
-                throw new Error(`Model not found: ${modelFileName}. Please download it first.`);
+                // Verify model exists
+                const info = await FileSystem.getInfoAsync(modelPath);
+                if (!info.exists) {
+                    throw new Error(`Model not found: ${modelFileName}. Please download it first.`);
+                }
+                source = modelPath;
             }
 
             // Dynamically import whisper.rn
@@ -73,7 +95,7 @@ class WhisperManager {
                 );
             }
 
-            this.ctx = await initWhisper({ filePath: modelPath });
+            this.ctx = await initWhisper({ filePath: source });
             this.currentModel = modelFileName;
         } finally {
             this.loading = false;

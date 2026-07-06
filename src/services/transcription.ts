@@ -32,7 +32,11 @@ export function getTranscriptionServerUrl(): string {
 }
 
 class TranscriptionService {
-    private activeEngine: EngineId = 'cloud-standard';
+    // Default = Windy Nano (bundled tiny): works for everyone, offline,
+    // no download, no subscription. Cloud engines stay opt-in — the cloud
+    // STT backend behind windyword.ai/api doesn't exist yet (dead-but-green)
+    // and cloud is gated on an active subscription anyway.
+    private activeEngine: EngineId = 'tiny';
     private isProcessing = false;
     private ws: WebSocket | null = null;
 
@@ -91,7 +95,8 @@ class TranscriptionService {
             const { whisperManager } = require('./whisper-manager');
             // Map engine ID to GGML model filename (matches whisper-manager's static map)
             const MODEL_MAP: Record<string, string> = {
-                'tiny': 'ggml-tiny.bin', 'base': 'ggml-base.bin',
+                // 'tiny' = Windy Nano, the bundled quantized model (in-app asset)
+                'tiny': 'ggml-tiny-q5_1.bin', 'base': 'ggml-base.bin',
                 'small': 'ggml-small.bin', 'medium': 'ggml-medium.bin',
                 'large-v3': 'ggml-large-v3.bin', 'large-v3-turbo': 'ggml-large-v3-turbo.bin',
             };

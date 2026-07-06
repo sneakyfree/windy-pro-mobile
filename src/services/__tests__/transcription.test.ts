@@ -70,8 +70,8 @@ describe('TranscriptionService', () => {
 
     // ─── Engine Management ─────────────────────────────────────
     describe('engine management', () => {
-        it('should start with cloud-standard engine', () => {
-            expect(transcriptionService.getActiveEngine()).toBe('cloud-standard');
+        it('should start with the bundled Windy Nano engine', () => {
+            expect(transcriptionService.getActiveEngine()).toBe('tiny');
         });
 
         it('should set engine', () => {

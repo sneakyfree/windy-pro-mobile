@@ -3,6 +3,7 @@ module.exports = {
   preset: 'jest-expo',
   testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/'],
   moduleNameMapper: {
+    '\\.(bin)$': '<rootDir>/scripts/jest-binary-stub.js',
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   transformIgnorePatterns: [
