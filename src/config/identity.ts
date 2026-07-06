@@ -33,6 +33,22 @@ export const OAUTH_ENDPOINTS = {
     TOKEN: '/api/v1/oauth/token',
 } as const;
 
+/**
+ * The account-server's device endpoint advertises `verification_uri`
+ * derived from its OIDC_ISSUER (https://windyword.ai). That domain now
+ * serves the static WindyWord book site, whose SPA has no /device route —
+ * every path answers 200 HTML, so tapping "approve" landed users on the
+ * book page with no way to finish sign-in. The REAL approval page is
+ * served by the account-server itself (GET account.windyword.ai/device,
+ * probe-verified 2026-07-05). Rewrite just that broken host; leave any
+ * other issuer untouched. The server-side fix (OIDC_ISSUER) is riskier —
+ * it changes JWT `iss` claims ecosystem-wide — so it is deliberately NOT
+ * done here.
+ */
+export function canonicalizeVerificationUri(url: string): string {
+    return url.replace(/^https:\/\/windyword\.ai\/device/, `${ACCOUNT_SERVER_URL}/device`);
+}
+
 export const DEFAULT_POLL_INTERVAL_MS = 5_000;
 export const DEFAULT_DEVICE_CODE_TTL_MS = 900_000;
 export const IDENTITY_REQUEST_TIMEOUT_MS = 30_000;
