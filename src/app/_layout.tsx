@@ -5,6 +5,7 @@
  * RP-1.5: Inter font loaded via @expo-google-fonts/inter
  * RP-5.2: Deep link license handler
  */
+import '@/polyfills';
 import { useEffect, useState, useCallback } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';

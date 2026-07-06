@@ -191,7 +191,7 @@ export default function ConversationScreen() {
             } else {
                 // Real failure — restore input text and show error
                 if (isMounted.current) setInputText(savedInputRef.current);
-                if (isMounted.current) setSendError('Message could not be sent. Tap Retry to try again.');
+                if (isMounted.current) setSendError(result.error || 'Message could not be sent. Tap Retry to try again.');
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             }
         } else {
