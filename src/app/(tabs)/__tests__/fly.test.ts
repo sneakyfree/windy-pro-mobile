@@ -3,7 +3,7 @@
  * badge's display label + tone. Keeping the mapping in a pure
  * helper means the tab's JSX can stay declarative.
  */
-import { formatAgentStatus } from '../flyStatus';
+import { formatAgentStatus } from '@/lib/flyStatus';
 
 describe('formatAgentStatus', () => {
     it.each([

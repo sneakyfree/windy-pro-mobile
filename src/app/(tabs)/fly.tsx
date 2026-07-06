@@ -22,9 +22,9 @@ import { getEcosystemStatus, type EcosystemProduct } from '@/services/ecosystem-
 import { feedbackService } from '@/services/feedback';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { identityApi } from '@/services/identityApi';
-import { formatAgentStatus } from './flyStatus';
+import { formatAgentStatus } from '@/lib/flyStatus';
 
-export { formatAgentStatus } from './flyStatus';
+export { formatAgentStatus } from '@/lib/flyStatus';
 
 const POLL_INTERVAL_MS = 30_000;
 
