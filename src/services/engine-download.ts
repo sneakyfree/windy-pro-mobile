@@ -41,6 +41,15 @@ class EngineDownloadManager {
             throw new Error(`No downloadable model for engine: ${id}`);
         }
 
+        // Download-on-unlock (M4): heavy models only fetch once the tier
+        // allows them — mirrors the desktop R2 on-demand pattern.
+        {
+            const { tierAccess, LOCKED_TIER_LABEL } = require('./tier-access');
+            if (!tierAccess.canUseEngine(id)) {
+                throw new Error(LOCKED_TIER_LABEL);
+            }
+        }
+
         // Ensure directory exists
         await FileSystem.makeDirectoryAsync(this.engineDir, { intermediates: true });
 

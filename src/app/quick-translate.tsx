@@ -16,12 +16,27 @@ import { colors, spacing, borderRadius, fontSizes } from '@/theme';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { translationService, TIER_1_LANGUAGES } from '@/services/translation';
 import { useHaptic } from '@/hooks/useHaptic';
+import { tierAccess } from '@/services/tier-access';
+import LockedFeature from '@/components/LockedFeature';
 
 const VALID_LANG_CODES = new Set(TIER_1_LANGUAGES.map(l => l.code));
 const safeLangCode = (code: string | undefined, fallback: string): string =>
     code && VALID_LANG_CODES.has(code) ? code : fallback;
 
-export default function QuickTranslateScreen() {
+// M4 tier gate — honest locked state as a WRAPPER component (an inline
+// early-return before hooks would change the hook count if the tier
+// flips mid-mount — the exact 'Rendered fewer hooks' crash M1 hit).
+// The locked/unlocked branches are separate components, so each mounts
+// with a consistent hook order.
+export default function QuickTranslateScreenGate() {
+    if (!tierAccess.canUseTranslate()) {
+        return <LockedFeature featureName="Voice Translate" emoji="🌐" />;
+    }
+    return <QuickTranslateScreen />;
+}
+
+function QuickTranslateScreen() {
+
     const router = useRouter();
     const params = useLocalSearchParams<{ text?: string; from?: string; to?: string }>();
     const haptic = useHaptic();

@@ -63,6 +63,15 @@ class TranscriptionService {
             throw new Error(`Unknown engine: ${engineId}`);
         }
 
+        // Tier gate (M4): Windy Nano is standard for everyone; every other
+        // engine is a higher-tier feature. Honest lock, no purchase UI.
+        {
+            const { tierAccess, LOCKED_TIER_LABEL } = require('./tier-access');
+            if (!tierAccess.canUseEngine(engineId)) {
+                throw new Error(LOCKED_TIER_LABEL);
+            }
+        }
+
         this.isProcessing = true;
 
         try {

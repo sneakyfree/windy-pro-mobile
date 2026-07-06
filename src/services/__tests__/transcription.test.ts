@@ -34,6 +34,8 @@ jest.mock('../license', () => ({
         isCloudSttEnabled: jest.fn().mockReturnValue(true),
         getTier: jest.fn().mockReturnValue('pro'),
         getBillingType: jest.fn().mockReturnValue('subscription'),
+        // M4 tier gate consults this (pro => all-engines unlocked)
+        isFeatureUnlocked: jest.fn().mockReturnValue(true),
     },
 }));
 
