@@ -160,6 +160,32 @@ export default function RootLayout() {
     return () => { handle.cancel(); trustMonitor.stop(); heartbeatService.stop(); };
   }, []);
 
+  // Chat connect + push registration at sign-in. The "your agent replied"
+  // notification must work even if the user never opens the Chat tab:
+  // provision the Matrix session (unified-login), register the device with
+  // the chat push-gateway, and set the Synapse pusher — then pause the
+  // client sync if no chat screen is mounted (pushers are server-side; the
+  // background /sync loop isn't needed for delivery).
+  useEffect(() => {
+    let lastAuthed = false;
+    const connectChatPush = () => {
+      const authed = identityApi.isAuthenticated();
+      if (authed === lastAuthed) return;
+      lastAuthed = authed;
+      if (!authed) return;
+      const { chatSso } = require('@/services/chatSso');
+      const { chatClient } = require('@/services/chatClient');
+      chatSso.ensureChatSession()
+        .then(() => pushNotificationService.registerForChatPush())
+        .then(() => chatClient.pauseSyncIfIdle())
+        .catch(() => { });
+    };
+    // restoreSession may already have completed before this effect runs.
+    connectChatPush();
+    const unsub = identityApi.onChange(connectChatPush);
+    return () => { unsub(); };
+  }, []);
+
   // Track the user's own Eternitas passport + connected agent passports for
   // trust-monitor polling. Re-runs when ecosystem status changes.
   useEffect(() => {

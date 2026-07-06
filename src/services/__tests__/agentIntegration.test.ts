@@ -44,6 +44,13 @@ describe('isAgentRoom', () => {
         expect(isAgentRoom(room)).toBe(true);
     });
 
+    it('identifies agent DM with live @agent_<passport> member', () => {
+        // Live provisioning shape: agent-provision.js mints
+        // @agent_<passport-lowercased>:chat.windychat.ai
+        const room = mockRoom(['@user:chat.windychat.ai', '@agent_et26-5116-gjde:chat.windychat.ai']);
+        expect(isAgentRoom(room)).toBe(true);
+    });
+
     it('rejects room with regular user only', () => {
         const room = mockRoom(['@user:chat.windychat.ai', '@other:chat.windychat.ai']);
         expect(isAgentRoom(room)).toBe(false);
@@ -68,9 +75,12 @@ describe('isAgentRoom', () => {
         expect(isAgentRoom(room)).toBe(false);
     });
 
-    it('rejects single-member room with agent', () => {
+    it('accepts single-member room with agent (mapRoom excludes self)', () => {
+        // chatClient.mapRoom filters the local user OUT of `members`, so a
+        // real 1:1 agent DM arrives here with exactly one member — the agent.
+        // The old `members.length !== 2` guard could never match a live DM.
         const room = mockRoom(['@windy_bot:chat.windychat.ai']);
-        expect(isAgentRoom(room)).toBe(false);
+        expect(isAgentRoom(room)).toBe(true);
     });
 
     it('matches various agent name formats', () => {

@@ -248,6 +248,10 @@ class ChatClient {
     private timelineHandler: ((...args: any[]) => void) | null = null;
     private typingHandler: ((...args: any[]) => void) | null = null;
     private syncHandler: ((...args: any[]) => void) | null = null;
+    private membershipHandler: ((...args: any[]) => void) | null = null;
+
+    // Rooms with an auto-join in flight (dedupes repeat membership events)
+    private joiningRooms = new Set<string>();
 
     // RECONN: Exponential backoff state
     private reconnectAttempt = 0;
@@ -437,6 +441,11 @@ class ChatClient {
 
     getUserId(): string | null {
         return this.session?.userId || null;
+    }
+
+    /** Matrix access token — needed by the push pipeline to set a pusher. */
+    getAccessToken(): string | null {
+        return this.session?.accessToken || null;
     }
 
     getHomeserver(): string {
@@ -665,11 +674,55 @@ class ChatClient {
         };
         this.client.on('sync', this.syncHandler);
 
+        // ── Auto-accept room invites ────────────────────────────
+        // When an agent is hatched, the chat backend creates the DM room
+        // and INVITES the owner — but a pending invite isn't a joined room,
+        // so a brand-new user would log in and never see their own agent
+        // (same bug the web SPA fixed in windy-chat #108). Safe to auto-join:
+        // the homeserver is federation-disabled + invite-only, and the
+        // directory service trust-gates bot→human DMs.
+        this.membershipHandler = (room: any, membership: string) => {
+            if (membership === 'invite') this.joinInvitedRoom(room.roomId);
+        };
+        let membershipEvent: string | any = 'Room.myMembership';
+        try {
+            const { RoomEvent } = this.sdk;
+            if (RoomEvent?.MyMembership) membershipEvent = RoomEvent.MyMembership;
+        } catch { /* string fallback */ }
+        this.client.on(membershipEvent, this.membershipHandler);
+
         // Start syncing
         if (!this.started) {
             await this.client.startClient({ initialSyncLimit: 20 });
             this.started = true;
         }
+
+        // Backfill: invites already pending at connect time.
+        this.acceptPendingInvites();
+    }
+
+    /** Join every room we're currently invited to (agent DM backfill). */
+    acceptPendingInvites(): void {
+        if (!this.client) return;
+        try {
+            for (const room of this.client.getRooms() || []) {
+                if (room.getMyMembership?.() === 'invite') {
+                    this.joinInvitedRoom(room.roomId);
+                }
+            }
+        } catch (e) {
+            log.warn('acceptPendingInvites', 'invite backfill failed', { error: sanitizeError(e) });
+        }
+    }
+
+    private joinInvitedRoom(roomId: string): void {
+        if (this.joiningRooms.has(roomId)) return;
+        this.joiningRooms.add(roomId);
+        this.client?.joinRoom(roomId)
+            .catch((err: unknown) => {
+                log.warn('autoJoinInvite', 'auto-join invite failed', { roomId, error: sanitizeError(err) });
+            })
+            .finally(() => this.joiningRooms.delete(roomId));
     }
 
     // ML-2: Remove stored event handlers from client
@@ -695,6 +748,14 @@ class ChatClient {
         if (this.syncHandler) {
             this.client.removeListener?.('sync', this.syncHandler);
             this.syncHandler = null;
+        }
+        if (this.membershipHandler) {
+            this.client.removeListener?.('Room.myMembership', this.membershipHandler);
+            try {
+                const { RoomEvent } = this.sdk;
+                if (RoomEvent?.MyMembership) this.client.removeListener?.(RoomEvent.MyMembership, this.membershipHandler);
+            } catch {}
+            this.membershipHandler = null;
         }
     }
 
@@ -764,6 +825,16 @@ class ChatClient {
         if (this.activeScreens === 1 && this.client && !this.started) {
             this.resumeSync();
         }
+    }
+
+    /**
+     * Pause sync unless a chat screen is currently mounted. Used by the
+     * login-time connect path (_layout): we want the session provisioned
+     * and the pusher set at sign-in, but not a background /sync loop
+     * burning battery while the user is elsewhere in the app (ML-1).
+     */
+    pauseSyncIfIdle(): void {
+        if (this.activeScreens <= 0) this.pauseSync();
     }
 
     /**
@@ -1179,14 +1250,25 @@ class ChatClient {
 
 export const chatClient = new ChatClient();
 
-/** Pattern for Windy agent Matrix user IDs */
-const AGENT_USER_PATTERN = /^@windy_[^:]+:chat\.windychat\.ai$/;
+/** Pattern for Windy agent Matrix user IDs.
+ * Live agents are provisioned as @agent_<passport>:chat.windychat.ai
+ * (windy-chat/services/onboarding/routes/agent-provision.js:
+ * `agent_${passport_number…}`); @windy_* is the legacy prefix kept for
+ * any earlier provisioned bots. */
+const AGENT_USER_PATTERN = /^@(agent_|windy_)[^:]+:chat\.windychat\.ai$/;
+
+/** True when a Matrix user id belongs to a Windy agent. */
+export function isAgentUserId(userId: string | null | undefined): boolean {
+    return !!userId && AGENT_USER_PATTERN.test(userId);
+}
 
 /**
  * Check if a chat room is an agent DM (Windy Fly bot).
- * Detects rooms with exactly 2 members where one matches @windy_*:chat.windychat.ai.
+ * Detects 1:1 rooms where the other member matches the agent MXID pattern.
+ * Accepts 1-member rooms too: a freshly auto-joined agent DM can briefly
+ * show only the agent (or only us) while membership state syncs.
  */
 export function isAgentRoom(room: ChatRoom): boolean {
-    if (!room.members || room.members.length !== 2) return false;
+    if (!room.members || room.members.length === 0 || room.members.length > 2) return false;
     return room.members.some(m => AGENT_USER_PATTERN.test(m));
 }
