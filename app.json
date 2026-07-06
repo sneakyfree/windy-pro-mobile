@@ -2,7 +2,7 @@
   "expo": {
     "name": "Windy Word",
     "slug": "windy-pro-mobile",
-    "description": "Your voice, unlimited. Record, transcribe, translate, and clone your voice — all from your phone.",
+    "description": "Your voice, unlimited. Record, transcribe, translate, and clone your voice \u2014 all from your phone.",
     "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
@@ -145,7 +145,14 @@
         }
       ],
       "@sentry/react-native",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Windy Word needs microphone access to convert your speech to text.",
+          "speechRecognitionPermission": "Windy Word uses your device's speech recognition to turn your voice into text."
+        }
+      ]
     ],
     "extra": {
       "revenueCatIosKey": "PRODUCTION_KEY_REQUIRED_CONTACT_GRANT",

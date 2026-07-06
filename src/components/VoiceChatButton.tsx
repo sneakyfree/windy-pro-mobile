@@ -24,13 +24,17 @@ import { colors, fontSizes } from '@/theme';
 
 // ─── Types ──────────────────────────────────────────────────────
 
-type VoiceState = 'idle' | 'recording' | 'transcribing' | 'error';
+type VoiceState = 'idle' | 'dictating' | 'recording' | 'transcribing' | 'error';
 
 export type VoiceChatMode = 'dictate' | 'autosend';
 
 interface VoiceChatButtonProps {
-    /** Called with transcribed text */
+    /** Called with transcribed text (final utterance) */
     onTranscription: (text: string) => void;
+    /** Streaming partial transcript while dictating (OS dictation only) */
+    onPartialTranscription?: (text: string) => void;
+    /** Fired when an OS-dictation session begins (lets the host snapshot the compose box) */
+    onDictationStart?: () => void;
     /** Called when voice note recorded (long-press). Receives audio URI + duration. */
     onVoiceNote?: (uri: string, durationSec: number) => void;
     onError?: (error: string) => void;
@@ -48,6 +52,8 @@ const MIN_RECORDING_SEC = 0.5;
 
 export default function VoiceChatButton({
     onTranscription,
+    onPartialTranscription,
+    onDictationStart,
     onVoiceNote,
     onError,
     disabled,
@@ -64,7 +70,7 @@ export default function VoiceChatButton({
     // ─── Pulse animation (green glow during recording) ──────────
 
     useEffect(() => {
-        if (state === 'recording') {
+        if (state === 'recording' || state === 'dictating') {
             const loop = Animated.loop(
                 Animated.sequence([
                     Animated.timing(pulseAnim, { toValue: 1.2, duration: 500, useNativeDriver: true }),
@@ -92,7 +98,7 @@ export default function VoiceChatButton({
     // ─── Duration timer ─────────────────────────────────────────
 
     useEffect(() => {
-        if (state === 'recording') {
+        if (state === 'recording' || state === 'dictating') {
             setDuration(0);
             timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
             return () => { if (timerRef.current) clearInterval(timerRef.current); };
@@ -169,6 +175,46 @@ export default function VoiceChatButton({
         setState('idle');
     }, []);
 
+    // ─── OS Dictation (tap path — Voice v1) ─────────────────────
+    // Tap = OS-native speech-to-text streaming into the compose box
+    // (SFSpeechRecognizer / Android SpeechRecognizer via dictationService).
+    // Falls back to the legacy record→transcribe path when the native
+    // module isn't in this build. Long-press voice notes are unchanged.
+
+    const startDictation = useCallback(async () => {
+        if (state !== 'idle' || disabled) return;
+        const { dictationService } = require('@/services/dictation');
+        if (!dictationService.isAvailable()) {
+            startRecording(); // legacy fallback — tap will stop+transcribe
+            return;
+        }
+        onDictationStart?.();
+        const ok = await dictationService.start({
+            onPartial: (text: string) => onPartialTranscription?.(text),
+            onFinal: (text: string) => onTranscription(text),
+            onError: (message: string) => {
+                setState('error');
+                triggerShake();
+                onError?.(message);
+                setTimeout(() => setState('idle'), 2000);
+            },
+            onEnd: () => {
+                setState(s => (s === 'dictating' ? 'idle' : s));
+            },
+        }, { continuous: mode !== 'autosend' });
+        if (ok) {
+            setState('dictating');
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        }
+    }, [state, disabled, mode, onDictationStart, onPartialTranscription, onTranscription, onError, triggerShake, startRecording]);
+
+    const stopDictation = useCallback(() => {
+        const { dictationService } = require('@/services/dictation');
+        dictationService.stop();
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        // state flips to idle via onEnd
+    }, []);
+
     // ─── Gesture Handlers ───────────────────────────────────────
 
     const handlePressIn = useCallback(() => {
@@ -207,11 +253,13 @@ export default function VoiceChatButton({
         if (isLongPressRef.current) return;
 
         if (state === 'idle') {
-            startRecording();
+            startDictation();
+        } else if (state === 'dictating') {
+            stopDictation();
         } else if (state === 'recording') {
             stopAndTranscribe();
         }
-    }, [state, startRecording, stopAndTranscribe]);
+    }, [state, startDictation, stopDictation, stopAndTranscribe]);
 
     // ─── Helpers ────────────────────────────────────────────────
 
@@ -237,13 +285,14 @@ export default function VoiceChatButton({
                         <Text style={styles.iconError}>!</Text>
                     </Animated.View>
                 );
+            case 'dictating':
             case 'recording':
                 return (
                     <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                         <TouchableOpacity
                             style={[styles.button, styles.buttonRecording]}
                             onPress={handleTap}
-                            accessibilityLabel="Stop recording"
+                            accessibilityLabel={state === 'dictating' ? 'Stop dictation' : 'Stop recording'}
                             accessibilityRole="button"
                         >
                             <Text style={styles.icon}>{isLongPressRef.current ? '🎵' : '⏹'}</Text>
