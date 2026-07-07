@@ -6,13 +6,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity, StyleSheet,
-    RefreshControl, ActivityIndicator, TextInput, Alert,
+    RefreshControl, ActivityIndicator, TextInput, Alert, ScrollView,
 } from 'react-native';
 import { INPUT_LIMITS } from '@/utils/validation';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fontSizes } from '@/theme';
 import { chatClient, isAgentRoom, type ChatRoom, type ChatContact, type SyncState } from '@/services/chatClient';
+import { PLATFORM_META, type RoomPlatform } from '@/services/hubPlatforms';
 import { chatSso } from '@/services/chatSso';
 import { identityApi } from '@/services/identityApi';
 import { pushNotificationService } from '@/services/push-notifications';
@@ -105,8 +106,32 @@ export default function ChatHomeScreen() {
     const agentRoomId = flyProduct?.room_id ||
         rooms.find(room => isAgentRoom(room) || room.members?.includes(agentMatrixId || ''))?.roomId || null;
 
-    // Sort agent rooms to top of the list
-    const sortedRooms = [...rooms].sort((a, b) => {
+    // ─── Hub filter: All / Windy / one connected platform ────────
+    const [hubFilter, setHubFilter] = useState<'all' | 'windy' | RoomPlatform>('all');
+    useEffect(() => {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        AsyncStorage.getItem('windy_hub_filter')
+            .then((v: string | null) => { if (v) setHubFilter(v as any); })
+            .catch(() => {});
+    }, []);
+    const selectHubFilter = useCallback((f: 'all' | 'windy' | RoomPlatform) => {
+        setHubFilter(f);
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        AsyncStorage.setItem('windy_hub_filter', f).catch(() => {});
+    }, []);
+
+    // Platforms actually present in this account's rooms (chips only show
+    // for networks the user has connected — no dead tabs).
+    const presentPlatforms = [...new Set(rooms.map(r => r.platform))]
+        .filter((p): p is RoomPlatform => p !== 'native' && p !== 'agent' && !!PLATFORM_META[p]);
+
+    const matchesFilter = (room: ChatRoom) =>
+        hubFilter === 'all' ? true
+            : hubFilter === 'windy' ? (room.platform === 'native' || room.platform === 'agent')
+                : room.platform === hubFilter;
+
+    // Sort agent rooms to top of the list (within the active filter)
+    const sortedRooms = rooms.filter(matchesFilter).sort((a, b) => {
         const aIsAgent = isAgentRoom(a);
         const bIsAgent = isAgentRoom(b);
         if (aIsAgent && !bIsAgent) return -1;
@@ -151,12 +176,12 @@ export default function ChatHomeScreen() {
         }
 
         try {
-            const dms = chatClient.getDMs();
-            if (isMounted.current) setRooms(dms);
+            const conversations = chatClient.getAllConversations();
+            if (isMounted.current) setRooms(conversations);
             // PERF-AUDIT: Cache contacts once per load
             if (isMounted.current) setContacts(chatClient.getContacts());
-            // Tab badge = total unread across DMs
-            setUnreadBadge(dms.reduce((sum, r) => sum + (r.unreadCount || 0), 0));
+            // Tab badge = total unread across every conversation
+            setUnreadBadge(conversations.reduce((sum, r) => sum + (r.unreadCount || 0), 0));
         } catch (err) {
             console.warn('[ChatHome] loadRooms error:', err);
             if (isMounted.current) {
@@ -201,11 +226,11 @@ export default function ChatHomeScreen() {
         connectChat();
         // Listen for new messages to refresh the list
         const unsub = chatClient.onMessage(() => {
-            const dms = chatClient.getDMs();
-            setRooms(dms);
+            const conversations = chatClient.getAllConversations();
+            setRooms(conversations);
             // PERF-AUDIT: Refresh contacts when room list changes
             setContacts(chatClient.getContacts());
-            setUnreadBadge(dms.reduce((sum, r) => sum + (r.unreadCount || 0), 0));
+            setUnreadBadge(conversations.reduce((sum, r) => sum + (r.unreadCount || 0), 0));
         });
         return () => {
             unsub();
@@ -307,6 +332,13 @@ export default function ChatHomeScreen() {
                     {isAgentRoom(item) && (
                         <View style={styles.agentTag}>
                             <Text style={styles.agentTagText}>{'🪰'} AI Agent</Text>
+                        </View>
+                    )}
+                    {PLATFORM_META[item.platform] && (
+                        <View style={[styles.platformTag, { backgroundColor: `${PLATFORM_META[item.platform].color}22` }]}>
+                            <Text style={[styles.platformTagText, { color: PLATFORM_META[item.platform].color }]}>
+                                {PLATFORM_META[item.platform].label}
+                            </Text>
                         </View>
                     )}
                     {item.lastMessageTime && <Text style={styles.roomTime}>{timeAgo(item.lastMessageTime)}</Text>}
@@ -438,6 +470,47 @@ export default function ChatHomeScreen() {
                     accessibilityHint="Type a name to find people to chat with"
                 />
             </View>
+
+            {/* Hub filter chips — only when a connected platform is present */}
+            {presentPlatforms.length > 0 && (
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.hubChipsRow}
+                    contentContainerStyle={styles.hubChipsContent}
+                >
+                    {([['all', 'All'], ['windy', 'Windy']] as const)
+                        .map(([key, label]) => (
+                            <TouchableOpacity
+                                key={key}
+                                style={[styles.hubChip, hubFilter === key && styles.hubChipActive]}
+                                onPress={() => selectHubFilter(key)}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Show ${label} conversations`}
+                                accessibilityState={{ selected: hubFilter === key }}
+                            >
+                                <Text style={[styles.hubChipText, hubFilter === key && styles.hubChipTextActive]}>{label}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    {presentPlatforms.map(p => (
+                        <TouchableOpacity
+                            key={p}
+                            style={[
+                                styles.hubChip,
+                                hubFilter === p && { backgroundColor: `${PLATFORM_META[p].color}22`, borderColor: PLATFORM_META[p].color },
+                            ]}
+                            onPress={() => selectHubFilter(p)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Show only ${PLATFORM_META[p].label} conversations`}
+                            accessibilityState={{ selected: hubFilter === p }}
+                        >
+                            <Text style={[styles.hubChipText, hubFilter === p && { color: PLATFORM_META[p].color, fontWeight: '700' }]}>
+                                {PLATFORM_META[p].label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            )}
 
             {/* Create Error Banner */}
             {createError && (
@@ -772,6 +845,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
     },
     agentTagText: { fontSize: 10, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' },
+
+    // Hub Mode — platform provenance + filter chips
+    platformTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6 },
+    platformTagText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+    hubChipsRow: { flexGrow: 0 },
+    hubChipsContent: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+    hubChip: {
+        paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16,
+        backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderLight,
+        minHeight: 32, justifyContent: 'center',
+    },
+    hubChipActive: { backgroundColor: colors.accentTransparent, borderColor: colors.accent },
+    hubChipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+    hubChipTextActive: { color: colors.accent, fontWeight: '700' },
     agentSubtext: { fontSize: fontSizes.xs, color: colors.textTertiary, marginTop: 2 },
     agentChevron: { fontSize: fontSizes.xl, color: colors.textTertiary },
 
