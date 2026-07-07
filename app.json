@@ -2,7 +2,7 @@
   "expo": {
     "name": "Windy Word",
     "slug": "windy-pro-mobile",
-    "description": "Your voice, unlimited. Record, transcribe, translate, and clone your voice \u2014 all from your phone.",
+    "description": "Your voice, unlimited. Record, transcribe, translate, and clone your voice — all from your phone.",
     "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
@@ -27,7 +27,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "uk.thewindstorm.windypro",
-      "buildNumber": "28",
+      "buildNumber": "29",
       "associatedDomains": [
         "applinks:windyword.ai",
         "appclips:windyword.ai"
