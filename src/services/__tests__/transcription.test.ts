@@ -34,6 +34,8 @@ jest.mock('../license', () => ({
         isCloudSttEnabled: jest.fn().mockReturnValue(true),
         getTier: jest.fn().mockReturnValue('pro'),
         getBillingType: jest.fn().mockReturnValue('subscription'),
+        // M4 tier gate consults this (pro => all-engines unlocked)
+        isFeatureUnlocked: jest.fn().mockReturnValue(true),
     },
 }));
 
@@ -70,8 +72,8 @@ describe('TranscriptionService', () => {
 
     // ─── Engine Management ─────────────────────────────────────
     describe('engine management', () => {
-        it('should start with cloud-standard engine', () => {
-            expect(transcriptionService.getActiveEngine()).toBe('cloud-standard');
+        it('should start with the bundled Windy Nano engine', () => {
+            expect(transcriptionService.getActiveEngine()).toBe('tiny');
         });
 
         it('should set engine', () => {

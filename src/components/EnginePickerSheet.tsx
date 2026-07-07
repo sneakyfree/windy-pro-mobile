@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { fontSizes } from '@/theme';
 import { ENGINE_REGISTRY } from '@/services/windy-tune';
 import { engineDownloadManager } from '@/services/engine-download';
+import { tierAccess, LOCKED_TIER_LABEL } from '@/services/tier-access';
 import * as Haptics from 'expo-haptics';
 
 interface Props {
@@ -70,12 +71,10 @@ export default function EnginePickerSheet({ visible, onClose }: Props) {
 
     const engines = Object.entries(ENGINE_REGISTRY);
 
-    // Tier gating
-    const isLocked = (id: string): boolean => {
-        if (id.includes('cloud-pro') || id.includes('large')) return licenseTier === 'free';
-        if (id.includes('cloud-realtime')) return licenseTier === 'free' || licenseTier === 'pro';
-        return false;
-    };
+    // Tier gating — centralized (tier-access.ts). The old inline rules
+    // keyed on engine ids that don't exist in ENGINE_REGISTRY
+    // ('cloud-pro', 'cloud-realtime'), so nothing was actually locked.
+    const isLocked = (id: string): boolean => !tierAccess.canUseEngine(id);
 
     return (
         <Modal visible={visible} animationType="slide" transparent>
@@ -96,7 +95,7 @@ export default function EnginePickerSheet({ visible, onClose }: Props) {
                                     style={[s.item, isSelected && s.itemSelected]}
                                     onPress={() => {
                                         if (locked) {
-                                            Alert.alert('Upgrade Required', 'This engine requires a higher tier.');
+                                            Alert.alert(config.displayName, LOCKED_TIER_LABEL);
                                             return;
                                         }
                                         if (isDownloaded) handleSelect(id);

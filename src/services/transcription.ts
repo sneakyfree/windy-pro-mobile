@@ -32,7 +32,11 @@ export function getTranscriptionServerUrl(): string {
 }
 
 class TranscriptionService {
-    private activeEngine: EngineId = 'cloud-standard';
+    // Default = Windy Nano (bundled tiny): works for everyone, offline,
+    // no download, no subscription. Cloud engines stay opt-in — the cloud
+    // STT backend behind windyword.ai/api doesn't exist yet (dead-but-green)
+    // and cloud is gated on an active subscription anyway.
+    private activeEngine: EngineId = 'tiny';
     private isProcessing = false;
     private ws: WebSocket | null = null;
 
@@ -57,6 +61,15 @@ class TranscriptionService {
 
         if (!engineConfig) {
             throw new Error(`Unknown engine: ${engineId}`);
+        }
+
+        // Tier gate (M4): Windy Nano is standard for everyone; every other
+        // engine is a higher-tier feature. Honest lock, no purchase UI.
+        {
+            const { tierAccess, LOCKED_TIER_LABEL } = require('./tier-access');
+            if (!tierAccess.canUseEngine(engineId)) {
+                throw new Error(LOCKED_TIER_LABEL);
+            }
         }
 
         this.isProcessing = true;
@@ -91,7 +104,8 @@ class TranscriptionService {
             const { whisperManager } = require('./whisper-manager');
             // Map engine ID to GGML model filename (matches whisper-manager's static map)
             const MODEL_MAP: Record<string, string> = {
-                'tiny': 'ggml-tiny.bin', 'base': 'ggml-base.bin',
+                // 'tiny' = Windy Nano, the bundled quantized model (in-app asset)
+                'tiny': 'ggml-tiny-q5_1.bin', 'base': 'ggml-base.bin',
                 'small': 'ggml-small.bin', 'medium': 'ggml-medium.bin',
                 'large-v3': 'ggml-large-v3.bin', 'large-v3-turbo': 'ggml-large-v3-turbo.bin',
             };
@@ -145,7 +159,14 @@ class TranscriptionService {
             }
 
             log.warn('Local_failed_no_cloud_fallback', 'Local transcription failed. Cloud fallback is off — staying local.', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });
-            throw err;
+            // Native-module rejections can be plain objects — rethrowing
+            // them raw renders "[object Object]" in every caller's catch.
+            if (err instanceof Error) throw err;
+            throw new Error(
+                typeof err === 'object' && err !== null
+                    ? JSON.stringify(err).slice(0, 300)
+                    : String(err),
+            );
         }
     }
 

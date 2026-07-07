@@ -35,11 +35,14 @@ export function normalizeBackendTier(backendTier: string): LicenseTier {
  * 🧬 M10.1.1 — Feature matrix by tier
  */
 export const FEATURE_MATRIX: Record<LicenseTier, string[]> = {
+    // Free = chat + agent + OS dictation + Windy Nano (bundled tiny),
+    // per the mobile consolidation plan (locked 2026-07-05). Bigger
+    // engines / cloud STT / Translate are honest locked states — see
+    // tier-access.ts. ('transcribe-local-base' and
+    // 'transcribe-cloud-standard' moved out of free accordingly.)
     free: [
         'record',
         'transcribe-local-tiny',
-        'transcribe-local-base',
-        'transcribe-cloud-standard',
         'language-en',
         'history',
         'export-text',
