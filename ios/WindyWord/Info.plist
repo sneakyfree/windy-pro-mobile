@@ -78,7 +78,7 @@
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Windy Word saves exported recordings and translations to your photo library.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Windy Word uses speech recognition to convert your voice to text.</string>
+    <string>Windy Word uses your device's speech recognition to turn your voice into text.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

@@ -54,6 +54,7 @@ export default function ConversationScreen() {
     const sendingRef = useRef(false); // RC-1: Synchronous guard against double-tap
     const isMounted = useRef(true); // ML-3: Unmount guard for async callbacks
     const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null); // PC-4: Typing debounce
+    const dictationBaseRef = useRef(''); // compose-box snapshot at dictation start (partials render on top of it)
 
     const userLang = useSettingsStore(s => s.defaultLanguage);
     const settings = useSettingsStore();
@@ -492,14 +493,24 @@ export default function ConversationScreen() {
                     />
                     <VoiceChatButton
                         mode={(settings.voiceChatMode as VoiceChatMode) || 'dictate'}
+                        onDictationStart={() => { dictationBaseRef.current = inputText; }}
+                        onPartialTranscription={(partial) => {
+                            // Live words-appear-as-you-talk: base snapshot + streaming partial
+                            const base = dictationBaseRef.current;
+                            setInputText(base ? `${base} ${partial}` : partial);
+                        }}
                         onTranscription={(text) => {
                             if ((settings.voiceChatMode as VoiceChatMode) === 'autosend') {
                                 // Auto-send: transcribe and send immediately
                                 setInputText(text);
                                 setTimeout(() => handleSend(), 50);
                             } else {
-                                // Dictate: fill compose box for review
-                                setInputText(prev => prev ? `${prev} ${text}` : text);
+                                // Dictate: commit the final utterance onto the snapshot,
+                                // then advance the snapshot for the next utterance.
+                                const base = dictationBaseRef.current;
+                                const committed = base ? `${base} ${text}` : text;
+                                dictationBaseRef.current = committed;
+                                setInputText(committed);
                             }
                         }}
                         onVoiceNote={async (uri, durationSec) => {

@@ -391,14 +391,24 @@ export default function ChatHomeScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle} accessibilityRole="header">💬 Chat</Text>
-                <TouchableOpacity
-                    onPress={() => router.push('/chat/profile')}
-                    style={styles.profileButton}
-                    accessibilityLabel="Chat settings and profile"
-                    accessibilityRole="button"
-                >
-                    <Text style={styles.profileIcon}>⚙️</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        onPress={() => router.push('/dictate')}
+                        style={styles.profileButton}
+                        accessibilityLabel="Quick dictate — speak to text"
+                        accessibilityRole="button"
+                    >
+                        <Text style={styles.profileIcon}>🎙️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => router.push('/chat/profile')}
+                        style={styles.profileButton}
+                        accessibilityLabel="Chat settings and profile"
+                        accessibilityRole="button"
+                    >
+                        <Text style={styles.profileIcon}>⚙️</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* Offline Banner */}
