@@ -41,12 +41,14 @@ export async function detectDeviceProfile(): Promise<DeviceProfile> {
 export const ENGINE_REGISTRY: Record<EngineId, Omit<EngineConfig, 'isDownloaded' | 'downloadProgress'>> = {
     'tiny': {
         id: 'tiny',
-        displayName: 'Tiny',
-        description: 'Fastest, English only, lowest quality',
-        sizeBytes: 75_000_000,
+        // Windy Nano — the bundled engine (whisper tiny multilingual,
+        // q5_1 quantized, ships inside the app; no download, no gate).
+        displayName: 'Windy Nano',
+        description: 'Built in — works offline for everyone',
+        sizeBytes: 32_152_673,
         ramRequired: 1000,
         isOnDevice: true,
-        languages: ['en'],
+        languages: ['en', 'es', 'fr', 'de', 'pt', 'it', 'zh', 'ja', 'ko', 'ar', 'hi', 'ru'],
         quality: 3,
         speed: 10,
     },

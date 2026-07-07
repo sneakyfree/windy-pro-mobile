@@ -26,9 +26,13 @@ config.resolver.sourceExts = [
 // which Metro web doesn't handle as a source module by default. Treating
 // .wasm as a static asset lets Metro emit a URL handle instead of trying
 // to parse the binary as JS.
+// 'bin': the bundled Windy Nano GGML model (src/assets/models/*.bin,
+// fetched by scripts/fetch-models.js — not in git) is a Metro asset so
+// whisper.rn can initWhisper({ filePath: require('.../ggml-....bin') }).
 config.resolver.assetExts = [
     ...config.resolver.assetExts,
     'wasm',
+    'bin',
 ];
 
 // ─── Exclude @matrix-org/olm from bundling ─────────────────────

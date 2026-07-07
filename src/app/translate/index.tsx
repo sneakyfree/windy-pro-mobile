@@ -36,12 +36,27 @@ import { EmptyState } from '@/components/EmptyState';
 import { subscriptionService } from '@/services/subscription';
 import { pairManager, type PairLimitResult, PAIR_LIMITS } from '@/services/pairManager';
 import type { TranscriptSegment } from '@/types';
+import { tierAccess } from '@/services/tier-access';
+import LockedFeature from '@/components/LockedFeature';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const HISTORY_KEY = 'windy-translate-history';
 const MAX_HISTORY = 50;
 
-export default function TranslateScreen() {
+// M4 tier gate — honest locked state as a WRAPPER component (an inline
+// early-return before hooks would change the hook count if the tier
+// flips mid-mount — the exact 'Rendered fewer hooks' crash M1 hit).
+// The locked/unlocked branches are separate components, so each mounts
+// with a consistent hook order.
+export default function TranslateScreenGate() {
+    if (!tierAccess.canUseTranslate()) {
+        return <LockedFeature featureName="Voice Translate" emoji="🌐" />;
+    }
+    return <TranslateScreen />;
+}
+
+function TranslateScreen() {
+
     const router = useRouter();
     const { requireFeature, tier } = useFeatureGate();
     const { requireUsage, recordUsage, checkLimit, isPaid } = useUsageLimits();

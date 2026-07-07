@@ -13,7 +13,7 @@ const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
  * Map engine ID to model filename on HuggingFace
  */
 const MODEL_FILES: Partial<Record<EngineId, string>> = {
-    'tiny': 'ggml-tiny.bin',
+    'tiny': 'ggml-tiny-q5_1.bin',
     'base': 'ggml-base.bin',
     'small': 'ggml-small.bin',
     'medium': 'ggml-medium.bin',
@@ -39,6 +39,15 @@ class EngineDownloadManager {
         const filename = MODEL_FILES[id];
         if (!filename) {
             throw new Error(`No downloadable model for engine: ${id}`);
+        }
+
+        // Download-on-unlock (M4): heavy models only fetch once the tier
+        // allows them — mirrors the desktop R2 on-demand pattern.
+        {
+            const { tierAccess, LOCKED_TIER_LABEL } = require('./tier-access');
+            if (!tierAccess.canUseEngine(id)) {
+                throw new Error(LOCKED_TIER_LABEL);
+            }
         }
 
         // Ensure directory exists
