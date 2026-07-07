@@ -30,6 +30,7 @@ const MATRIX_DEVICE_KEY = 'windy_matrix_device';
 // ─── Default Homeserver ─────────────────────────────────────────
 import { getChatHomeserver, DEFAULT_CHAT_HOMESERVER } from '@/config/api';
 import { fetchWithTimeout } from '@/utils/fetch-timeout';
+import { classifyRoomPlatform, getBridgeProtocolId, type RoomPlatform } from './hubPlatforms';
 /** Reads from settings store at runtime, falls back to default */
 function getDefaultHomeserver(): string {
     return getChatHomeserver();
@@ -169,6 +170,10 @@ export interface ChatRoom {
     unreadCount: number;
     isDirect: boolean;
     members: string[];
+    /** Hub Mode provenance: which network this conversation lives on.
+     * 'native' = Windy Chat, 'agent' = Windy Fly DM, else the connected
+     * platform (telegram/slack/whatsapp/discord). */
+    platform: RoomPlatform;
 }
 
 export interface ChatMessage {
@@ -882,6 +887,20 @@ class ChatClient {
     }
 
     /**
+     * Hub Mode — every joined conversation across every source: native
+     * Windy rooms, agent DMs, and connected-platform chats (which arrive
+     * as ordinary rooms). The DM filter above predates Hub Mode; this is
+     * the inbox's data source, sorted by recency.
+     */
+    getAllConversations(): ChatRoom[] {
+        if (!this.client) return [];
+        return (this.client.getRooms() || [])
+            .filter((room: any) => (room.getMyMembership?.() ?? 'join') === 'join')
+            .map((room: any) => this.mapRoom(room))
+            .sort((a: ChatRoom, b: ChatRoom) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
+    }
+
+    /**
      * Get or create a DM room with a user.
      */
     async getOrCreateDM(userId: string): Promise<{ roomId: string | null; error?: string }> {
@@ -1225,16 +1244,25 @@ class ChatClient {
             (m: any) => m.userId !== this.session?.userId
         );
 
+        const platform = classifyRoomPlatform(getBridgeProtocolId(room), members);
+        const isDirect = members.length <= 1;
+        // Bridged group chats keep their real room name; a 1:1 keeps the
+        // familiar contact-name treatment.
+        const name = isDirect
+            ? (otherMember?.name || room.name || 'Chat')
+            : (room.name || otherMember?.name || 'Chat');
+
         return {
             roomId: room.roomId,
-            name: stripHtml(otherMember?.name || room.name || 'Chat'),
+            name: stripHtml(name),
             avatarUrl: otherMember?.getAvatarUrl?.(this.session?.homeserverUrl || '', 48, 48, 'crop', false, false) || undefined,
             lastMessage: sanitizeMessageBody(lastEvent?.getContent()?.body || '') || undefined,
             lastMessageTime: lastEvent?.getTs(),
             lastMessageSender: lastEvent?.getSender(),
             unreadCount: room.getUnreadNotificationCount?.('total') || 0,
-            isDirect: true,
+            isDirect,
             members,
+            platform,
         };
     }
 

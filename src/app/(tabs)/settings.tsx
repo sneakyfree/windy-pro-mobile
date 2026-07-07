@@ -570,6 +570,12 @@ export default function SettingsScreen() {
 
           {/* Features */}
           <SettingsSection title="Features">
+            <Pressable style={styles.navRow} onPress={() => router.push('/settings/platforms')}
+              accessibilityLabel="Connected Platforms" accessibilityRole="button" accessibilityHint="Link Telegram and other chat platforms to Windy Chat"
+            >
+              <Text style={styles.navRowLabel}>🔗 Connected Platforms</Text>
+              <Text style={styles.chevron} importantForAccessibility="no">›</Text>
+            </Pressable>
             <Pressable style={styles.navRow} onPress={() => router.push('/translate')}
               accessibilityLabel="Windy Translate" accessibilityRole="button" accessibilityHint="Opens translation screen"
             >
