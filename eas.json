@@ -7,7 +7,8 @@
         "base": {
             "node": "22.13.0",
             "env": {
-                "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+                "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+                "SENTRY_DISABLE_AUTO_UPLOAD": "true"
             }
         },
         "development": {
@@ -32,7 +33,7 @@
             "distribution": "store",
             "env": {
                 "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-                "EXPO_PUBLIC_API_URL": "https://windyword.ai",
+                "EXPO_PUBLIC_API_URL": "https://account.windyword.ai",
                 "GOOGLE_VISION_API_KEY": "@google-vision-api-key",
                 "SENTRY_DISABLE_AUTO_UPLOAD": "true"
             },
@@ -54,7 +55,9 @@
                 "appleTeamId": "VXZ434QL89",
                 "ascAppId": "6759985867",
                 "bundleIdentifier": "uk.thewindstorm.windypro",
-                "groups": ["Team (Expo)"]
+                "groups": [
+                    "Team (Expo)"
+                ]
             },
             "android": {
                 "track": "internal",

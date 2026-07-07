@@ -12,7 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fontSizes } from '@/theme';
-import { chatClient, type ChatMessage, type SyncState } from '@/services/chatClient';
+import { chatClient, isAgentUserId, type ChatMessage, type SyncState } from '@/services/chatClient';
 import { chatTranslateService, type TranslatedMessage } from '@/services/chatTranslate';
 import { subscriptionService } from '@/services/subscription';
 import { pairManager } from '@/services/pairManager';
@@ -89,7 +89,7 @@ export default function ConversationScreen() {
     const ecosystem = useSettingsStore(s => s.ecosystemStatus);
     const flyProduct = ecosystem?.products?.windy_fly;
     const isAgentRoom = flyProduct?.room_id === roomId ||
-        messages.some(m => /^@windy_[^:]+:chat\.windypro\.com$/.test((m as any).sender || (m as any).senderName || ''));
+        messages.some(m => isAgentUserId((m as any).sender));
     const agentPassportId = flyProduct?.passport_id || ecosystem?.products?.eternitas?.passport_id;
 
     // ─── Load + Real-time Listeners (RC-2: sequenced) ───────────
@@ -191,7 +191,7 @@ export default function ConversationScreen() {
             } else {
                 // Real failure — restore input text and show error
                 if (isMounted.current) setInputText(savedInputRef.current);
-                if (isMounted.current) setSendError('Message could not be sent. Tap Retry to try again.');
+                if (isMounted.current) setSendError(result.error || 'Message could not be sent. Tap Retry to try again.');
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             }
         } else {

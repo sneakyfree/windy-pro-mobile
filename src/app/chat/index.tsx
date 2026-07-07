@@ -13,8 +13,12 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fontSizes } from '@/theme';
 import { chatClient, isAgentRoom, type ChatRoom, type ChatContact, type SyncState } from '@/services/chatClient';
+import { chatSso } from '@/services/chatSso';
+import { identityApi } from '@/services/identityApi';
+import { pushNotificationService } from '@/services/push-notifications';
 import { chatTranslateService } from '@/services/chatTranslate';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useChatBadgeStore } from '@/stores/useChatBadgeStore';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import EternitasPassport from '@/components/EternitasPassport';
 import type { EcosystemStatus } from '@/services/ecosystem-status';
@@ -51,6 +55,7 @@ export default function ChatHomeScreen() {
     const [searchResults, setSearchResults] = useState<ChatContact[]>([]);
     const [searching, setSearching] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [connectError, setConnectError] = useState<string | null>(null);
     const [syncState, setSyncState] = useState<SyncState>(chatClient.getSyncState());
     const [createError, setCreateError] = useState<string | null>(null);
     // PERF-AUDIT: Cache contacts outside render loop instead of calling per FlatList item
@@ -135,6 +140,8 @@ export default function ChatHomeScreen() {
 
     // ─── Load ───────────────────────────────────────────────────
 
+    const setUnreadBadge = useChatBadgeStore(s => s.setUnreadCount);
+
     const loadRooms = useCallback(async () => {
         const loggedIn = chatClient.isLoggedIn();
         setIsLoggedIn(loggedIn);
@@ -148,6 +155,8 @@ export default function ChatHomeScreen() {
             if (isMounted.current) setRooms(dms);
             // PERF-AUDIT: Cache contacts once per load
             if (isMounted.current) setContacts(chatClient.getContacts());
+            // Tab badge = total unread across DMs
+            setUnreadBadge(dms.reduce((sum, r) => sum + (r.unreadCount || 0), 0));
         } catch (err) {
             console.warn('[ChatHome] loadRooms error:', err);
             if (isMounted.current) {
@@ -156,23 +165,54 @@ export default function ChatHomeScreen() {
         } finally {
             if (isMounted.current) setLoading(false);
         }
-    }, []);
+    }, [setUnreadBadge]);
+
+    // ─── Connect: Windy account → Matrix session (unified-login) ──
+    // Restores a stored Matrix session, else provisions one from the
+    // signed-in Windy account. No separate chat login exists for users.
+    const connectChat = useCallback(async () => {
+        setConnectError(null);
+        if (!chatClient.isLoggedIn()) {
+            setLoading(true);
+            const result = await chatSso.ensureChatSession();
+            if (!isMounted.current) return;
+            if (!result.success && identityApi.isAuthenticated()) {
+                setConnectError(result.error || 'Could not connect to chat');
+            }
+        }
+        if (chatClient.isLoggedIn()) {
+            // Device push: register with the chat push-gateway AND set the
+            // Synapse pusher (needs the Matrix session, hence here).
+            pushNotificationService.registerForChatPush().catch(() => {});
+        }
+        await loadRooms();
+    }, [loadRooms]);
+
+    // First successful sync after connect populates rooms — a fresh login
+    // lands with an empty list otherwise (rooms arrive with the initial sync).
+    useEffect(() => {
+        const unsub = chatClient.onSyncStateChange((state) => {
+            if (state === 'syncing') loadRooms();
+        });
+        return unsub;
+    }, [loadRooms]);
 
     useEffect(() => {
-        loadRooms();
+        connectChat();
         // Listen for new messages to refresh the list
         const unsub = chatClient.onMessage(() => {
             const dms = chatClient.getDMs();
             setRooms(dms);
             // PERF-AUDIT: Refresh contacts when room list changes
             setContacts(chatClient.getContacts());
+            setUnreadBadge(dms.reduce((sum, r) => sum + (r.unreadCount || 0), 0));
         });
         return () => {
             unsub();
             // ML-AUDIT: Clear search debounce timer on unmount
             if (searchDebounce.current) clearTimeout(searchDebounce.current);
         };
-    }, [loadRooms]);
+    }, [connectChat, setUnreadBadge]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -227,39 +267,11 @@ export default function ChatHomeScreen() {
         }
     };
 
-    // ─── Not Logged In ──────────────────────────────────────────
-
-    if (!isLoggedIn && !loading) {
-        return (
-            <ScreenErrorBoundary screenName="Chat">
-            <SafeAreaView style={styles.container} edges={['top']}>
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}
-                        accessibilityRole="header"
-                    >💬 Chat</Text>
-                </View>
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyIcon}>💬</Text>
-                    <Text style={styles.emptyTitle}>Windy Chat</Text>
-                    <Text style={styles.emptySubtext}>
-                        Chat with anyone in any language.{'\n'}
-                        Messages are translated on-device automatically.
-                    </Text>
-                    <TouchableOpacity
-                        style={styles.loginButton}
-                        onPress={() => router.push('/chat/profile')}
-                        accessibilityLabel="Set up chat account"
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.loginButtonText}>Set Up Chat</Text>
-                    </TouchableOpacity>
-                </View>
-            </SafeAreaView>
-            </ScreenErrorBoundary>
-        );
-    }
-
     // ─── Memoized renderItem for FlatList ─────────────────────────
+    // MUST be declared before any conditional return: hooks have to run in
+    // the same order on every render, and the signed-out/loading branches
+    // below return early ("Rendered fewer hooks than expected" crash on the
+    // loading→signed-out transition otherwise).
     const renderRoom = useCallback(({ item }: any) => (
         <TouchableOpacity
             style={styles.roomRow}
@@ -294,7 +306,7 @@ export default function ChatHomeScreen() {
                     <Text style={styles.roomName} numberOfLines={1}>{item.name}</Text>
                     {isAgentRoom(item) && (
                         <View style={styles.agentTag}>
-                            <Text style={styles.agentTagText}>{'\uD83E\uDEB0'} AI Agent</Text>
+                            <Text style={styles.agentTagText}>{'🪰'} AI Agent</Text>
                         </View>
                     )}
                     {item.lastMessageTime && <Text style={styles.roomTime}>{timeAgo(item.lastMessageTime)}</Text>}
@@ -310,6 +322,49 @@ export default function ChatHomeScreen() {
             </View>
         </TouchableOpacity>
     ), [contacts]);
+
+    // ─── Not Logged In ──────────────────────────────────────────
+
+    if (!isLoggedIn && !loading) {
+        const hasWindyAccount = identityApi.isAuthenticated();
+        return (
+            <ScreenErrorBoundary screenName="Chat">
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}
+                        accessibilityRole="header"
+                    >💬 Chat</Text>
+                </View>
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyIcon}>💬</Text>
+                    <Text style={styles.emptyTitle}>Windy Chat</Text>
+                    <Text style={styles.emptySubtext}>
+                        {connectError
+                            ? connectError
+                            : 'Chat with your AI agent and friends in any language.\nOne Windy account is all you need.'}
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.loginButton}
+                        onPress={() => {
+                            if (hasWindyAccount) {
+                                connectChat();
+                            } else {
+                                router.push('/auth/login');
+                            }
+                        }}
+                        accessibilityLabel={hasWindyAccount ? 'Connect chat' : 'Sign in with Windy'}
+                        accessibilityRole="button"
+                    >
+                        <Text style={styles.loginButtonText}>
+                            {hasWindyAccount ? (connectError ? 'Try Again' : 'Connect Chat') : 'Sign in with Windy'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
+            </ScreenErrorBoundary>
+        );
+    }
+
 
     // ─── Loading ────────────────────────────────────────────────
 

@@ -19,6 +19,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fontSizes } from '@/theme';
 import { identityApi, type DeviceCodeStart } from '@/services/identityApi';
+import { canonicalizeVerificationUri } from '@/config/identity';
 import { pendingDeepLink } from '@/state/pendingDeepLink';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 
@@ -81,7 +82,7 @@ export default function DeviceCodeScreen() {
     function openVerificationUrl(): void {
         if (status.kind !== 'awaitingApproval') return;
         const url = status.start.verification_uri_complete || status.start.verification_uri;
-        Linking.openURL(url).catch(() => { /* user can copy the code instead */ });
+        Linking.openURL(canonicalizeVerificationUri(url)).catch(() => { /* user can copy the code instead */ });
     }
 
     return (
@@ -112,7 +113,7 @@ export default function DeviceCodeScreen() {
                                 accessibilityRole="button"
                                 accessibilityLabel="Approve on the web"
                             >
-                                <Text style={styles.buttonText}>Approve on windyword.ai →</Text>
+                                <Text style={styles.buttonText}>Approve in your browser →</Text>
                             </TouchableOpacity>
                             <View style={styles.waitingRow}>
                                 <ActivityIndicator color={colors.textSecondary} />

@@ -524,3 +524,23 @@ describe('identityApi SecureStore resilience', () => {
         expect(identityApi.getToken()).toBeNull();
     });
 });
+
+// ── canonicalizeVerificationUri (device-approval page rescue) ──
+
+describe('canonicalizeVerificationUri', () => {
+    const { canonicalizeVerificationUri, ACCOUNT_SERVER_URL } = require('@/config/identity');
+
+    it('rewrites the dead windyword.ai/device host to the account-server page', () => {
+        expect(canonicalizeVerificationUri('https://windyword.ai/device?code=AB12-CD34'))
+            .toBe(`${ACCOUNT_SERVER_URL}/device?code=AB12-CD34`);
+        expect(canonicalizeVerificationUri('https://windyword.ai/device'))
+            .toBe(`${ACCOUNT_SERVER_URL}/device`);
+    });
+
+    it('leaves any other issuer untouched', () => {
+        expect(canonicalizeVerificationUri('https://account.windyword.ai/device?code=X'))
+            .toBe('https://account.windyword.ai/device?code=X');
+        expect(canonicalizeVerificationUri('https://example.com/device'))
+            .toBe('https://example.com/device');
+    });
+});
