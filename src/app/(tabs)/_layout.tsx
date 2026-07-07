@@ -56,8 +56,15 @@ export default function TabLayout() {
           paddingBottom: Platform.OS === 'ios' ? 30 : 10,
           paddingTop: 10,
         },
+        // Each tab flexes to an equal share of the full bar width.
+        // React Navigation v7 derives an item's flex from tabBarItemStyle;
+        // without this the items size to their content and pack to the
+        // left, starving even short labels ("Word"/"Cloud" → "W…"/"Cl…").
+        tabBarItemStyle: {
+          flex: 1,
+        },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600',
           marginTop: 2,
         },
@@ -153,21 +160,25 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ── Hidden tabs (still routable, not shown in tab bar) ── */}
+      {/* ── Hidden tabs: routable but removed from the bar. `href: null`
+           (Expo Router) drops the tab ENTIRELY — `tabBarButton: () => null`
+           only nulls the button content but leaves an empty flex slot in
+           React Navigation v7, which was stealing width from the 6 real
+           tabs and squishing/truncating their labels. ── */}
 
       <Tabs.Screen
         name="camera"
         options={{
           title: 'Camera',
           headerShown: false,
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: 'History',
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -175,7 +186,7 @@ export default function TabLayout() {
         options={{
           title: 'Clone Data',
           headerShown: false,
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -183,7 +194,7 @@ export default function TabLayout() {
         options={{
           title: 'Ecosystem',
           headerShown: false,
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -191,7 +202,7 @@ export default function TabLayout() {
         options={{
           title: 'Market',
           headerShown: false,
-          tabBarButton: () => null,
+          href: null,
         }}
       />
     </Tabs>
