@@ -336,6 +336,14 @@ export default function RecordScreen() {
                     await Clipboard.setStringAsync(transcriptText);
                     feedbackService.success().catch(() => { });
                     announce('Transcript ready, copied to clipboard');
+                } else {
+                    // Honest empty state: the engine "succeeded" but produced no
+                    // words. Without this, grandma sees "Saved" and an empty
+                    // transcript box with zero explanation (found live 2026-07-08:
+                    // loud 10 s recording → silently blank).
+                    setTranscriptionError(
+                        "We couldn't turn that recording into text. Try again, speaking clearly near the microphone."
+                    );
                 }
             } catch (transcribeErr: unknown) {
                 console.warn('[Record] Transcription failed:', transcribeErr);

@@ -10,9 +10,16 @@ import { createLogger } from './logger';
 
 const log = createLogger('AudioCapture');
 
-/** Default recording configuration */
+/** Default recording configuration.
+ *
+ * 16 kHz is deliberate: whisper.cpp (Windy Nano/Lite) only accepts 16 kHz
+ * WAV input. At the previous 44.1 kHz default, Nano "succeeded" with zero
+ * segments on every Word-home recording — dictation silently produced no
+ * text (found live 2026-07-08, sim release build, loud 10 s recording).
+ * 16 kHz mono is the canonical STT rate; cloud engines accept it too.
+ */
 const DEFAULT_CONFIG: RecordingConfig = {
-    sampleRate: 44100,
+    sampleRate: 16000,
     channels: 1,
     encoding: 'wav',
     meteringEnabled: true,
@@ -166,9 +173,9 @@ export function scoreAudioQuality(
     // Duration scoring (longer is better, up to 60s)
     score += Math.min(20, (durationSeconds / 60) * 20);
 
-    // Sample rate scoring
-    if (sampleRate >= 44100) score += 20;
-    else if (sampleRate >= 16000) score += 10;
+    // Sample rate scoring — 16 kHz is the canonical STT rate (and the
+    // recorder default, required by Windy Nano); don't penalize it.
+    if (sampleRate >= 16000) score += 20;
 
     // Signal level scoring (not too quiet, not clipping)
     if (avgLevel >= 0.1 && avgLevel <= 0.7) score += 25;

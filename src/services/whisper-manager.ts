@@ -9,7 +9,16 @@ import { createLogger } from './logger';
 
 const log = createLogger('WhisperManager');
 
-// whisper.rn types — dynamically loaded to avoid crash if not installed
+// whisper.rn types — dynamically loaded to avoid crash if not installed.
+// NOTE: whisper.rn's transcribe() does NOT return a promise of the result —
+// it returns { stop, promise }. Awaiting the wrapper object resolves
+// immediately with no result while inference is still running (and our
+// release() then kills it). That exact mistake made every Word-home
+// dictation return 0 segments silently (found live 2026-07-08).
+interface WhisperTranscribeResult {
+    result: string;
+    segments?: WhisperSegment[];
+}
 interface WhisperContext {
     transcribe(
         uri: string,
@@ -19,7 +28,7 @@ interface WhisperContext {
             translate?: boolean;
             onNewSegments?: (segments: WhisperSegment[]) => void;
         }
-    ): Promise<{ result: string }>;
+    ): { stop: () => Promise<void>; promise: Promise<WhisperTranscribeResult> } | Promise<WhisperTranscribeResult>;
     release(): Promise<void>;
 }
 
@@ -128,31 +137,50 @@ class WhisperManager {
 
         const segments: TranscriptSegment[] = [];
         let segIndex = 0;
+        const mapSegment = (seg: WhisperSegment): TranscriptSegment => ({
+            id: `seg-${Date.now()}-${segIndex++}`,
+            text: seg.text.trim(),
+            startTime: seg.t0 / 100,  // centiseconds → seconds
+            endTime: seg.t1 / 100,
+            confidence: 0.9,  // whisper.rn doesn't expose per-segment confidence
+            isPartial: false,
+            speakerId: null,
+            language: language === 'auto' ? 'en' : language,
+        });
 
-        const result = await this.ctx.transcribe(audioUri, {
+        const handle = this.ctx.transcribe(audioUri, {
             language: language === 'auto' ? undefined : language,
             maxLen: 0,
             translate: false,
             onNewSegments: (newSegs: WhisperSegment[]) => {
                 for (const seg of newSegs) {
-                    const segment: TranscriptSegment = {
-                        id: `seg-${Date.now()}-${segIndex}`,
-                        text: seg.text.trim(),
-                        startTime: seg.t0 / 100,  // centiseconds → seconds
-                        endTime: seg.t1 / 100,
-                        confidence: 0.9,  // whisper.rn doesn't expose per-segment confidence
-                        isPartial: false,
-                        speakerId: null,
-                        language: language === 'auto' ? 'en' : language,
-                    };
+                    const segment = mapSegment(seg);
                     segments.push(segment);
-                    segIndex++;
                     onSegment?.(segment);
                 }
             },
         });
 
-        return { text: result.result, segments };
+        // whisper.rn returns { stop, promise }; await the inner promise.
+        // Tolerate a plain promise too in case the library changes shape.
+        const result: WhisperTranscribeResult = await (
+            (handle && typeof (handle as { promise?: Promise<WhisperTranscribeResult> }).promise?.then === 'function')
+                ? (handle as { promise: Promise<WhisperTranscribeResult> }).promise
+                : (handle as Promise<WhisperTranscribeResult>)
+        );
+
+        // The resolved result carries the authoritative segment list; use it
+        // when the streaming callback produced nothing (short clips often
+        // finish before the first onNewSegments fires).
+        if (segments.length === 0 && Array.isArray(result?.segments)) {
+            for (const seg of result.segments) {
+                const segment = mapSegment(seg);
+                segments.push(segment);
+                onSegment?.(segment);
+            }
+        }
+
+        return { text: result?.result ?? '', segments };
     }
 
     /** Check if a model is currently loaded */

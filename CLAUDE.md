@@ -29,3 +29,27 @@ See `docs/MERGE_TRIAGE.md` for the bucket assignments.
 - `npm test` — full Jest suite.
 - `npm test -- identityApi cloudApi trustApi` — Wave-3/4 subset (fastest green).
 - `npx tsc --noEmit` — types.
+
+## Windy Admin telemetry (stress-test contract)
+
+Mobile is a **client app — it deliberately ships NO telemetry emitter and NO
+ingest token**. A `WINDY_ADMIN_INGEST_TOKEN__*` bearer inside a public app
+binary would be extractable by anyone; never add one, and never loosen the
+ingest guard to accommodate a client.
+
+Mobile activity is observable server-side by design: every meaningful mobile
+action lands as an event emitted by the backend it talks to —
+
+| Mobile action            | Emitting platform/service          | Event                                    |
+|--------------------------|------------------------------------|------------------------------------------|
+| Sign-up (native form)    | windy-pro / account-server         | `funnel.signup_completed`                |
+| Hatch from the app       | windy-pro / account-server         | `hatch.started` / `hatch.completed`      |
+| Agent + owner chat setup | windy-chat / chat-onboarding       | `hatch.agent_chat_provisioned` etc.      |
+| Agent DM turns           | windy-chat / agent-roster          | `llm.call`, `roster.exchange`            |
+| Push fanout              | windy-chat / push-gateway          | `chat.message_fanout`                    |
+
+To verify during a stress session: drive the flow from the app, then tail
+`https://admin.windyword.ai/v1/events/tail?platform=windy-pro` (and
+`windy-chat`) with the `verify-oc5` read token from the lockbox
+(`secrets/windy-admin/ingest-tokens.env`). Verified live 2026-07-08: in-app
+signup + hatch + DM traffic all landed with the mobile user's identity ids.
