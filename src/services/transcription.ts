@@ -116,6 +116,9 @@ class TranscriptionService {
             });
 
             await whisperManager.release();
+            log.info('Local_done', `On-device transcription finished: ${result.segments.length} segment(s)`, {
+                engine, textChars: result.segments.reduce((n: number, s: TranscriptSegment) => n + (s.text?.length || 0), 0),
+            });
             return result.segments;
         } catch (err: unknown) {
             log.warn('Local_unavailable', 'On-device transcription not available', err instanceof Error ? { message: err.message, stack: err.stack } : { error: String(err) });

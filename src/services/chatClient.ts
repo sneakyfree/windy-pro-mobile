@@ -393,6 +393,33 @@ class ChatClient {
             const deviceId = await SecureStore.getItemAsync(MATRIX_DEVICE_KEY);
 
             if (token && userId && server) {
+                // Validate before trusting: a stored session can be dead
+                // (e.g. minted during a provisioning race at signup). Without
+                // this check the client "looks" logged in while /sync 401s
+                // forever and the room list stays empty — found live 2026-07-08
+                // (fresh signup → agent hatched → grandma saw "No conversations
+                // yet" permanently). 401/403 → discard so ensureChatSession
+                // falls through to unified-login; network errors keep the
+                // session — being offline must not log you out.
+                try {
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 8000);
+                    const whoami = await fetch(
+                        `${server.replace(/\/+$/, '')}/_matrix/client/v3/account/whoami`,
+                        { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal },
+                    );
+                    clearTimeout(timer);
+                    if (whoami.status === 401 || whoami.status === 403) {
+                        log.warn('restoreSession', 'stored Matrix session rejected by server — discarding', {
+                            status: whoami.status,
+                        });
+                        await SecureStore.deleteItemAsync(MATRIX_TOKEN_KEY).catch(() => {});
+                        await SecureStore.deleteItemAsync(MATRIX_USER_KEY).catch(() => {});
+                        await SecureStore.deleteItemAsync(MATRIX_SERVER_KEY).catch(() => {});
+                        await SecureStore.deleteItemAsync(MATRIX_DEVICE_KEY).catch(() => {});
+                        return false;
+                    }
+                } catch { /* offline or slow — restore optimistically */ }
                 this.session = {
                     accessToken: token,
                     userId,
@@ -663,6 +690,14 @@ class ChatClient {
                     this.setSyncState('syncing');
                     // Flush pending messages when we reconnect
                     this.flushPendingMessages();
+                    // Reconcile pending invites on every sync transition, not
+                    // just once after startClient (rooms aren't in the store
+                    // yet at that point — startClient resolves before the
+                    // initial sync). The login-time connect path also pauses
+                    // sync before PREPARED, so an agent-DM invite that arrives
+                    // while paused was never auto-joined and grandma saw
+                    // "No conversations yet" forever. joiningRooms dedupes.
+                    this.acceptPendingInvites();
                     break;
                 case 'RECONNECTING':
                     this.setSyncState('reconnecting');

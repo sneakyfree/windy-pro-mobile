@@ -103,7 +103,9 @@ export default function HatchScreen() {
                 return false;
             }
         } catch {
-            setError('You need an internet connection to hatch your agent. Connect to Wi-Fi and try again.');
+            // fetch threw: offline, DNS failure, or the 5 s timeout fired.
+            // Don't blame grandma's Wi-Fi for what may be a slow server.
+            setError("Couldn't reach the Windy servers. Check your connection and try again in a moment.");
             return false;
         }
         return true;

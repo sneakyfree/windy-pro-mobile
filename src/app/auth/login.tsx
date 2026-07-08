@@ -4,13 +4,11 @@
  * Tapping "Sign in with Windy" pushes to /auth/device-code which talks to
  * the account-server at windy-pro and polls for approval.
  */
-import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fontSizes } from '@/theme';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
-
-const SIGN_UP_URL = 'https://windyword.ai/signup';
 
 export default function LoginScreen() {
     return (
@@ -35,7 +33,7 @@ export default function LoginScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        onPress={() => Linking.openURL(SIGN_UP_URL).catch(() => {})}
+                        onPress={() => router.push('/auth/register')}
                         style={styles.linkContainer}
                         accessibilityRole="link"
                     >

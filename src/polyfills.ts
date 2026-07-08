@@ -49,3 +49,23 @@ if (typeof P.withResolvers !== 'function') {
         return { promise, resolve, reject };
     };
 }
+
+/**
+ * AbortSignal.timeout (WHATWG 2022) — RN's abort-controller polyfill
+ * doesn't implement the static. Without this shim, every
+ * `AbortSignal.timeout(ms)` call site (hatch pre-flight, analytics)
+ * throws synchronously on Hermes; the hatch screen caught that throw and
+ * blamed the user's Wi-Fi — in-app hatching was dead in release builds
+ * (found live on the iOS simulator release bundle, 2026-07-08).
+ */
+type AbortSignalWithTimeout = typeof AbortSignal & {
+    timeout?: (ms: number) => AbortSignal;
+};
+const A = globalThis.AbortSignal as AbortSignalWithTimeout | undefined;
+if (A && typeof A.timeout !== 'function') {
+    A.timeout = (ms: number): AbortSignal => {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(new Error(`TimeoutError: signal timed out after ${ms}ms`)), ms);
+        return controller.signal;
+    };
+}

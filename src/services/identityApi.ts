@@ -47,6 +47,13 @@ export type DeviceCodeOutcome =
     | { success: true; token: string; userId: string | null; email: string | null }
     | { success: false; error: 'expired' | 'denied' | 'cancelled' | 'network'; message?: string };
 
+export type RegisterOutcome =
+    | { success: true }
+    | { success: false; message: string };
+
+/** Account-server registration endpoint (returns the session JWT directly). */
+const REGISTER_ENDPOINT = '/api/v1/auth/register';
+
 export interface PollForTokenOptions {
     /**
      * Fires once after the first consecutive transient poll failure (5xx or
@@ -331,6 +338,59 @@ class IdentityApiClient {
         if (this.deviceSession) {
             try { this.deviceSession.abort.abort(); } catch { /* already aborted */ }
             this.deviceSession = null;
+        }
+    }
+
+    // ─── Registration ───────────────────────────────────────────
+
+    /**
+     * Create a Windy account directly from the app and sign the session in.
+     *
+     * POST /api/v1/auth/register returns the same JWT the OAuth token
+     * endpoint issues (camelCase `token`/`refreshToken` fields), so on
+     * success we persist it exactly like a device-code sign-in — no second
+     * sign-in step for a brand-new user.
+     */
+    async register(name: string, email: string, password: string): Promise<RegisterOutcome> {
+        try {
+            const res = await this.fetchWithTimeout(
+                `${ACCOUNT_SERVER_URL}${REGISTER_ENDPOINT}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password }),
+                }
+            );
+            const body = await this.safeJson(res);
+            if (res.ok && typeof body?.token === 'string') {
+                await this.persistTokens(
+                    body.token,
+                    typeof body.refreshToken === 'string' ? body.refreshToken : null,
+                );
+                this.emitChange();
+                return { success: true };
+            }
+            // Server sends human-readable messages: either a single `error`
+            // string ("An account with this email already exists") or a
+            // `details` array of per-field validation messages.
+            const details = Array.isArray(body?.details)
+                ? (body.details as Array<{ message?: string }>)
+                    .map((d) => d.message)
+                    .filter((m): m is string => typeof m === 'string')
+                : [];
+            const message = details.length > 0
+                ? details.join('\n')
+                : (typeof body?.error === 'string' && body.error) ||
+                  'Could not create the account. Please try again.';
+            return { success: false, message };
+        } catch (err: unknown) {
+            log.warn('register', 'request failed', {
+                message: err instanceof Error ? err.message : String(err),
+            });
+            return {
+                success: false,
+                message: 'Could not reach the server. Check your connection and try again.',
+            };
         }
     }
 
