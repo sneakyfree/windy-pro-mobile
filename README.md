@@ -153,6 +153,22 @@ npx tsc --noEmit              # TypeScript check
 npx expo-doctor               # Expo health check
 ```
 
+## Telemetry (Windy Admin intel hooks)
+
+Per `INTEL-CONTRACT-V2` (windy-admin repo), the app emits content-free
+telemetry (sessions, dictation usage counts, errors/crash signatures,
+paywall hits, update + onboarding funnel, marketing impressions) to
+`admin.windyword.ai`, and fetches `/v1/client/config` for version policy
+and messages. **Fully inert unless configured at build time:**
+
+| Env var (EXPO_PUBLIC — inlined at bundle time) | Value |
+|---|---|
+| `EXPO_PUBLIC_WINDY_ADMIN_INGEST_URL` | `https://admin.windyword.ai` (non-secret, in `eas.json` production profile) |
+| `EXPO_PUBLIC_WINDY_ADMIN_INGEST_TOKEN` | Mobile-only, low-trust, rotatable ingest token — **set as an EAS env var, never committed** |
+
+No content, no PII, no free-text, no geo ever leaves the device. See
+`CLAUDE.md` → "Windy Admin telemetry" and `src/services/intel.ts`.
+
 ## Deep Links
 
 | Link | Action |

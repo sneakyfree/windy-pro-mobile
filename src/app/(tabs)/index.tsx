@@ -37,6 +37,7 @@ import { analyticsService } from '@/services/analytics';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 import { syncManager } from '@/services/sync-manager';
 import { cloneBundleService } from '@/services/clone-bundle';
+import { intelService } from '@/services/intel';
 import HatchPromptCard from '@/components/HatchPromptCard';
 
 const WAVEFORM_BARS = 40;
@@ -93,6 +94,10 @@ export default function RecordScreen() {
     // AppState ref to track recording state for background handler
     const recordingStateRef = useRef(state);
     useEffect(() => { recordingStateRef.current = state; }, [state]);
+
+    // Intel: dedupe feature.usage.dictation between the auto-save path and
+    // a later manual Save of the same transcript (never double-count).
+    const lastIntelTranscriptRef = useRef<string | null>(null);
 
     // Recording limits by tier (from hook)
     const maxDuration = getRecordingLimit();
@@ -253,6 +258,13 @@ export default function RecordScreen() {
 
                     // Auto-stop at tier limit
                     if (elapsed >= maxDuration) {
+                        // Intel: wall.hit (§1.5) — user ran into the tier's
+                        // recording-minutes ceiling. Fire-and-forget.
+                        intelService.emitWallHit('dictation_minutes', {
+                            surface: 'record',
+                            limit: Math.round(maxDuration),
+                            used: Math.round(elapsed),
+                        });
                         handleStopRecording();
                     }
                 }, 250);
@@ -344,10 +356,12 @@ export default function RecordScreen() {
                     setTranscriptionError(
                         "We couldn't turn that recording into text. Try again, speaking clearly near the microphone."
                     );
+                    intelService.emitError('stt_empty_transcript', 'record', { recoverable: true });
                 }
             } catch (transcribeErr: unknown) {
                 console.warn('[Record] Transcription failed:', transcribeErr);
                 setTranscriptionError((transcribeErr instanceof Error ? transcribeErr.message : String(transcribeErr)) || 'Transcription failed — check your connection');
+                intelService.emitError('transcription_failed', 'record', { recoverable: true });
             }
 
             // Save session to local database
@@ -374,6 +388,20 @@ export default function RecordScreen() {
             };
             try {
                 await localStorageService.saveSession(session);
+
+                // Intel: feature.usage.dictation (§1.2) — one recording
+                // transcribed + saved. Counts/durations only, never text.
+                {
+                    const savedText = useTranscriptStore.getState().segments
+                        .map(s => s.text).join(' ').trim();
+                    lastIntelTranscriptRef.current = savedText || null;
+                    intelService.emitDictation({
+                        seconds: session.duration,
+                        language: session.languages[0] || 'en',
+                        engineId: transcriptionService.getEngine(),
+                        wordCount: savedText ? savedText.split(/\s+/).length : 0,
+                    });
+                }
 
                 // Auto-queue for Wi-Fi sync
                 const bundleId = session.id;
@@ -405,6 +433,7 @@ export default function RecordScreen() {
                 }
             } catch (saveErr) {
                 console.warn('[Record] Save failed:', saveErr);
+                intelService.emitError('session_save_failed', 'record', { recoverable: true });
                 Alert.alert('Save Warning', 'Recording completed but could not be saved to history. Try exporting manually.');
             }
 
@@ -541,10 +570,22 @@ export default function RecordScreen() {
         };
         try {
             await localStorageService.saveSession(session);
+            // Intel: manual Save is a distinct dictation artifact — but skip
+            // if the auto-save path already counted this exact transcript.
+            if (fullText.trim() && fullText.trim() !== lastIntelTranscriptRef.current) {
+                lastIntelTranscriptRef.current = fullText.trim();
+                intelService.emitDictation({
+                    seconds: session.duration,
+                    language: session.languages[0] || 'en',
+                    osDictation: true, // manual/OS-dictated text, no engine run
+                    wordCount: fullText.trim().split(/\s+/).length,
+                });
+            }
             feedbackService.success().catch(() => { });
             Alert.alert('Saved', 'Session saved to history');
         } catch (err) {
             feedbackService.error().catch(() => { });
+            intelService.emitError('session_save_failed', 'record', { recoverable: true });
             Alert.alert('Save Failed', 'Could not save session.');
         }
     };

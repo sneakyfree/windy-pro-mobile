@@ -49,6 +49,11 @@ class TranscriptionService {
         this.activeEngine = engineId;
     }
 
+    /** The engine currently selected for transcription (intel hooks). */
+    getEngine(): EngineId {
+        return this.activeEngine;
+    }
+
     /**
      * Transcribe an audio file
      */
@@ -68,6 +73,11 @@ class TranscriptionService {
         {
             const { tierAccess, LOCKED_TIER_LABEL } = require('./tier-access');
             if (!tierAccess.canUseEngine(engineId)) {
+                // Intel: wall.hit (INTEL-CONTRACT-V2 §1.5) — commercial signal.
+                try {
+                    const { intelService } = require('./intel');
+                    intelService.emitWallHit('feature_locked', { surface: 'transcription' });
+                } catch { /* telemetry never affects transcription */ }
                 throw new Error(LOCKED_TIER_LABEL);
             }
         }
@@ -81,6 +91,10 @@ class TranscriptionService {
                 // Gate cloud processing: only available for active subscribers (not lifetime)
                 const { licenseService } = require('./license');
                 if (!licenseService.isCloudSttEnabled()) {
+                    try {
+                        const { intelService } = require('./intel');
+                        intelService.emitWallHit('feature_locked', { surface: 'cloud_stt' });
+                    } catch { /* telemetry never affects transcription */ }
                     throw new Error('Cloud processing requires an active subscription (Monthly or Annual). Lifetime plans include local engines only.');
                 }
                 return await this.cloudTranscribe(uri, engineId);

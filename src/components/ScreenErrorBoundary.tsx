@@ -26,6 +26,15 @@ export class ScreenErrorBoundary extends Component<Props, State> {
 
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         console.warn(`[ScreenError] ${this.props.screenName || 'Unknown'} crashed:`, error.message);
+
+        // Intel hook (INTEL-CONTRACT-V2 §1.3) — surface = screen slug, code
+        // is a stable slug; never the message text. Fire-and-forget.
+        try {
+            const { intelService } = require('@/services/intel');
+            const surface = (this.props.screenName || 'unknown')
+                .toLowerCase().replace(/[^a-z0-9]+/g, '_');
+            intelService.emitError('react_error_boundary', surface, { recoverable: true });
+        } catch { /* telemetry never breaks recovery */ }
     }
 
     handleRetry = () => {

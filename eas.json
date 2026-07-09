@@ -34,6 +34,7 @@
             "env": {
                 "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
                 "EXPO_PUBLIC_API_URL": "https://account.windyword.ai",
+                "EXPO_PUBLIC_WINDY_ADMIN_INGEST_URL": "https://admin.windyword.ai",
                 "GOOGLE_VISION_API_KEY": "@google-vision-api-key",
                 "SENTRY_DISABLE_AUTO_UPLOAD": "true"
             },

@@ -6,19 +6,31 @@
  * store links (IAP posture is Grant-gated). The feature's code path
  * stays fully wired behind this screen; flipping the tier unlocks it.
  */
+import { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fontSizes } from '@/theme';
 import { LOCKED_TIER_LABEL } from '@/services/tier-access';
+import { intelService, type WallKind } from '@/services/intel';
 
 interface Props {
     /** Feature name shown above the lock message, e.g. "Voice Translate" */
     featureName: string;
     emoji?: string;
+    /** Intel wall enum (INTEL-CONTRACT-V2 §1.5); defaults to feature_locked. */
+    wall?: WallKind;
 }
 
-export default function LockedFeature({ featureName, emoji = '🔒' }: Props) {
+export default function LockedFeature({ featureName, emoji = '🔒', wall = 'feature_locked' }: Props) {
+    // Intel: wall.hit — user landed on a tier-locked surface (commercial
+    // signal, §1.5). Fire-and-forget; once per mount.
+    useEffect(() => {
+        intelService.emitWallHit(wall, {
+            surface: featureName.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+        });
+    }, [wall, featureName]);
+
     return (
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
             <View style={styles.content}>
