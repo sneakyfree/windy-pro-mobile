@@ -49,6 +49,8 @@ import { trustMonitor } from '@/services/trust-monitor';
 import { heartbeatService } from '@/services/heartbeat';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkBanner } from '@/components/NetworkBanner';
+import { IntelBanner } from '@/components/IntelBanner';
+import { intelService } from '@/services/intel';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Keep splash screen visible until we're ready
@@ -155,6 +157,10 @@ export default function RootLayout() {
         // (24h free / 7d pro / 14d translate / 30d translate_pro) keeps
         // things working offline before any lock.
         heartbeatService.start(),
+        // Windy Admin intel hooks (INTEL-CONTRACT-V2) — fire-and-forget
+        // telemetry + client-config fetch. Hard no-op unless the
+        // EXPO_PUBLIC_WINDY_ADMIN_INGEST_* env was set at build time.
+        intelService.initialize(),
       ]).catch(() => { });
       trustMonitor.start();
     });
@@ -238,11 +244,14 @@ export default function RootLayout() {
   }, []);
 
   // 🔄 Foreground sync: when app comes back from background + online → sync immediately
+  // + intel session lifecycle: session.start on foreground, session.end on
+  //   background (INTEL-CONTRACT-V2 §1.1) — fire-and-forget, never throws.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
       if (nextState === 'active' && networkMonitor.isOnline) {
         syncManager.processQueue().catch(() => {});
       }
+      try { intelService.handleAppStateChange(nextState); } catch { /* never blocks UI */ }
     });
     return () => subscription.remove();
   }, []);
@@ -648,6 +657,7 @@ export default function RootLayout() {
         <StatusBar style="light" translucent backgroundColor="transparent" />
         <ErrorBoundary>
           <NetworkBanner />
+          <IntelBanner />
           <Stack
             screenOptions={{
               headerShown: false,

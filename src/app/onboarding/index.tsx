@@ -4,7 +4,7 @@
  * Animated transitions, dot indicators, beautiful dark design
  */
 import { View, Text, StyleSheet, Pressable, Platform, Alert, FlatList, Animated, Dimensions, NativeModules, type ListRenderItemInfo, type ViewToken } from 'react-native';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import { Camera } from 'expo-camera';
@@ -14,6 +14,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { detectDeviceProfile, getWindyTuneRecommendation } from '@/services/windy-tune';
 import { feedbackService } from '@/services/feedback';
 import { analyticsService } from '@/services/analytics';
+import { intelService } from '@/services/intel';
 import type { WindyTuneResult } from '@/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -86,9 +87,16 @@ export default function OnboardingScreen() {
 
     const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
+    // Intel: install.first_run.step (§1.7) — onboarding funnel, anonymous,
+    // each step emitted once per install. Fire-and-forget.
+    useEffect(() => {
+        void intelService.markFirstRunStep('launched');
+    }, []);
+
     const requestMicrophone = async () => {
         const { status } = await Audio.requestPermissionsAsync();
         setMicGranted(status === 'granted');
+        void intelService.markFirstRunStep('permissions', status === 'granted');
         if (status !== 'granted') {
             Alert.alert(
                 'Microphone Required',
@@ -139,6 +147,14 @@ export default function OnboardingScreen() {
         feedbackService.tap().catch(() => { });
 
         if (currentIndex < SLIDES.length - 1) {
+            // Intel: leaving the account slide — record whether the user
+            // actually linked an account (funnel step, once per install).
+            if (SLIDES[currentIndex]?.key === 'account') {
+                try {
+                    const { identityApi } = require('@/services/identityApi');
+                    void intelService.markFirstRunStep('account_linked', identityApi.isAuthenticated());
+                } catch { /* telemetry never blocks onboarding */ }
+            }
             // On permissions page, run WindyTune before advancing
             if (currentIndex === 1) {
                 try {
@@ -152,6 +168,7 @@ export default function OnboardingScreen() {
             // Final step — complete onboarding
             setOnboardingComplete(true);
             analyticsService.trackScreenView('onboarding_complete');
+            void intelService.markFirstRunStep('done');
             feedbackService.success().catch(() => { });
 
             // Check if user has a Windy Fly agent

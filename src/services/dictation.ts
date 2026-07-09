@@ -73,6 +73,11 @@ class DictationService {
     private module: NativeModule | null | undefined;
     private subscriptions: { remove: () => void }[] = [];
     private listening = false;
+    // Intel session tracking (INTEL-CONTRACT-V2 §1.2) — counts/durations
+    // only, never the transcript itself.
+    private sessionStartedAt: number | null = null;
+    private sessionWordCount = 0;
+    private sessionLang = 'en-US';
 
     /** Lazy-load the native module; null when not present in this build. */
     private native(): NativeModule | null {
@@ -132,6 +137,10 @@ class DictationService {
 
         if (!(await this.requestPermissions())) {
             callbacks.onError?.('Microphone or speech permission is off — enable it in Settings.');
+            try {
+                const { intelService } = require('./intel');
+                intelService.emitError('mic_permission_denied', 'dictate', { recoverable: true });
+            } catch { /* telemetry never affects dictation */ }
             return false;
         }
 
@@ -154,19 +163,29 @@ class DictationService {
         }) => {
             const transcript = ev.results?.[0]?.transcript ?? '';
             if (!transcript) return;
-            if (ev.isFinal) callbacks.onFinal(transcript);
-            else callbacks.onPartial?.(transcript);
+            if (ev.isFinal) {
+                // Intel: count words only — the text itself never leaves.
+                this.sessionWordCount += transcript.split(/\s+/).filter(Boolean).length;
+                callbacks.onFinal(transcript);
+            } else {
+                callbacks.onPartial?.(transcript);
+            }
         }));
 
         this.subscriptions.push(m.addListener('error', (ev: { error?: string; message?: string }) => {
             // "no-speech" on a manual stop is noise, not an error state.
             if (ev.error === 'no-speech' && !this.listening) return;
+            try {
+                const { intelService } = require('./intel');
+                intelService.emitError('dictation_error', 'dictate', { recoverable: true });
+            } catch { /* telemetry never affects dictation */ }
             callbacks.onError?.(userFacingError(ev.error, ev.message));
         }));
 
         this.subscriptions.push(m.addListener('end', () => {
             this.listening = false;
             this.clearSubscriptions();
+            this.emitDictationUsage();
             callbacks.onEnd?.();
         }));
 
@@ -178,6 +197,9 @@ class DictationService {
                 addsPunctuation: true,
             });
             this.listening = true;
+            this.sessionStartedAt = Date.now();
+            this.sessionWordCount = 0;
+            this.sessionLang = lang || 'en-US';
             return true;
         } catch (err) {
             log.warn('start', 'dictation start failed', { error: String(err) });
@@ -205,9 +227,39 @@ class DictationService {
         if (!m) return;
         this.listening = false;
         this.clearSubscriptions();
+        // Aborted session = discarded results; no usage event.
+        this.sessionStartedAt = null;
+        this.sessionWordCount = 0;
         try {
             m.abort();
         } catch { /* already stopped */ }
+    }
+
+    /**
+     * feature.usage.dictation (INTEL-CONTRACT-V2 §1.2) — fired once per
+     * completed OS-dictation session (any consumer: Quick Dictate, chat
+     * voice input). Emits seconds/word_count/language only — never text.
+     * OS dictation maps to engine_tier "light", on_device true.
+     */
+    private emitDictationUsage(): void {
+        try {
+            if (!this.sessionStartedAt || this.sessionWordCount === 0) {
+                this.sessionStartedAt = null;
+                this.sessionWordCount = 0;
+                return;
+            }
+            const seconds = (Date.now() - this.sessionStartedAt) / 1000;
+            const wordCount = this.sessionWordCount;
+            this.sessionStartedAt = null;
+            this.sessionWordCount = 0;
+            const { intelService } = require('./intel');
+            intelService.emitDictation({
+                seconds,
+                language: this.sessionLang,
+                osDictation: true,
+                wordCount,
+            });
+        } catch { /* telemetry never affects dictation */ }
     }
 
     private clearSubscriptions(): void {

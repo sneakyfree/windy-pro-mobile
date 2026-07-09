@@ -46,6 +46,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
         console.error('[ErrorBoundary] Crash caught:', error.message);
         console.error('[ErrorBoundary] Stack:', errorInfo.componentStack);
 
+        // Intel hook (INTEL-CONTRACT-V2 §1.3) — stable slug only, never the
+        // exception message or stack. Fire-and-forget, never throws.
+        try {
+            const { intelService } = require('@/services/intel');
+            intelService.emitError('react_error_boundary', 'root', { recoverable: true });
+        } catch { /* telemetry never breaks recovery */ }
+
         // Animate in
         Animated.spring(this.fadeAnim, {
             toValue: 1,
