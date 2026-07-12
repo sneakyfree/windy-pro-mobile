@@ -391,8 +391,11 @@ class SyncManager {
             const isPluggedIn = batteryState === Battery.BatteryState.CHARGING ||
                                 batteryState === Battery.BatteryState.FULL;
 
-            // Don't sync on battery below 20% unless plugged in
-            if (!isPluggedIn && batteryLevel < 0.20) {
+            // Don't sync on battery below 20% unless plugged in.
+            // getBatteryLevelAsync returns -1 when the level is unknown
+            // (simulators, some Androids) — treat unknown as NOT low, else
+            // sync silently dies forever ("battery low (-100%)" trap).
+            if (!isPluggedIn && batteryLevel >= 0 && batteryLevel < 0.20) {
                 log.info('processQueue', `Skipping sync — battery low (${Math.round(batteryLevel * 100)}%) and not charging`);
                 return;
             }

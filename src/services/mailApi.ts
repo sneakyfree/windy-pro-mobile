@@ -57,7 +57,17 @@ export async function listInbox(opts: ListInboxOptions = {}): Promise<ListInboxR
             let msg = `Inbox failed (${res.status})`;
             try {
                 const body = await res.json();
-                msg = (body?.error as string) || (body?.message as string) || msg;
+                // windy-mail is FastAPI: errors arrive as { detail: {...} } (or a
+                // plain detail string). Surface the human message it sends —
+                // e.g. JMAP_NOT_CONNECTED's "your emails are being stored…" —
+                // instead of a raw status code (stress-final-mobile 2026-07-11).
+                const detail = body?.detail;
+                msg = (typeof detail === 'string' ? detail : undefined)
+                    || (detail?.message as string)
+                    || (detail?.error as string)
+                    || (body?.error as string)
+                    || (body?.message as string)
+                    || msg;
             } catch { /* non-JSON */ }
             return { ok: false, error: msg };
         }

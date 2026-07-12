@@ -22,6 +22,7 @@ import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import EternitasBadge from '@/components/EternitasBadge';
 import VoiceChatButton, { type VoiceChatMode } from '@/components/VoiceChatButton';
 import { PAIR_CDN_BASE } from '@/config/api';
+import { renderMarkdownLite } from '@/lib/markdownLite';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -122,6 +123,9 @@ export default function ConversationScreen() {
                 }));
 
                 setMessages([...translated, ...pending]);
+
+                // Reading the room — tell the server so unread badges clear.
+                chatClient.markRoomRead(roomId).catch(() => {});
             } catch {
                 if (isMounted.current) setLoadError('Could not load messages. Pull down to retry.');
             } finally {
@@ -141,6 +145,8 @@ export default function ConversationScreen() {
                 const translated = await chatTranslateService.translateMessage(msg);
                 if (!isMounted.current) return; // ML-3: guard
                 setMessages(prev => [...prev.filter(m => !m.pending), translated]);
+                // Screen is open, so the new message is read on arrival.
+                chatClient.markRoomRead(roomId).catch(() => {});
                 setTimeout(() => {
                     flatListRef.current?.scrollToEnd({ animated: true });
                 }, 50);
@@ -267,7 +273,7 @@ export default function ConversationScreen() {
                                     styles.messageText,
                                     item.isOwn ? styles.messageTextOwn : styles.messageTextOther,
                                 ]}>
-                                    {item.body}
+                                    {renderMarkdownLite(item.body)}
                                 </Text>
 
                                 {/* Translation */}

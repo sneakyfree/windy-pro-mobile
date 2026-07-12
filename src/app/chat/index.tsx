@@ -9,7 +9,7 @@ import {
     RefreshControl, ActivityIndicator, TextInput, Alert, ScrollView,
 } from 'react-native';
 import { INPUT_LIMITS } from '@/utils/validation';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fontSizes } from '@/theme';
 import { chatClient, isAgentRoom, type ChatRoom, type ChatContact, type SyncState } from '@/services/chatClient';
@@ -21,6 +21,7 @@ import { chatTranslateService } from '@/services/chatTranslate';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useChatBadgeStore } from '@/stores/useChatBadgeStore';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
+import { stripMarkdown } from '@/lib/markdownLite';
 import EternitasPassport from '@/components/EternitasPassport';
 import type { EcosystemStatus } from '@/services/ecosystem-status';
 
@@ -239,6 +240,13 @@ export default function ChatHomeScreen() {
         };
     }, [connectChat, setUnreadBadge]);
 
+    // Coming back from a conversation must show fresh unread counts —
+    // read receipts sent in the room reset them, but sync can lag. Without
+    // this the badge shows stale "3 unread" after reading (2026-07-11).
+    useFocusEffect(useCallback(() => {
+        loadRooms();
+    }, [loadRooms]));
+
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         await loadRooms();
@@ -344,7 +352,7 @@ export default function ChatHomeScreen() {
                     {item.lastMessageTime && <Text style={styles.roomTime}>{timeAgo(item.lastMessageTime)}</Text>}
                 </View>
                 <View style={styles.roomBottom}>
-                    <Text style={styles.roomPreview} numberOfLines={1}>{item.lastMessage || 'No messages yet'}</Text>
+                    <Text style={styles.roomPreview} numberOfLines={1}>{item.lastMessage ? stripMarkdown(item.lastMessage) : 'No messages yet'}</Text>
                     {item.unreadCount > 0 && (
                         <View style={styles.badge} accessibilityLabel={`${item.unreadCount} unread messages`}>
                             <Text style={styles.badgeText}>{item.unreadCount > 99 ? '99+' : item.unreadCount}</Text>
