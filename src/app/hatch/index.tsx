@@ -139,8 +139,10 @@ export default function HatchScreen() {
                     if (event.kind === 'step') {
                         setProgress(prev => ({ ...prev, [event.step]: event.state }));
                     } else if (event.kind === 'result') {
+                        const ev = event as any;
                         finalResult = {
-                            passport_number: event.passport_number,
+                            // Server variants observed: passport_number | passport | passport_id
+                            passport_number: ev.passport_number ?? ev.passport ?? ev.passport_id,
                             matrix_user_id: event.matrix_user_id,
                             dm_room_id: event.dm_room_id,
                             trust_score: event.trust_score,
@@ -336,6 +338,7 @@ export default function HatchScreen() {
                 </Text>
             )}
 
+            {(result?.passport_number || result?.matrix_user_id || result?.trust_score != null) && (
             <View style={styles.birthCard}>
                 {result?.passport_number && (
                     <View style={styles.birthRow}>
@@ -356,6 +359,7 @@ export default function HatchScreen() {
                     </View>
                 )}
             </View>
+            )}
 
             <Pressable
                 style={[styles.primaryBtn, { backgroundColor: chatReady ? '#22c55e' : colors.accent }]}

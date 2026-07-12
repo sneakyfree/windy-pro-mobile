@@ -1078,6 +1078,31 @@ class ChatClient {
     }
 
     /**
+     * Send a read receipt for the latest event in a room so the server
+     * resets its unread-notification count. Without this the roster badge
+     * (`getUnreadNotificationCount`) never clears — the user reads a DM and
+     * the "3 unread" badge lives forever (stress-final-mobile 2026-07-11).
+     * Fire-and-forget: receipt failures must never break the reading UI.
+     */
+    async markRoomRead(roomId: string): Promise<void> {
+        if (!this.client) return;
+        try {
+            const room = this.client.getRoom(roomId);
+            if (!room) return;
+            const events = room.getLiveTimeline().getEvents();
+            const lastEvent = events[events.length - 1];
+            if (!lastEvent) return;
+            await this.client.sendReadReceipt(lastEvent);
+            // Local echo so the roster clears immediately even before the
+            // next /sync round-trip returns the updated server count.
+            room.setUnreadNotificationCount?.('total', 0);
+            room.setUnreadNotificationCount?.('highlight', 0);
+        } catch (e: unknown) {
+            log.warn('markRoomRead', 'Failed to send read receipt', { error: String(e) });
+        }
+    }
+
+    /**
      * Get message history for a room.
      */
     getMessages(roomId: string, limit = 50): ChatMessage[] {
