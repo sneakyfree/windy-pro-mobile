@@ -65,6 +65,18 @@ class ChatSsoService {
      * reconnecting on every app start would churn devices server-side.
      */
     async ensureChatSession(): Promise<ChatConnectResult> {
+        // A live in-memory session minted for a DIFFERENT Windy account (user
+        // switched accounts this app run) must be dropped, not reused —
+        // otherwise the new user keeps chatting as the previous one
+        // (cross-account leak, found 2026-07-17). Unknown owner (legacy
+        // session) is also dropped: one device re-mint beats a leak.
+        const currentIdentity = identityApi.getWindyIdentityId();
+        if (chatClient.isLoggedIn() && currentIdentity
+            && chatClient.getSessionOwner() !== currentIdentity) {
+            log.warn('session_owner_mismatch', 'live Matrix session belongs to a different account — dropping');
+            await chatClient.logout();
+        }
+
         if (chatClient.isLoggedIn()) {
             return { success: true, matrixUserId: chatClient.getUserId() || undefined };
         }

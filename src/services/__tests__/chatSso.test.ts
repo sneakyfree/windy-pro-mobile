@@ -11,10 +11,12 @@ jest.mock('@/config/api', () => ({
 
 const mockAuthedFetch = jest.fn<Promise<Response | null>, unknown[]>();
 const mockIsAuthenticated = jest.fn(() => true);
+const mockGetWindyIdentityId = jest.fn<string | null, []>(() => 'identity-1');
 jest.mock('@/services/identityApi', () => ({
     identityApi: {
         authedFetch: (...args: unknown[]) => mockAuthedFetch(...args),
         isAuthenticated: () => mockIsAuthenticated(),
+        getWindyIdentityId: () => mockGetWindyIdentityId(),
     },
 }));
 
@@ -23,12 +25,16 @@ const mockLoginWithCredentials = jest.fn(
 );
 const mockRestoreSession = jest.fn(async () => false);
 const mockIsLoggedIn = jest.fn(() => false);
+const mockGetSessionOwner = jest.fn<string | null, []>(() => 'identity-1');
+const mockChatLogout = jest.fn(async () => undefined);
 jest.mock('@/services/chatClient', () => ({
     chatClient: {
         isLoggedIn: () => mockIsLoggedIn(),
         restoreSession: () => mockRestoreSession(),
         getUserId: jest.fn(() => '@u:chat.windychat.ai'),
         loginWithCredentials: (...args: unknown[]) => mockLoginWithCredentials(...args),
+        getSessionOwner: () => mockGetSessionOwner(),
+        logout: () => mockChatLogout(),
     },
 }));
 
@@ -184,6 +190,23 @@ describe('ensureChatSession', () => {
         expect(result.success).toBe(true);
         expect(mockRestoreSession).not.toHaveBeenCalled();
         expect(mockAuthedFetch).not.toHaveBeenCalled();
+    });
+
+    it('drops a live session owned by a different Windy account and re-mints', async () => {
+        // Live session from user A; user B is now signed in.
+        mockIsLoggedIn.mockReturnValue(true);
+        mockGetSessionOwner.mockReturnValue('identity-OLD');
+        mockGetWindyIdentityId.mockReturnValue('identity-1');
+        mockChatLogout.mockImplementation(async () => {
+            mockIsLoggedIn.mockReturnValue(false);
+        });
+        mockAuthedFetch.mockResolvedValue(jsonResponse(200, FULL_RESPONSE));
+
+        const result = await chatSso.ensureChatSession();
+
+        expect(mockChatLogout).toHaveBeenCalled();
+        expect(mockAuthedFetch).toHaveBeenCalled(); // re-minted for current user
+        expect(result.success).toBe(true);
     });
 
     it('prefers a restored stored session over minting a new one', async () => {
