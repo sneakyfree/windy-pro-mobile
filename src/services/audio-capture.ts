@@ -111,9 +111,24 @@ class AudioCaptureService {
         this.onMeterUpdate = null;
 
         // Get the URI and file info
-        const uri = this.recording.getURI();
+        let uri = this.recording.getURI();
         if (!uri) {
             throw new Error('Recording URI is null');
+        }
+
+        // expo-av records into Library/Caches — purgeable, and a crash
+        // during transcription (whisper SIGABRT) strands the audio there
+        // with no way back. Move the finished WAV into Documents first so
+        // the recording survives any downstream crash (2026-07-11 P1).
+        try {
+            const safeDir = `${FileSystem.documentDirectory}recordings/`;
+            await FileSystem.makeDirectoryAsync(safeDir, { intermediates: true }).catch(() => {});
+            const safeUri = `${safeDir}${uri.split('/').pop()}`;
+            await FileSystem.moveAsync({ from: uri, to: safeUri });
+            uri = safeUri;
+        } catch {
+            // Move failed (disk full, etc.) — keep the cache URI rather than
+            // fail the recording outright.
         }
 
         const status = await this.recording.getStatusAsync();
