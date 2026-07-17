@@ -26,6 +26,11 @@ const MATRIX_TOKEN_KEY = 'windy_matrix_token';
 const MATRIX_USER_KEY = 'windy_matrix_user';
 const MATRIX_SERVER_KEY = 'windy_matrix_server';
 const MATRIX_DEVICE_KEY = 'windy_matrix_device';
+/** Windy identity the stored Matrix session belongs to. A session minted
+ * for one Windy account must never be reused by another — without this
+ * binding, sign-out → sign-in as a different user kept the previous
+ * user's Matrix session (cross-account chat leak, found 2026-07-17). */
+const MATRIX_OWNER_KEY = 'windy_matrix_owner';
 
 // ─── Default Homeserver ─────────────────────────────────────────
 import { getChatHomeserver, DEFAULT_CHAT_HOMESERVER } from '@/config/api';
@@ -233,6 +238,8 @@ class ChatClient {
     private sdk: any = null;
     private client: any = null;
     private session: MatrixSession | null = null;
+    /** Windy identity id the live session was minted for (see MATRIX_OWNER_KEY). */
+    private sessionOwner: string | null = null;
     private messageListeners = new Set<MessageCallback>();
     private typingListeners = new Set<TypingCallback>();
     private syncStateListeners = new Set<SyncStateCallback>();
@@ -392,6 +399,28 @@ class ChatClient {
             const server = await SecureStore.getItemAsync(MATRIX_SERVER_KEY);
             const deviceId = await SecureStore.getItemAsync(MATRIX_DEVICE_KEY);
 
+            // Ownership check BEFORE trusting the stored session: a session
+            // minted for a different Windy account (or one predating owner
+            // binding) is discarded so ensureChatSession falls through to
+            // unified-login for the CURRENT account. Missing owner counts as
+            // a mismatch — one-time device re-mint beats a cross-account leak.
+            if (token && userId && server) {
+                const storedOwner = await SecureStore.getItemAsync(MATRIX_OWNER_KEY).catch(() => null);
+                let currentIdentity: string | null = null;
+                try {
+                    const { identityApi } = require('./identityApi');
+                    currentIdentity = identityApi.getWindyIdentityId();
+                } catch { /* identity module unavailable in some test envs */ }
+                if (currentIdentity && storedOwner !== currentIdentity) {
+                    log.warn('restoreSession', 'stored Matrix session belongs to a different Windy account — discarding', {
+                        hadOwner: !!storedOwner,
+                    });
+                    await this.clearStoredSession();
+                    return false;
+                }
+                this.sessionOwner = storedOwner;
+            }
+
             if (token && userId && server) {
                 // Validate before trusting: a stored session can be dead
                 // (e.g. minted during a provisioning race at signup). Without
@@ -413,10 +442,7 @@ class ChatClient {
                         log.warn('restoreSession', 'stored Matrix session rejected by server — discarding', {
                             status: whoami.status,
                         });
-                        await SecureStore.deleteItemAsync(MATRIX_TOKEN_KEY).catch(() => {});
-                        await SecureStore.deleteItemAsync(MATRIX_USER_KEY).catch(() => {});
-                        await SecureStore.deleteItemAsync(MATRIX_SERVER_KEY).catch(() => {});
-                        await SecureStore.deleteItemAsync(MATRIX_DEVICE_KEY).catch(() => {});
+                        await this.clearStoredSession();
                         return false;
                     }
                 } catch { /* offline or slow — restore optimistically */ }
@@ -461,10 +487,22 @@ class ChatClient {
         this.reconnectAttempt = 0;
         if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
         this.setSyncState('stopped');
+        this.sessionOwner = null;
+        await this.clearStoredSession();
+    }
+
+    /** Remove every persisted session key (token/user/server/device/owner). */
+    private async clearStoredSession(): Promise<void> {
         await SecureStore.deleteItemAsync(MATRIX_TOKEN_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(MATRIX_USER_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(MATRIX_SERVER_KEY).catch(() => {});
         await SecureStore.deleteItemAsync(MATRIX_DEVICE_KEY).catch(() => {});
+        await SecureStore.deleteItemAsync(MATRIX_OWNER_KEY).catch(() => {});
+    }
+
+    /** Windy identity id the live session belongs to (null = unknown/legacy). */
+    getSessionOwner(): string | null {
+        return this.sessionOwner;
     }
 
     isLoggedIn(): boolean {
@@ -1270,6 +1308,18 @@ class ChatClient {
         await SecureStore.setItemAsync(MATRIX_DEVICE_KEY, this.session.deviceId).catch((e) => {
             log.warn('persistSession_device', 'persistSession device failed', { error: sanitizeError(e) });
         });
+        // Bind the session to the signed-in Windy account (lazy require —
+        // identityApi must not become a static dependency of chatClient).
+        try {
+            const { identityApi } = require('./identityApi');
+            const owner = identityApi.getWindyIdentityId();
+            if (owner) {
+                this.sessionOwner = owner;
+                await SecureStore.setItemAsync(MATRIX_OWNER_KEY, owner).catch((e: unknown) => {
+                    log.warn('persistSession_owner', 'persistSession owner failed', { error: sanitizeError(e) });
+                });
+            }
+        } catch { /* identity module unavailable in some test envs */ }
     }
 
     private getDirectRoomIds(): Set<string> {
