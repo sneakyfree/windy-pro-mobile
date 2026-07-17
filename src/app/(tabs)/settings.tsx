@@ -640,6 +640,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.themeBtnText, settings.voiceChatMode === 'autosend' && styles.themeBtnTextActive]}>Auto-send</Text>
               </Pressable>
             </View>
+            <SettingsToggle label="Speak replies aloud" subtitle="Your agent's replies are read out loud — hands-free" value={settings.speakReplies} onToggle={settings.setSpeakReplies} />
           </SettingsSection>
 
           {/* Notifications */}

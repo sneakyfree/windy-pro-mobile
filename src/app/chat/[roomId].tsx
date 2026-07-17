@@ -22,7 +22,8 @@ import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import EternitasBadge from '@/components/EternitasBadge';
 import VoiceChatButton, { type VoiceChatMode } from '@/components/VoiceChatButton';
 import { PAIR_CDN_BASE } from '@/config/api';
-import { renderMarkdownLite } from '@/lib/markdownLite';
+import { renderMarkdownLite, stripMarkdown } from '@/lib/markdownLite';
+import * as Speech from 'expo-speech';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -145,6 +146,17 @@ export default function ConversationScreen() {
                 const translated = await chatTranslateService.translateMessage(msg);
                 if (!isMounted.current) return; // ML-3: guard
                 setMessages(prev => [...prev.filter(m => !m.pending), translated]);
+                // Hands-free: read agent replies aloud while the room is open
+                // (the driving half of the voice loop — she talks, it talks
+                // back). Opt-in via Settings → Voice Chat → Speak replies.
+                if (!msg.isOwn && msg.type === 'text'
+                    && useSettingsStore.getState().speakReplies
+                    && isAgentUserId(msg.sender)) {
+                    try {
+                        Speech.stop();
+                        Speech.speak(stripMarkdown(translated.body ?? msg.body));
+                    } catch { /* TTS unavailable — never break the timeline */ }
+                }
                 // Screen is open, so the new message is read on arrival.
                 chatClient.markRoomRead(roomId).catch(() => {});
                 setTimeout(() => {
