@@ -22,7 +22,8 @@ import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import EternitasBadge from '@/components/EternitasBadge';
 import VoiceChatButton, { type VoiceChatMode } from '@/components/VoiceChatButton';
 import { PAIR_CDN_BASE } from '@/config/api';
-import { renderMarkdownLite } from '@/lib/markdownLite';
+import { renderMarkdownLite, stripMarkdown } from '@/lib/markdownLite';
+import * as Speech from 'expo-speech';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -145,6 +146,17 @@ export default function ConversationScreen() {
                 const translated = await chatTranslateService.translateMessage(msg);
                 if (!isMounted.current) return; // ML-3: guard
                 setMessages(prev => [...prev.filter(m => !m.pending), translated]);
+                // Hands-free: read agent replies aloud while the room is open
+                // (the driving half of the voice loop — she talks, it talks
+                // back). Opt-in via Settings → Voice Chat → Speak replies.
+                if (!msg.isOwn && msg.type === 'text'
+                    && useSettingsStore.getState().speakReplies
+                    && isAgentUserId(msg.sender)) {
+                    try {
+                        Speech.stop();
+                        Speech.speak(stripMarkdown(translated.body ?? msg.body));
+                    } catch { /* TTS unavailable — never break the timeline */ }
+                }
                 // Screen is open, so the new message is read on arrival.
                 chatClient.markRoomRead(roomId).catch(() => {});
                 setTimeout(() => {
@@ -519,15 +531,12 @@ export default function ConversationScreen() {
                                 setInputText(committed);
                             }
                         }}
-                        onVoiceNote={async (uri, durationSec) => {
-                            // Send voice note as m.audio Matrix event
-                            try {
-                                const formatted = `${Math.floor(durationSec / 60)}:${Math.floor(durationSec % 60).toString().padStart(2, '0')}`;
-                                await chatClient.sendMessage(roomId, `🎵 Voice note (${formatted})`);
-                            } catch {
-                                Alert.alert('Voice Note', 'Could not send voice note.');
-                            }
-                        }}
+                        // No onVoiceNote: the old handler sent a "🎵 Voice note"
+                        // TEXT placeholder and silently discarded the audio —
+                        // the recipient got nothing she said. Until real
+                        // m.audio upload + a playback bubble exist, long-press
+                        // falls back to record→transcribe, so her words
+                        // actually arrive (as text).
                         onError={(err) => Alert.alert('Voice Input', err)}
                         disabled={sending}
                     />

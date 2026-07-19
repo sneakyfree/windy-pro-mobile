@@ -12,7 +12,7 @@
  * iOS and Android React Native without a fetch streaming polyfill.
  */
 import { API_BASE_URL } from '@/config/api';
-import { cloudApi } from './cloudApi';
+import { identityApi } from './identityApi';
 import { createLogger } from './logger';
 import { fetchWithTimeout } from '@/utils/fetch-timeout';
 
@@ -102,7 +102,11 @@ export async function startHatch(
     req: HatchRequest,
     opts: HatchStartOptions,
 ): Promise<void> {
-    const token = cloudApi.getToken();
+    // The SSE XHR below bypasses authedFetch, so it gets none of the
+    // refresh-on-401 machinery — and access tokens live ~15 min. A raw
+    // getToken() here 401'd every hatch attempted >15 min after sign-in
+    // (found live 2026-07-17: fresh signup → browse a bit → hatch → 401).
+    const token = await identityApi.getFreshToken();
     if (!token) {
         opts.onEvent({ kind: 'error', message: 'Please sign in first to hatch an agent.' });
         return;

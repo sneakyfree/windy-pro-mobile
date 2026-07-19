@@ -166,6 +166,23 @@ class IdentityApiClient {
         return !this.isTokenExpired(this.accessToken);
     }
     getToken(): string | null { return this.accessToken; }
+
+    /**
+     * Access token guaranteed non-expired (refreshes first when needed).
+     * Callers that bypass authedFetch (e.g. the hatch SSE XHR) MUST use
+     * this — the raw token lives only ~15 min, so "signed in ten minutes
+     * ago" + getToken() = a guaranteed 401 (hatch died exactly this way,
+     * 2026-07-17).
+     */
+    async getFreshToken(): Promise<string | null> {
+        if (this.accessToken && !this.isTokenExpired(this.accessToken)) {
+            return this.accessToken;
+        }
+        if (this.refreshTokenValue && await this.refresh()) {
+            return this.accessToken;
+        }
+        return null;
+    }
     getUserId(): string | null { return this.userId; }
     getEmail(): string | null { return this.email; }
     getWindyIdentityId(): string | null { return this.windyIdentityId; }

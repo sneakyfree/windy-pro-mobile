@@ -179,7 +179,21 @@ export default function RootLayout() {
       const authed = identityApi.isAuthenticated();
       if (authed === lastAuthed) return;
       lastAuthed = authed;
-      if (!authed) return;
+      if (!authed) {
+        // Sign-out must tear down everything keyed to the old account, or
+        // the next sign-in inherits it: the Matrix session (cross-account
+        // chat leak), the cached ecosystem panel (previous user's email,
+        // agent ids and "Active" ticks kept rendering after logout), and
+        // trust polling of the previous account's passports — all observed
+        // live 2026-07-17.
+        const { chatClient } = require('@/services/chatClient');
+        chatClient.logout().catch(() => { });
+        try {
+          useSettingsStore.getState().setEcosystemStatus(null);
+        } catch { /* store unavailable */ }
+        trustMonitor.reset();
+        return;
+      }
       const { chatSso } = require('@/services/chatSso');
       const { chatClient } = require('@/services/chatClient');
       chatSso.ensureChatSession()

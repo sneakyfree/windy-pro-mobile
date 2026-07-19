@@ -70,6 +70,12 @@ class TrustMonitor {
         this.tracked.delete(passport);
     }
 
+    /** Drop every tracked passport — call at sign-out so the next account
+     * doesn't keep polling the previous account's passports. */
+    reset(): void {
+        this.tracked.clear();
+    }
+
     getTracked(): string[] { return Array.from(this.tracked.keys()); }
 
     private onAppStateChange = (next: AppStateStatus): void => {

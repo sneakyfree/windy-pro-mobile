@@ -82,6 +82,10 @@ interface SettingsStore {
     voiceChatMode: 'dictate' | 'autosend';
     setVoiceChatMode: (mode: 'dictate' | 'autosend') => void;
 
+    /** Read agent replies aloud in open chats (hands-free / driving). */
+    speakReplies: boolean;
+    setSpeakReplies: (on: boolean) => void;
+
     // Chat homeserver (overridable from settings)
     chatHomeserver: string;
     setChatHomeserver: (url: string) => void;
@@ -153,6 +157,9 @@ export const useSettingsStore = create<SettingsStore>()(
 
             voiceChatMode: 'dictate',
             setVoiceChatMode: (mode) => set({ voiceChatMode: mode }),
+
+            speakReplies: false,
+            setSpeakReplies: (on) => set({ speakReplies: on }),
 
             chatHomeserver: '',
             setChatHomeserver: (url) => set({ chatHomeserver: url }),
