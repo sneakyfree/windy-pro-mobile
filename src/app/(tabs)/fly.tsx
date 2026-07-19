@@ -23,6 +23,7 @@ import { feedbackService } from '@/services/feedback';
 import { ScreenErrorBoundary } from '@/components/ScreenErrorBoundary';
 import { identityApi } from '@/services/identityApi';
 import { formatAgentStatus } from '@/lib/flyStatus';
+import { AgentControlPanel } from '@/components/panel/AgentControlPanel';
 
 export { formatAgentStatus } from '@/lib/flyStatus';
 
@@ -157,6 +158,9 @@ export default function FlyTab() {
                             </Text>
                         </View>
                     </View>
+
+                    {/* Control Panel — personality sliders (windy.panel.v1) + honest capability sections */}
+                    <AgentControlPanel />
 
                     {/* Latest Action */}
                     <View style={styles.section}>
