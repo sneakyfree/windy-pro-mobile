@@ -41,6 +41,7 @@ import { subscriptionService } from '@/services/subscription';
 import { networkMonitor } from '@/services/network-monitor';
 import { cloudApi } from '@/services/cloudApi';
 import { identityApi } from '@/services/identityApi';
+import { startRevenueCatIdentitySync } from '@/services/revenuecatIdentitySync';
 import { syncManager } from '@/services/sync-manager';
 import { parseWindyUrl } from '@/lib/parseWindyUrl';
 import { pendingDeepLink } from '@/state/pendingDeepLink';
@@ -205,6 +206,19 @@ export default function RootLayout() {
     connectChatPush();
     const unsub = identityApi.onChange(connectChatPush);
     return () => { unsub(); };
+  }, []);
+
+  // RevenueCat ↔ Windy identity sync (src/services/revenuecatIdentitySync.ts):
+  // the server-side RevenueCat webhook can only match a purchase to a Windy
+  // account when RC's app_user_id equals the account-server user id (JWT
+  // `sub`). Every auth entry point funnels through identityApi.onChange, so
+  // this single hook covers fresh login, registration, app-start session
+  // restore, and sign-out (Purchases.logOut so a shared device can't
+  // cross-attribute purchases). Idempotent + fire-and-forget — never blocks
+  // UI, never throws, never re-inits the RC SDK.
+  useEffect(() => {
+    const unsubRc = startRevenueCatIdentitySync();
+    return () => { unsubRc(); };
   }, []);
 
   // Track the user's own Eternitas passport + connected agent passports for
