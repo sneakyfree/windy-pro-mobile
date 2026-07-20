@@ -18,17 +18,41 @@ const log = createLogger('License');
 const TOKEN_KEY = 'windy_jwt_token';
 
 /**
- * Normalize backend tier names (free/pro/ultra/max) to mobile LicenseTier.
- * The backend uses a different naming scheme — this bridges the two.
+ * Canonical backend→mobile tier map. This ONE map is used by both
+ * normalizeBackendTier() and validateLicense() so they cannot diverge.
+ *
+ * Two backend vocabularies feed the mobile app:
+ *  - account-server (JWT `tier` claim + POST /api/v1/license/activate):
+ *    free / pro / translate / translate-pro (hyphen — see windy-pro
+ *    account-server routes/billing.ts price→tier map; a couple of server
+ *    code paths also use the underscore spelling, so both are accepted).
+ *  - legacy cloud API: free / pro / ultra / max.
+ *
+ * The mobile canonical spelling is 'translate_pro' (underscore) because
+ * that is the LicenseTier key RECORDING_LIMITS and FEATURE_MATRIX use.
+ * Unknown or missing values fall back to 'free'.
+ */
+const BACKEND_TIER_MAP: Record<string, LicenseTier> = {
+    // Shared vocabulary
+    'free': 'free',
+    'pro': 'pro',
+    // account-server vocabulary (what paying web customers actually carry)
+    'translate': 'translate',
+    'translate-pro': 'translate_pro',
+    'translate_pro': 'translate_pro',
+    // Legacy cloud vocabulary
+    'ultra': 'translate',      // ultra includes translation
+    'max': 'translate_pro',    // max includes everything
+};
+
+/**
+ * Normalize a backend tier string to the mobile LicenseTier enum.
+ * Always returns a valid RECORDING_LIMITS / FEATURE_MATRIX key — callers
+ * must run server tier strings through this BEFORE indexing either table.
  */
 export function normalizeBackendTier(backendTier: string): LicenseTier {
-    const mapping: Record<string, LicenseTier> = {
-        'free': 'free',
-        'pro': 'pro',
-        'ultra': 'translate',      // ultra includes translation
-        'max': 'translate_pro',    // max includes everything
-    };
-    return mapping[backendTier] || 'free';
+    if (typeof backendTier !== 'string') return 'free';
+    return BACKEND_TIER_MAP[backendTier.trim().toLowerCase()] || 'free';
 }
 
 /**
@@ -140,9 +164,12 @@ class LicenseService {
             }
 
             const data = await response.json();
+            // Normalize the raw server tier BEFORE it is stored or used to
+            // index RECORDING_LIMITS / FEATURE_MATRIX — account-server sends
+            // 'translate-pro' (hyphen), which is not a mobile LicenseTier key.
             const validation: LicenseValidation = {
                 key: data.key || key,
-                tier: data.tier || 'free',
+                tier: normalizeBackendTier(data.tier),
                 billingType: data.billingType || null,
                 cloudSttEnabled: data.cloudSttEnabled ?? false,
                 validUntil: data.activatedAt || null,
