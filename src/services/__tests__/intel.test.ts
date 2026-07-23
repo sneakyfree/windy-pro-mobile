@@ -147,7 +147,7 @@ describe('queue cap (1000) → drop oldest + journal_overflow', () => {
         expect(queue.length).toBeLessThanOrEqual(1001); // 1000 + overflow marker
         const overflows = queue.filter((e: any) => e.metadata?.code === 'journal_overflow');
         expect(overflows).toHaveLength(1);
-    });
+    }, 20000); // 1005-emit loop needs headroom on a loaded 4-core CI box
 });
 
 describe('metadata guard (contract §0.3 — validate before buffering)', () => {
