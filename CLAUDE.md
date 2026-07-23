@@ -86,3 +86,9 @@ To verify during a stress session: drive the flow from the app, then tail
 `windy-chat`) with the `verify-oc5` read token from the lockbox
 (`secrets/windy-admin/ingest-tokens.env`). Verified live 2026-07-08: in-app
 signup + hatch + DM traffic all landed with the mobile user's identity ids.
+
+## CI: self-hosted runner (since 2026-07)
+GitHub Actions runs on OUR runner (kit0-windy-pro-mobile on the Kit 0 VPS), not GitHub's cloud.
+Always `runs-on: [self-hosted, linux, x64]` — NEVER `ubuntu-latest` (billing-locked; runner-lint enforces).
+Jobs stuck "Queued" = runner down, not billing: ssh Kit 0 → cd /home/github-runner/runners/windy-pro-mobile && sudo ./svc.sh status
+Full runbook: ~/kit-army-config/docs/ci-runner-runbook.md

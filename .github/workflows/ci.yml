@@ -8,9 +8,11 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     steps:
       - uses: actions/checkout@v4
+      - name: runner-lint (hosted runners are billing-locked)
+        run: bash "$GITHUB_WORKSPACE/.github/lint/lint-runner-labels.sh" "$GITHUB_WORKSPACE/.github/workflows"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -24,7 +26,7 @@ jobs:
         run: npx expo lint 2>/dev/null || true
 
   build-web:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     needs: test
     steps:
       - uses: actions/checkout@v4
@@ -38,11 +40,12 @@ jobs:
       - name: Upload web build
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 3
           name: web-build
           path: dist/
 
   build-native:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     needs: test
     if: github.ref == 'refs/heads/main'
     steps:
