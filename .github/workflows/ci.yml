@@ -38,6 +38,10 @@ jobs:
       - name: Export web build
         run: npx expo export --platform web --output-dir dist
       - name: Upload web build
+        # Artifact storage is billing-blocked account-wide (2026-07); the
+        # build itself is the CI signal. Upload resumes working (and this
+        # stops soft-failing) once billing is settled.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           retention-days: 3
